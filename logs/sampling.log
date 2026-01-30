@@ -1,0 +1,43 @@
+2026-01-30 13:09:01,658 | INFO | Sampler initialized
+2026-01-30 13:09:01,659 | INFO | method=gaussian, n_samples=800, bins=30, seed=42
+2026-01-30 13:09:01,660 | INFO | Starting sampling pipeline
+2026-01-30 13:09:01,683 | INFO | Original distribution stats: {'mean': 4.963132559683468, 'std': 1.9752118994163506, 'kurtosis': -0.03095451095565105, 'skewness': 0.026634616738395598}
+2026-01-30 13:09:01,686 | INFO | Running gaussian (proportional stratified) sampling
+2026-01-30 13:09:01,855 | INFO | Gaussian sampling result size: 798
+2026-01-30 13:09:01,866 | INFO | Gaussian stats: {'mean': 4.960828000695944, 'std': 1.9678098788901777, 'kurtosis': -0.07791756762235513, 'skewness': -0.0072823003484595635}
+2026-01-30 13:09:01,868 | INFO | Sampling pipeline finished
+2026-01-30 13:09:01,875 | INFO | Sampler initialized
+2026-01-30 13:09:01,876 | INFO | method=uniform, n_samples=500, bins=20, seed=42
+2026-01-30 13:09:01,879 | INFO | Sampler initialized
+2026-01-30 13:09:01,880 | INFO | method=uniform, n_samples=500, bins=20, seed=42
+2026-01-30 13:09:01,882 | INFO | Starting sampling pipeline
+2026-01-30 13:09:01,892 | INFO | Original distribution stats: {'mean': 4.963132559683468, 'std': 1.9752118994163506, 'kurtosis': -0.03095451095565105, 'skewness': 0.026634616738395598}
+2026-01-30 13:09:01,894 | INFO | Running uniform sampling
+2026-01-30 13:09:02,021 | INFO | Uniform sampling result size: 414
+2026-01-30 13:09:02,038 | INFO | Uniform stats: {'mean': 4.975039162849331, 'std': 3.6231309254417354, 'kurtosis': -1.14437579072142, 'skewness': 0.016385445269838005}
+2026-01-30 13:09:02,040 | INFO | Sampling pipeline finished
+2026-01-30 13:09:02,042 | INFO | Starting sampling pipeline
+2026-01-30 13:09:02,056 | INFO | Original distribution stats: {'mean': 4.963132559683468, 'std': 1.9752118994163506, 'kurtosis': -0.03095451095565105, 'skewness': 0.026634616738395598}
+2026-01-30 13:09:02,058 | INFO | Running uniform sampling
+2026-01-30 13:09:02,162 | INFO | Uniform sampling result size: 414
+2026-01-30 13:09:02,173 | INFO | Uniform stats: {'mean': 4.975039162849331, 'std': 3.6231309254417354, 'kurtosis': -1.14437579072142, 'skewness': 0.016385445269838005}
+2026-01-30 13:09:02,178 | INFO | Sampling pipeline finished
+2026-01-30 13:09:02,181 | INFO | Sampler initialized
+2026-01-30 13:09:02,185 | INFO | method=gaussian, n_samples=500, bins=25, seed=42
+2026-01-30 13:09:02,187 | INFO | Starting sampling pipeline
+2026-01-30 13:09:02,195 | INFO | Original distribution stats: {'mean': 4.963132559683468, 'std': 1.9752118994163506, 'kurtosis': -0.03095451095565105, 'skewness': 0.026634616738395598}
+2026-01-30 13:09:02,196 | INFO | Running gaussian (proportional stratified) sampling
+2026-01-30 13:09:02,383 | INFO | Gaussian sampling result size: 501
+2026-01-30 13:09:02,398 | INFO | Gaussian stats: {'mean': 4.964358157179116, 'std': 1.97870536444319, 'kurtosis': -0.08709961129318566, 'skewness': 0.0016653129217096092}
+2026-01-30 13:09:02,402 | INFO | Sampling pipeline finished
+2026-01-30 13:09:02,406 | INFO | Sampler initialized
+2026-01-30 13:09:02,409 | INFO | method=both, n_samples=500, bins=30, seed=42
+2026-01-30 13:09:02,411 | INFO | Starting sampling pipeline
+2026-01-30 13:09:02,418 | INFO | Original distribution stats: {'mean': 4.963132559683468, 'std': 1.9752118994163506, 'kurtosis': -0.03095451095565105, 'skewness': 0.026634616738395598}
+2026-01-30 13:09:02,420 | INFO | Running uniform sampling
+2026-01-30 13:09:02,575 | INFO | Uniform sampling result size: 400
+2026-01-30 13:09:02,582 | INFO | Uniform stats: {'mean': 5.014834800145465, 'std': 3.6420996370010186, 'kurtosis': -1.1606784088975535, 'skewness': 0.005094457011507236}
+2026-01-30 13:09:02,583 | INFO | Running gaussian (proportional stratified) sampling
+2026-01-30 13:09:02,691 | INFO | Gaussian sampling result size: 500
+2026-01-30 13:09:02,697 | INFO | Gaussian stats: {'mean': 4.979343663548698, 'std': 1.983015286561411, 'kurtosis': -0.09995589448748499, 'skewness': 0.052545348389408865}
+2026-01-30 13:09:02,698 | INFO | Sampling pipeline finished
