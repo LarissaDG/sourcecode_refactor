@@ -1,21 +1,30 @@
 name: pipeline_iccc
 
-dataset_path: data/APDDv2-10023.csv
-
 cols_to_compare:
-  - "Total aesthetic score"
-  - "Theme and logic"
-  - "Creativity"
-  - "Layout and composition"
-  - "Space and perspective"
-  - "Light and shadow"
-  - "Color"
-  - "Details and texture"
-  - "The overall"
-  - "Mood"
+    - "Total aesthetic score"
+    - "Theme and logic"
+    - "Creativity"
+    - "Layout and composition"
+    - "Space and perspective"
+    - "Light and shadow"
+    - "Color"
+    - "Details and texture"
+    - "The overall"
+    - "Mood"
 
-sampling:
-  n_samples: 500
-  n_bins: 30
-  seed: 42
-  method: both
+steps:
+  preprocessing:
+    dataset_path: data/APDDv2-10023.csv
+    images_path: /path/to/images #TODO
+    type: unzip_and_load_csv
+    params:
+      zip_path: "/path/to/zip"
+      unzip_dir: "/path/to/unzip"
+      csv_path: "/path/to/csv"
+    
+  sampling:
+    n_samples: 500
+    n_bins: 30
+    seed: 42
+    method: both
+
