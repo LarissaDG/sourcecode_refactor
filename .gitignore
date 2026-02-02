@@ -1,8 +1,10 @@
 /logs
 /results
 /data
+src/pipelines
 
 # Logs e arquivos compilados (em qualquer pasta)
 *.log
 *.pyc
 **/__pycache__/
+*.txt
