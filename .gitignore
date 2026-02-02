@@ -1,4 +1,8 @@
 /logs
 /results
 /data
+
+# Logs e arquivos compilados (em qualquer pasta)
 *.log
+*.pyc
+**/__pycache__/
