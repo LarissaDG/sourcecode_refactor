@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import pandas as pd
 
-from src.utils.model_operations import process_images
-
+from src.image_to_text.imgTex_operations import process_images
 
 class TestModelOperations(unittest.TestCase):
 

@@ -16,8 +16,12 @@ def unzip_file(zip_path: str, unzip_dir: str):
 # -------------------------------
 def load_csv(csv_path: str) -> pd.DataFrame:
     print(f"Carregando o arquivo CSV: {csv_path}")
-    df = pd.read_csv(csv_path)
-    print("Arquivo CSV carregado com sucesso.")
+    try:
+        df = pd.read_csv(csv_path)
+        print("Arquivo CSV carregado com sucesso.")
+    except UnicodeDecodeError:
+        df = pd.read_csv(csv_path, encoding="latin1")
+        #df = pd.read_csv(csv_path, encoding='ISO-8859-1')
     return df
 
 # -------------------------------

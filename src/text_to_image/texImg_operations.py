@@ -1,15 +1,11 @@
 import os
-import time
 import torch
 import numpy as np
 import PIL.Image
-import torchvision
 import pandas as pd
-import argparse
 
 from transformers import AutoModelForCausalLM, AutoModel
 from janus.models import MultiModalityCausalLM, VLChatProcessor
-
 
 # -------------------------------
 # 1) FUNÇÃO: CONSTRUIR PROMPT
@@ -97,17 +93,6 @@ def generate_token_based(
 
 
 # -------------------------------
-# 3) FUNÇÃO: CARREGAR CSV
-# -------------------------------
-def load_csv(input_csv: str):
-    try:
-        df = pd.read_csv(input_csv, encoding="utf-8")
-    except UnicodeDecodeError:
-        df = pd.read_csv(input_csv, encoding="latin1")
-    return df
-
-
-# -------------------------------
 # 4) FUNÇÃO: RODAR MODELO (GENERAÇÃO)
 # -------------------------------
 def run_model_generation(
@@ -141,50 +126,3 @@ def run_model_generation(
 
     output_csv = f"sampled_{model_name_prefix}_with_gen.csv"
     df_out.to_csv(output_csv, index=False)
-
-
-# -------------------------------
-# 5) MAIN
-# -------------------------------
-def main(single=False):
-    input_csv = "/sonic_home/larissa.gomide/TradBasePortinari/MiniBasePortinari_Translated.csv"
-
-    df = load_csv(input_csv)
-
-    # Se single=True, reduz o dataframe para apenas primeira linha
-    if single:
-        df = df.iloc[[0]]
-        print("⚠️ Rodando APENAS com a primeira instância do CSV!")
-
-    # Executar SMALL
-    run_model_generation(
-        model_path="deepseek-ai/Janus-Pro-1B",
-        df=df,
-        output_dir="/sonic_home/larissa.gomide/resultado_portinari/generated_oficial_small",
-        use_alternate=False,
-        model_name_prefix="img_small"
-    )
-
-    # Executar BIG
-    run_model_generation(
-        model_path="deepseek-ai/Janus-Pro-7B",
-        df=df,
-        output_dir="/sonic_home/larissa.gomide/resultado_portinari/generated_oficial_big",
-        use_alternate=True,
-        model_name_prefix="img_big"
-    )
-
-
-# -------------------------------
-# PARSER DO ARGUMENTO
-# -------------------------------
-if __name__ == "__main__":
-    print("SCRIPT INICIADO")
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--single", action="store_true",
-                        help="Se usar, roda apenas a primeira linha do CSV")
-    args = parser.parse_args()
-
-    print("Roda main")
-    main(single=args.single)
