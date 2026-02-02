@@ -1,6 +1,6 @@
 import pandas as pd
 from src.utils.file_operations import unzip_file, load_csv, save_csv
-from src.preprocessing.scores import initialize_columns
+from sourcecode_refactor.src.preprocessing.columns import initialize_columns
 from model_operations import load_model, process_images
 
 #TODO implementar o pipeline e apagar

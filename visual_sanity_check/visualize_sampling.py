@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.preprocessing.scores import add_score_columns
+from sourcecode_refactor.src.preprocessing.columns import add_score_columns
 from src.sampling.sampling import Sampler
 
 # =========================
