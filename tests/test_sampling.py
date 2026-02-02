@@ -2,7 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from src.sampling import Sampler
+from src.sampling.sampling import Sampler
 
 class TestSampling(unittest.TestCase):
 

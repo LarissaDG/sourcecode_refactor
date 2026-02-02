@@ -20,7 +20,8 @@ Análise_Exploratória_de_Dados_APDDv2.ipynb
 Pré-processamento
 
 
-Rodar testes: python3 -m unittest tests/test_sampling.py na pasta: /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode refactor
+Rodar testes: python3 -m unittest tests/test_sampling.py na pasta: /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode 
+python3 -m visual_sanity_check.visualize_sampling a pasta: /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode 
 
 
 #Vamos remodelar com essa estrutura:

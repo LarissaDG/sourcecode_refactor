@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+
 def add_score_columns(df, cols_to_compare):
     df = df.copy()
 

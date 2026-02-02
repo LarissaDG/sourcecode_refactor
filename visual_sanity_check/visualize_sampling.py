@@ -3,11 +3,19 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.sampling import Sampler
+from src.preprocessing.scores import add_score_columns
+from src.sampling.sampling import Sampler
 
 # =========================
 # Config
 # =========================
+cols_to_compare = [
+    "Total aesthetic score", "Theme and logic", "Creativity",
+    "Layout and composition", "Space and perspective",
+    "Light and shadow", "Color", "Details and texture",
+    "The overall", "Mood"
+]
+
 OUTPUT_DIR = "./results/sampling_debug"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -17,6 +25,8 @@ OUTPUT_PNG = os.path.join(OUTPUT_DIR, "sampling_distribution.png")
 # Load data
 # =========================
 df = pd.read_csv("data/APDDv2-10023.csv", encoding="ISO-8859-1")
+
+df = add_score_columns(df, cols_to_compare)
 
 sampler = Sampler(
     n_samples=500,
