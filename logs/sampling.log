@@ -41,3 +41,9 @@
 2026-01-30 13:09:02,691 | INFO | Gaussian sampling result size: 500
 2026-01-30 13:09:02,697 | INFO | Gaussian stats: {'mean': 4.979343663548698, 'std': 1.983015286561411, 'kurtosis': -0.09995589448748499, 'skewness': 0.052545348389408865}
 2026-01-30 13:09:02,698 | INFO | Sampling pipeline finished
+2026-01-30 13:29:16,915 | INFO | Sampler initialized
+2026-01-30 13:29:16,917 | INFO | method=both, n_samples=500, bins=30, seed=42
+2026-01-30 13:29:16,920 | INFO | Starting sampling pipeline
+2026-02-02 14:57:12,761 | INFO | Sampler initialized
+2026-02-02 14:57:12,762 | INFO | method=both, n_samples=500, bins=30, seed=42
+2026-02-02 14:57:12,762 | INFO | Starting sampling pipeline
