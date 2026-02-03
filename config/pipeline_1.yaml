@@ -23,8 +23,9 @@ steps:
       csv_path: "/path/to/csv"
     
   sampling:
-    n_samples: 500
-    n_bins: 30
-    seed: 42
-    method: both
-
+    params:
+      n_samples: 500
+      n_bins: 30
+      seed: 42
+      method: both
+      score_column: "Avg Score"

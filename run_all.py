@@ -13,6 +13,7 @@ pipelines = [
 
 for pipeline in pipelines:
     try:
+        print(f"Runing pipeline: {pipeline.name}")
         pipeline.run()
     except Exception:
         logger.error(
