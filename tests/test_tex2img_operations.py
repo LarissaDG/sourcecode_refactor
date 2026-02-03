@@ -4,10 +4,19 @@ import torch
 import numpy as np
 import pandas as pd
 import PIL.Image
+import sys
 
 from unittest.mock import MagicMock, patch
 
-from src.text_to_image.texImg_operations import get_prompt, run_model_generationc
+# -------------------------------------------------
+# MOCK DOS MÓDULOS PESADOS (janus, transformers etc.)
+# -------------------------------------------------
+sys.modules["janus"] = MagicMock()
+sys.modules["janus.models"] = MagicMock()
+sys.modules["janus.utils"] = MagicMock()
+sys.modules["janus.utils.io"] = MagicMock()
+
+from src.text_to_image.texImg_operations import get_prompt, run_model_generation
 
 
 class TestGenerationOperations(unittest.TestCase):
@@ -41,9 +50,9 @@ class TestGenerationOperations(unittest.TestCase):
         self.assertIn("PROMPT", prompt)
         self.assertTrue(prompt.endswith(processor.image_start_tag))
 
-    @patch("generation_operations.generate_token_based")
-    @patch("generation_operations.VLChatProcessor")
-    @patch("generation_operations.AutoModelForCausalLM")
+    @patch("src.text_to_image.texImg_operations.generate_token_based")
+    @patch("src.text_to_image.texImg_operations.AutoModelForCausalLM")
+    @patch("src.text_to_image.texImg_operations.VLChatProcessor")
     def test_run_model_generation(self, mock_model, mock_processor, mock_generate_token):
         # Mock do processor e do modelo
         processor_instance = MagicMock()

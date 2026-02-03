@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 
-from sourcecode_refactor.src.preprocessing.columns import initialize_columns, add_score_columns
+from src.preprocessing.columns import initialize_columns, add_score_columns
 
 
 class TestScores(unittest.TestCase):
