@@ -12,12 +12,7 @@ def add_score_columns(df, cols_to_compare):
 # -------------------------------
 # 3) INICIALIZAR NOVAS COLUNAS
 # -------------------------------
-def initialize_columns(df: pd.DataFrame):
-    new_columns = [
-        'Total aesthetic score', 'Theme and logic', 'Creativity', 'Layout and composition',
-        'Space and perspective', 'The sense of order', 'Light and shadow', 'Color',
-        'Details and texture', 'The overall', 'Mood', 'generated_filename', 'Description'
-    ]
-    for col in new_columns:
+def initialize_columns(df: pd.DataFrame, cols_to_compare):
+    for col in cols_to_compare:
         df[col] = ''  # Inicializando com valores vazios
     return df
