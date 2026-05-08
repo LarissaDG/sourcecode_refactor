@@ -1,3 +1,10 @@
+* Colocar algo que já monta o ambiente
+* Limpa os ambientes 
+* Faz o download dos dados. 
+* Colocar para usar multi-nós/paralelismo
+Tudo automatizado que eu não aguento mais essa bosta do SLURM
+* Colocar paper no archive
+
 Estrutura:
 * Coleta de dados
 * Análise exploratória
