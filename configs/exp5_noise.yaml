@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────
+# EXP 5 — Robustez a ruído
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp5_noise"
+
+dataset:
+  name: image
+  path: "/data/target_image/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: false
+    generation: false
+    scoring:    true
+
+sampling:
+  strategy: "noise_levels"  # gera versões corrompidas progressivamente
+  noise_levels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]

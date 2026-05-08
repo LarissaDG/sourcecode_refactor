@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────
+# EXP 1 — APDDv2: pipeline completo
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp1_apdd"
+
+dataset:
+  name: apdd
+  path: "/data/apddv2/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: true
+    generation: true
+    scoring:    true
+

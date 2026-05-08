@@ -1,0 +1,18 @@
+# ─────────────────────────────────────────────
+# EXP 3b — Portinari com descrições humanas
+# (pula sampling e captioning)
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp3b_portinari_human"
+
+dataset:
+  name: portinari
+  path: "/data/portinari/"
+  use_human_captions: true
+
+pipeline:
+  steps:
+    sampling:   false
+    captioning: false
+    generation: true
+    scoring:    true

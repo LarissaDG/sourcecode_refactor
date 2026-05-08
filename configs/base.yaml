@@ -1,0 +1,35 @@
+# Configurações globais — sobrescritas pelos YAMLs de cada experimento
+
+experiment:
+  name: "base"
+  seed: 42
+  output_dir: "outputs/"
+
+dataset:
+  name: null           # apdd | mnist | portinari | gif | image
+  path: null           # caminho para a base de dados
+
+pipeline:
+  steps:               # Ordem e ativação das caixinhas
+    sampling:   true
+    captioning: false
+    generation: false
+    scoring:    true
+
+sampling:
+  n_samples: 500
+  strategy: "random"   # random | stratified | sequential (para GIFs)
+
+captioning:
+  model: "Janus-Pro"
+  model_path: null
+  batch_size: 8
+
+generation:
+  model: null          # modelo de geração de imagens
+  model_path: null
+  batch_size: 4
+
+scoring:
+  models: []           # lista de modelos do ArtClip a usar
+  models_path: null

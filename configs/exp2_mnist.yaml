@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────
+# EXP 2 — MNIST: sem captioning nem generation
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp2_mnist"
+
+dataset:
+  name: mnist
+  path: "/data/mnist/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: false
+    generation: false
+    scoring:    true
+
+sampling:
+  strategy: "stratified"   # garante dígitos balanceados
