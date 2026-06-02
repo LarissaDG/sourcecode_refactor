@@ -21,15 +21,43 @@ sampling:
   strategy: "random"   # random | stratified | sequential (para GIFs)
 
 captioning:
-  model: "Janus-Pro"
+  model: "deepseek-ai/Janus-Pro-7B"
   model_path: null
   batch_size: 8
 
 generation:
-  model: null          # modelo de geração de imagens
-  model_path: null
+  models:
+    - name: "Janus-Pro-1B"
+      model_path: "deepseek-ai/Janus-Pro-1B"
+    - name: "Janus-Pro-7B"
+      model_path: "deepseek-ai/Janus-Pro-7B"
   batch_size: 4
+  num_images_per_prompt: 1
 
 scoring:
-  models: []           # lista de modelos do ArtClip a usar
-  models_path: null
+  weights_dir: null        # caminho para a pasta com os pesos do ArtClip
+  agents:                  # quais agentes rodar (drop NaN é feito automaticamente)
+    - name: "score"
+      weight_file: "1.Score/AesCLIP_reg_weight--e4-train0.4393-test0.6835_best.pth"
+    - name: "theme"
+      weight_file: "2.Theme and logic/AesCLIP_reg_weight--e5-train0.3792-test0.5953_best.pth"
+    - name: "creativity"
+      weight_file: "3.Creativity/AesCLIP_reg_weight--e5-train0.4212-test0.7122_best.pth"
+    - name: "layout"
+      weight_file: "4.Layout and composition/AesCLIP_reg_weight--e6-train0.2783-test0.6342_best.pth"
+    - name: "space"
+      weight_file: "5.Space and perspective/AesCLIP_reg_weight--e7-train0.2168-test0.5998_best.pth"
+    - name: "order"
+      weight_file: "6.The sense of order/AesCLIP_reg_weight--e5-train0.3708-test0.6206_best.pth"
+    - name: "light"
+      weight_file: "7.Light and shadow/AesCLIP_reg_weight--e7-train0.1937-test0.6518_best.pth"
+    - name: "color"
+      weight_file: "8.Color/AesCLIP_reg_weight--e5-train0.2905-test0.5871_best.pth"
+    - name: "details"
+      weight_file: "9.Details and texture/AesCLIP_reg_weight--e4-train0.4385-test0.7034_best.pth"
+    - name: "overall"
+      weight_file: "10.The overall/AesCLIP_reg_weight--e3-train0.5131-test0.6343_best.pth"
+    - name: "mood"
+      weight_file: "11.Mood/AesCLIP_reg_weight--e7-train0.3108-test0.7097_best.pth"
+  artclip_base_weight: "0.ArtCLIP/e11-train2.4314-test4.0253_best.pth"
+  save_csv: true
