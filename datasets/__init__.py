@@ -1,13 +1,13 @@
-from datasets.apdd import APDDv2Dataset
+from datasets.apddv2 import APDDv2Dataset
 # from datasets.mnist      import MNISTDataset      # em breve
 # from datasets.portinari  import PortinariDataset   # em breve
 # from datasets.gif_frames import GIFFramesDataset   # em breve
 
 REGISTRY = {
-    "apdd":     APDDv2Dataset,
-    # "mnist":    MNISTDataset,
+    "apdd":      APDDv2Dataset,
+    # "mnist":     MNISTDataset,
     # "portinari": PortinariDataset,
-    # "gif":      GIFFramesDataset,
+    # "gif":       GIFFramesDataset,
 }
 
 

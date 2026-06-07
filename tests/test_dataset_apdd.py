@@ -4,7 +4,7 @@ Usa o mini dataset sintético criado pelo conftest.py.
 """
 import os
 import torch
-from datasets.apdd import APDDv2Dataset
+from datasets.apddv2 import APDDv2Dataset
 
 
 # ── Carregamento básico ───────────────────────────────────────────────────────
