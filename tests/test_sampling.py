@@ -1,79 +1,53 @@
-import unittest
-import pandas as pd
-import numpy as np
-
-from src.sampling.sampling import Sampler
-
-class TestSampling(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        # Dataset sintético simples (controlado)
-        np.random.seed(0)
-        cls.df = pd.DataFrame({
-            "Avg Score": np.random.normal(loc=5, scale=2, size=10_000)
-        })
-
-    def test_reproducibility_uniform(self):
-        sampler1 = Sampler(
-            n_samples=500,
-            n_bins=20,
-            seed=42,
-            method="uniform"
-        )
-
-        sampler2 = Sampler(
-            n_samples=500,
-            n_bins=20,
-            seed=42,
-            method="uniform"
-        )
-
-        s1 = sampler1.run(self.df)["uniform"]
-        s2 = sampler2.run(self.df)["uniform"]
-
-        self.assertTrue(s1.equals(s2))
-
-    def test_sample_size_close(self):
-        sampler = Sampler(
-            n_samples=500,
-            n_bins=25,
-            seed=42,
-            method="gaussian"
-        )
-
-        sampled = sampler.run(self.df)["gaussian"]
-
-        self.assertTrue(abs(len(sampled) - 500) < 50)
-
-    def test_support_preservation(self):
-        sampler = Sampler(
-            n_samples=500,
-            n_bins=30,
-            seed=42,
-            method="both"
-        )
-
-        results = sampler.run(self.df)
-
-        for name, sampled in results.items():
-            self.assertGreaterEqual(sampled["Avg Score"].min(), self.df["Avg Score"].min())
-            self.assertLessEqual(sampled["Avg Score"].max(), self.df["Avg Score"].max())
-
-    def test_gaussian_preserves_mean(self):
-        sampler = Sampler(
-            n_samples=800,
-            n_bins=30,
-            seed=42,
-            method="gaussian"
-        )
-
-        sampled = sampler.run(self.df)["gaussian"]
-
-        diff = abs(sampled["Avg Score"].mean() - self.df["Avg Score"].mean())
-
-        self.assertLess(diff, 0.2)
+"""
+Testa a Caixinha 1 (sampling).
+Mock do dataset para rodar sem GPU.
+"""
+from unittest.mock import patch, MagicMock
+from torch.utils.data import DataLoader
+from pipeline.sampling import run_sampling
 
 
-if __name__ == "__main__":
-    unittest.main()
+def _make_cfg(mini_apdd_dir, tmp_path, strategy="random", n=6):
+    return {
+        "experiment": {"name": "test", "seed": 42, "output_dir": str(tmp_path)},
+        "dataset":    {"name": "apdd", "path": mini_apdd_dir},
+        "sampling":   {"n_samples": n, "strategy": strategy},
+        "captioning": {"batch_size": 2},
+    }
+
+
+def test_sampling_returns_dataloader(mini_apdd_dir, tmp_path):
+    cfg    = _make_cfg(mini_apdd_dir, tmp_path)
+    loader = run_sampling(cfg)
+    assert isinstance(loader, DataLoader)
+
+
+def test_sampling_correct_size(mini_apdd_dir, tmp_path):
+    cfg    = _make_cfg(mini_apdd_dir, tmp_path, n=6)
+    loader = run_sampling(cfg)
+    total  = sum(len(b["filename"]) for b in loader)
+    assert total == 6
+
+
+def test_sampling_batch_has_required_keys(mini_apdd_dir, tmp_path):
+    cfg   = _make_cfg(mini_apdd_dir, tmp_path)
+    batch = next(iter(run_sampling(cfg)))
+    assert "image"    in batch
+    assert "filename" in batch
+    assert "score"    in batch
+
+
+def test_sampling_stratified(mini_apdd_dir, tmp_path):
+    cfg    = _make_cfg(mini_apdd_dir, tmp_path, strategy="stratified", n=6)
+    loader = run_sampling(cfg)
+    total  = sum(len(b["filename"]) for b in loader)
+    assert total > 0
+
+
+def test_sampling_reproducible(mini_apdd_dir, tmp_path):
+    cfg = _make_cfg(mini_apdd_dir, tmp_path, n=6)
+    l1  = list(run_sampling(cfg))
+    l2  = list(run_sampling(cfg))
+    names1 = [f for b in l1 for f in b["filename"]]
+    names2 = [f for b in l2 for f in b["filename"]]
+    assert names1 == names2
