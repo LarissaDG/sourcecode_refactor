@@ -33,12 +33,15 @@ def test_full_pipeline_exp1(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
     monkeypatch.setattr(gen, "_generate_image", lambda *a, **kw: [
         Image.fromarray(np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8))
     ])
+    import sys
+    from torchvision import transforms as T
+    fake_clip = MagicMock()
+    fake_clip.load.return_value = (None, T.Compose([T.Resize((224, 224)), T.ToTensor()]))
+    monkeypatch.setitem(sys.modules, "models",         MagicMock())
+    monkeypatch.setitem(sys.modules, "models.clip",    fake_clip)
+    monkeypatch.setitem(sys.modules, "models.aesclip", MagicMock())
     monkeypatch.setattr(sc, "_load_agent", lambda *a, **kw: MagicMock())
     monkeypatch.setattr(sc, "_predict",    lambda model, t: np.random.uniform(0.1, 1.0))
-    monkeypatch.setattr(sc.clip, "load",   lambda name, device: (None, transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])))
 
     # ── Config apontando para tmp_path ─────────────────────────────────────
     cfg = {

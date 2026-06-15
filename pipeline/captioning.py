@@ -1,13 +1,14 @@
 import tempfile
 import torch
-from transformers import AutoModelForCausalLM
-from janus.models import MultiModalityCausalLM, VLChatProcessor
-from janus.utils.io import load_pil_images
 from PIL import Image
 from torch.utils.data import DataLoader
 
 
 def _load_janus(model_path: str, device: torch.device):
+    from transformers import AutoModelForCausalLM          # lazy import
+    from janus.models import VLChatProcessor               # lazy import
+    global load_pil_images
+    from janus.utils.io import load_pil_images              # lazy import
     processor = VLChatProcessor.from_pretrained(model_path)
     model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
     model = model.to(torch.bfloat16).to(device).eval()
@@ -58,14 +59,13 @@ def run_captioning(cfg, loader: DataLoader) -> list:
     results = []
     for batch in loader:
         for i, filename in enumerate(batch["filename"]):
-            # Reconstrói PIL a partir do tensor (desfaz normalização não é trivial;
-            # na prática, melhor guardar o path e reabrir — ver nota abaixo)
             caption = _describe_image(
-                Image.open(batch.get("path", [None])[i] or filename).convert("RGB"),
+                Image.open(batch["path"][i]).convert("RGB"),
                 model, processor, device
             )
             results.append({
                 "filename": filename,
+                "path":     batch["path"][i],
                 "image":    batch["image"][i],
                 "caption":  caption,
             })

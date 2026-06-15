@@ -1,13 +1,15 @@
 from datasets.apddv2 import APDDv2Dataset
-# from datasets.mnist      import MNISTDataset      # em breve
-# from datasets.portinari  import PortinariDataset   # em breve
-# from datasets.gif_frames import GIFFramesDataset   # em breve
+from datasets.portinari import PortinariDataset
+from datasets.mnist import MNISTDataset
+from datasets.gif_frames import GIFFramesDataset
+from datasets.image import ImageDataset
 
 REGISTRY = {
     "apdd":      APDDv2Dataset,
-    # "mnist":     MNISTDataset,
-    # "portinari": PortinariDataset,
-    # "gif":       GIFFramesDataset,
+    "portinari": PortinariDataset,
+    "mnist":     MNISTDataset,
+    "gif":       GIFFramesDataset,
+    "image":     ImageDataset,
 }
 
 
@@ -26,4 +28,8 @@ def load_dataset(cfg: dict):
     if name not in REGISTRY:
         raise ValueError(f"Dataset '{name}' não registrado. Disponíveis: {list(REGISTRY.keys())}")
 
-    return REGISTRY[name](root=path)
+    extra_kwargs = {}
+    if name == "portinari":
+        extra_kwargs["use_human_captions"] = cfg["dataset"].get("use_human_captions", False)
+
+    return REGISTRY[name](root=path, **extra_kwargs)

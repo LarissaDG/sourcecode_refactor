@@ -16,4 +16,5 @@ pipeline:
     scoring:    true
 
 sampling:
+  n_samples: 500
   strategy: "stratified"   # garante dígitos balanceados

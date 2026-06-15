@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────
+# EXP 3a — Portinari: pipeline completo (descrições do Janus-Pro)
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp3a_portinari"
+
+dataset:
+  name: portinari
+  path: "/data/portinari/"
+  use_human_captions: false
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: true
+    generation: true
+    scoring:    true

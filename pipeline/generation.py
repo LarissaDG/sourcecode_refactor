@@ -1,17 +1,15 @@
 import os
 import torch
 from PIL import Image
-from transformers import AutoModelForCausalLM
-from janus.models import MultiModalityCausalLM, VLChatProcessor
 
 
 # ── Carregamento do modelo ────────────────────────────────────────────────────
 
 def _load_janus(model_path: str, device: torch.device):
+    from transformers import AutoModelForCausalLM      # lazy import
+    from janus.models import VLChatProcessor           # lazy import
     processor = VLChatProcessor.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path, trust_remote_code=True
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
     model = model.to(torch.bfloat16).to(device).eval()
     return model, processor
 

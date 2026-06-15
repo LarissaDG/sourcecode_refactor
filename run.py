@@ -1,7 +1,7 @@
 import argparse
-from src.utils.logging import setup_logger
+from utils.logging import setup_logger
 from utils.config import load_config
-from pipeline.sampling import run_sampling
+from pipeline.sampling import run_sampling, loader_to_list
 from pipeline.captioning import run_captioning
 from pipeline.generation import run_generation
 from pipeline.scoring import run_scoring
@@ -17,6 +17,10 @@ def run_pipeline(cfg):
 
     if steps.get("captioning"):
         data = run_captioning(cfg, data)
+    elif steps.get("sampling"):
+        # Sem captioning, achata o DataLoader em lista de dicts para as
+        # próximas caixinhas (ex: Exp 3b, com captions humanas no CSV).
+        data = loader_to_list(data)
 
     if steps.get("generation"):
         data = run_generation(cfg, data)
