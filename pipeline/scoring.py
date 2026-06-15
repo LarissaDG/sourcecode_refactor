@@ -4,19 +4,15 @@ import numpy as np
 import pandas as pd
 from PIL import Image, ImageFile
 
-import models.clip as clip
-from models.aesclip import AesCLIP_reg
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 # ── Carregamento de um agente ─────────────────────────────────────────────────
 
-def _load_agent(weight_path: str, base_weight_path: str, device: torch.device) -> AesCLIP_reg:
-    model = AesCLIP_reg(
-        clip_name="ViT-B/16",
-        weight=base_weight_path,
-    )
+def _load_agent(weight_path: str, base_weight_path: str, device: torch.device):
+    import models.clip as clip                    # lazy import
+    from models.aesclip import AesCLIP_reg        # lazy import
+    model = AesCLIP_reg(clip_name="ViT-B/16", weight=base_weight_path)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     model.to(device).eval()
     return model
@@ -52,6 +48,8 @@ def run_scoring(cfg, data: list) -> None:
     output_dir   = os.path.join(cfg["experiment"]["output_dir"], cfg["experiment"]["name"], "scores")
     os.makedirs(output_dir, exist_ok=True)
 
+    import importlib
+    clip = importlib.import_module("models.clip")    # lazy import
     _, preprocess = clip.load("ViT-B/16", device)
 
     # Carrega todos os agentes de uma vez
@@ -63,7 +61,7 @@ def run_scoring(cfg, data: list) -> None:
 
     # ── Detecta quais "fontes" de imagem existem no data ─────────────────────
     # Sempre tem a imagem original; pode ter também generated_Janus-Pro-1B, etc.
-    sources = {"original": lambda s: s["filename"]}
+    sources = {"original": lambda s: s.get("path", s["filename"])}
 
     gen_keys = [k for k in data[0].keys() if k.startswith("generated_")]
     for k in gen_keys:

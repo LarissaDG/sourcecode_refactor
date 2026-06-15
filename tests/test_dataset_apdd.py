@@ -89,6 +89,20 @@ def test_sample_stratified(mini_apdd_dir):
     assert len(set(categories)) > 1
 
 
+def test_sample_uniform_bins_size(mini_apdd_dir):
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=6, strategy="uniform_bins", seed=42, n_bins=30)
+    assert len(subset) > 0
+    assert len(subset) <= 6
+
+
+def test_sample_uniform_bins_reproducible(mini_apdd_dir):
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    s1 = ds.sample(n=6, strategy="uniform_bins", seed=42)
+    s2 = ds.sample(n=6, strategy="uniform_bins", seed=42)
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+
 def test_sample_unknown_strategy(mini_apdd_dir):
     import pytest
     ds = APDDv2Dataset(root=mini_apdd_dir)

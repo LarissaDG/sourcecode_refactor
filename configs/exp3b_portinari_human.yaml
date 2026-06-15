@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────
 # EXP 3b — Portinari com descrições humanas
-# (pula sampling e captioning)
+# (pula captioning — captions já vêm do CSV)
 # ─────────────────────────────────────────────
 experiment:
   name: "exp3b_portinari_human"
@@ -12,7 +12,11 @@ dataset:
 
 pipeline:
   steps:
-    sampling:   false
+    sampling:   true
     captioning: false
     generation: true
     scoring:    true
+
+sampling:
+  n_samples: 500
+  strategy: "random"

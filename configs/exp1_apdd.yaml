@@ -15,3 +15,8 @@ pipeline:
     generation: true
     scoring:    true
 
+sampling:
+  n_samples: 500
+  strategy: "uniform_bins"   # média dos 9 atributos estéticos, amostrada uniformemente em 30 bins
+  n_bins: 30
+
