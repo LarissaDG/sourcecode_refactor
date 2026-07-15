@@ -6,7 +6,7 @@ experiment:
 
 dataset:
   name: apdd
-  path: "/data/apddv2/"
+  path: "/sonic_home/larissa.gomide/data/apddv2/"
 
 pipeline:
   steps:

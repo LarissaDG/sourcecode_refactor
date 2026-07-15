@@ -32,7 +32,15 @@ def run_pipeline(cfg):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help="Caminho para o .yaml do experimento")
+    parser.add_argument("--test", action="store_true",
+                        help="Modo de teste: limita n_samples a 5 e salva em outputs/test_<nome>/")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+
+    if args.test:
+        cfg["sampling"]["n_samples"] = 5
+        cfg["experiment"]["name"] = "test_" + cfg["experiment"]["name"]
+        logger.info("[MODO TESTE] n_samples=5, saída em outputs/%s/", cfg["experiment"]["name"])
+
     run_pipeline(cfg)

@@ -60,7 +60,14 @@ class APDDv2Dataset(Dataset):
             transform: Transformações torchvision. Se None, usa o padrão para CLIP.
         """
         self.root = root
-        self.images_dir = os.path.join(root, "images")
+        # Aceita "images" ou "APDDv2images" (nome original do dataset)
+        for _candidate in ("images", "APDDv2images"):
+            _candidate_path = os.path.join(root, _candidate)
+            if os.path.isdir(_candidate_path):
+                self.images_dir = _candidate_path
+                break
+        else:
+            self.images_dir = os.path.join(root, "images")
 
         csv_path = os.path.join(root, "APDDv2-10023.csv")
         self.df = pd.read_csv(csv_path, encoding="ISO-8859-1")
