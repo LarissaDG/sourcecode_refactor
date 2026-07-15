@@ -130,59 +130,106 @@ And install the requirements:
 pip install --no-cache-dir -r "<paht>/requirements.txt" && touch "<paht>/requirements_installed"
 ```
 
-### 2) Downloading and setting APDDv2
-The APDDv2 paper, publicly available at [https://arxiv.org/abs/2411.08545](https://arxiv.org/abs/2411.08545), introduces the Aesthetics of Paintings and Drawings Dataset (APDDv2). This dataset comprises 10,023 images, each annotated with scores across 10 aesthetic attributes and categorized into 24 distinct artistic styles and subject types. These categories encompass various painting techniques, artistic movements, and depicted themes. Additionally, the paper presents ArtCLIP, a pre-trained model specifically designed for aesthetic evaluation of artistic images. ArtCLIP leverages the APDDv2 dataset through a fine-tuned adaptation of the CLIP model, integrating multimodal learning to enhance image aesthetic assessment.
+### 2) Datasets
 
-For more details in how to install APDDv2 dependêncies check their GitHub: https://github.com/BestiVictory/APDDv2?tab=readme-ov-file
-
-Essentialy you need to follow the steps below:
-
-First, copy the repository:
-```bash
-git clone https://github.com/BestiVictory/APDDv2?tab=readme-ov-file 
-```  
-
-Then download the images. For doing this I suggest the follow commands:
-```bash
-gdown --id "1ap5dhuEgpPC5PrJozAu2VFmUNIRZrar2" -O "APDDv2images.zip"
-```
-This folder must be unzip inside the APDDv2 folder created by the git clone step above.
-
-Then you must download the pre-trained models. For this use the command:
-```bash
-gdown --folder "1AOVKmSqZCW09J_Ypr7KzSYfRxQre-w_m"
-```
-The models downloaded must be inside the folder: modle_weights. So the folder hierarchy must be similar to:
-
-APDDv2/<br>
-├── APDDv2images/<br>
-│   ├── image1.png<br>
-│   └── image2.png<br>
-├── model_weights/<br>
-│   ├── model_v1.pth<br>
-│   └── model_v2.pth<br>
-└── README.md<br>
-
-Now it is time for the settings. First install the requirements:
+All downloadable datasets can be acquired with the orchestrator script:
 
 ```bash
-pip install --no-cache-dir -r "<path>/APDDv2/requirements.txt" && touch "<path>/requirements_installed_2"
+python3 scripts/download_all.py --out data/
 ```
 
-Finally test whether the sistem works. In order to do this you must run the scripts:
-
+To download individual datasets:
 ```bash
-python3 "eval.py" || echo "Fail to execute eval.py."
+python3 scripts/download_all.py --out data/ --only portinari
+python3 scripts/download_all.py --out data/ --only mnist
 ```
 
-```bash
-python3 "demo.py" || echo "Fail to execute demo.py."
+This creates:
+```
+data/
+├── portinari/
+│   ├── acervoPortinari.csv
+│   └── Imagens/
+└── mnist/
+    ├── mnist_sample.csv
+    └── Imagens/
 ```
 
-Essentially, both of these files performs an image evaluation using the proposed ArtClip model. The first just return the "general" score, while the second returns all the scores across the 10 aesthetic attributes. However, it worth noting that speacially the model 6 (6.The sense of order_reg_weight--e5-train0.3708-test0.6206_best.pth) was not able to be used, due to model bugs.
-Note that you might need to do some adaptations in these scripts in order to acess the right model files, and image files.
+After downloading Portinari, generate the English translations for experiments 2b/3b:
+```bash
+python3 scripts/portinari_translate.py \
+    --csv data/portinari/acervoPortinari.csv \
+    --out data/portinari/MiniBasePortinari_Translated.csv \
+    --n 500 --seed 42
+```
 
-### 3) Downloading and setting Janus
+#### APDDv2
+
+The APDDv2 dataset (paper: [https://arxiv.org/abs/2411.08545](https://arxiv.org/abs/2411.08545)) contains 10,023 paintings annotated with 10 aesthetic attributes across 24 artistic styles. It also introduces ArtCLIP, a CLIP-based model for aesthetic evaluation.
+
+> **⚠️ The public image download link is no longer available.** Contact the authors or use an existing local copy. Repository: https://github.com/BestiVictory/APDDv2
+
+Clone the official repository:
+```bash
+git clone https://github.com/BestiVictory/APDDv2.git
+cd APDDv2
+```
+
+Download the pre-trained model weights:
+```bash
+gdown --folder "1AOVKmSqZCW09J_Ypr7KzSYfRxQre-w_m" -O model_weights
+```
+
+Expected folder structure:
+```
+APDDv2/
+├── APDDv2images/
+│   ├── image1.png
+│   └── image2.png
+├── model_weights/
+│   ├── model_v1.pth
+│   └── model_v2.pth
+├── APDDv2-10023.csv
+└── README.md
+```
+
+Install requirements:
+```bash
+pip install --no-cache-dir -r APDDv2/requirements.txt
+```
+
+> **Note:** The weights available via `gdown` above are the original release weights. Updated weights are available at [Baidu Pan](https://pan.baidu.com/s/1HA8c9nnCRdBOR_zHNC781A?pwd=miwi) (requires Baidu account). Model 6 (*The sense of order*) has a known bug and is excluded from evaluation.
+
+For the pipeline, set `dataset.path` in the experiment YAML to the root of this folder (where `APDDv2-10023.csv` lives). The dataset loader accepts both `images/` and `APDDv2images/` as the image subfolder name.
+
+### 3) Downloading and setting Portinari
+
+The Portinari dataset is built from the [Acervo Digital Portinari](http://www.portinari.org.br/) and must be generated via the preparation notebook. Three dataset variants are used across experiments:
+
+| Variant | Description | Used in |
+|---|---|---|
+| `BasePortinari` | Full dataset (~all images) | Reference |
+| `MiniBasePortinari` | 500-image sample (seed=42) | Exp 2a, 3a |
+| `TradBasePortinari` | CSV with English captions (`Description_en`) | Exp 2b, 3b |
+
+**To generate `BasePortinari` and `MiniBasePortinari`:**
+
+Open and run the Colab notebook:
+[`base_portinari_organizada.ipynb`](https://colab.research.google.com/drive/14Ij6FahqcEfEt9HZirPbg2cgK3NEmkzN)
+
+The notebook:
+1. Reads a `links.txt` file containing Google Drive ZIP URLs for the image archives.
+2. Downloads and extracts all images to `BasePortinari/Imagens/` and saves `acervoPortinari.csv`.
+3. Creates `MiniBasePortinari/AmostraImagens/` (500 images, `random_state=42`) and `AmostraacervoPortinari.csv`.
+
+**For `TradBasePortinari`:** This CSV (`MiniBasePortinari_Translated.csv`) contains English translations of painting descriptions in the `Description_en` column. It must be placed at:
+```
+/sonic_home/larissa.gomide/TradBasePortinari/MiniBasePortinari_Translated.csv
+```
+
+Set the corresponding `dataset.path` values in each experiment's YAML config.
+
+### 4) Downloading and setting Janus
 
 For more details in how to install APDDv2 dependêncies check their GitHub: https://github.com/deepseek-ai/Janus.git
 
@@ -202,8 +249,31 @@ Finally test whether the sistem works. In order to do this you must run the scri
 python3 "<path>/exemple_janus.py" || echo "Erro ao executar exemple_janus.py."
 ```
 
-## 🚀 Running Experiments  
-To reproduce the experiments, execute:  
+## 🚀 Running Experiments
+
+### Test mode (5 samples, fast)
+
+Use `--test` to verify the pipeline end-to-end without waiting for a full run. It limits `n_samples` to 5 and saves outputs to `outputs/test_<name>/`:
+
+```bash
+python3 run.py --config configs/exp1_apdd.yaml --test
+python3 run.py --config configs/exp2_mnist.yaml --test
+python3 run.py --config configs/exp3a_portinari.yaml --test
+```
+
+### Full run (500 samples)
+
+```bash
+python3 run.py --config configs/exp1_apdd.yaml
+python3 run.py --config configs/exp2_mnist.yaml
+python3 run.py --config configs/exp3a_portinari.yaml
+python3 run.py --config configs/exp3b_portinari_human.yaml
+python3 run.py --config configs/exp4_temporal.yaml
+python3 run.py --config configs/exp5_noise.yaml
+```
+
+### SLURM cluster
+
 ```bash
 sbatch oficial_script.sh
 ```  

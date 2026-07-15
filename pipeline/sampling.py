@@ -14,10 +14,10 @@ def run_sampling(cfg) -> DataLoader:
     seed     = cfg["experiment"].get("seed", 42)
 
     extra_kwargs = {}
-    if "n_bins" in cfg["sampling"]:
-        extra_kwargs["n_bins"] = cfg["sampling"]["n_bins"]
-    if "noise_levels" in cfg["sampling"]:
-        extra_kwargs["noise_levels"] = cfg["sampling"]["noise_levels"]
+    for key in ("n_bins", "noise_levels", "noise_types",
+                "error_frame", "error_type", "error_level"):
+        if key in cfg["sampling"]:
+            extra_kwargs[key] = cfg["sampling"][key]
 
     subset = dataset.sample(n=n, strategy=strategy, seed=seed, **extra_kwargs)
     loader = DataLoader(subset, batch_size=cfg["sampling"].get("batch_size", 8), shuffle=False)

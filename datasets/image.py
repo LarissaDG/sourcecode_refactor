@@ -2,102 +2,122 @@ import glob
 import os
 import numpy as np
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageFilter, ImageDraw
 from torch.utils.data import Dataset
 from torchvision import transforms
 
 IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".bmp"]
-
 DEFAULT_NOISE_LEVELS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+DEFAULT_NOISE_TYPES  = ["gaussian", "blur", "shapes"]
 
 
-def _find_image(root: str) -> str:
+def _list_images(root: str) -> list[str]:
+    paths = []
     for ext in IMAGE_EXTS:
-        matches = sorted(glob.glob(os.path.join(root, f"*{ext}")))
-        if matches:
-            return matches[0]
-    raise FileNotFoundError(f"Nenhuma imagem encontrada em {root}")
+        paths.extend(sorted(glob.glob(os.path.join(root, f"*{ext}"))))
+    return paths
 
 
-def sample_color_from_image(image: Image.Image, n_samples: int = 50) -> np.ndarray:
-    """Amostra n_samples pixels e retorna a cor média (R, G, B)."""
-    arr = np.array(image.convert("RGB"))
-    h, w, _ = arr.shape
-    ys = np.random.randint(0, h, n_samples)
-    xs = np.random.randint(0, w, n_samples)
-    return arr[ys, xs].mean(axis=0)
-
+# ── Funções de corrupção ──────────────────────────────────────────────────────
 
 def add_gaussian_noise(image: Image.Image, intensity: int) -> Image.Image:
-    """
-    Aplica ruído gaussiano progressivo.
-    intensity: 0 (sem ruído) a 100 (corrupção máxima) -> sigma de 0 a 1000.
-    """
-    sigma = 1000 * intensity / 100
-    rgb = image.convert("RGB")
-    arr = np.array(rgb).astype(np.int16)
-    base_color = sample_color_from_image(rgb, n_samples=50)
+    sigma = 128 * intensity / 100
+    arr = np.array(image.convert("RGB")).astype(np.int16)
     noise = np.random.normal(0, sigma, arr.shape)
-    noisy = arr + noise + (base_color - base_color.mean())
-    noisy = np.clip(noisy, 0, 255).astype(np.uint8)
+    noisy = np.clip(arr + noise, 0, 255).astype(np.uint8)
     return Image.fromarray(noisy)
+
+
+def add_blur(image: Image.Image, intensity: int) -> Image.Image:
+    radius = 20 * intensity / 100
+    return image.filter(ImageFilter.GaussianBlur(radius=radius))
+
+
+def add_shapes(image: Image.Image, intensity: int) -> Image.Image:
+    img = image.convert("RGB").copy()
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    n_shapes = int(50 * intensity / 100)
+    rng = np.random.RandomState(intensity)
+    for _ in range(n_shapes):
+        x0 = rng.randint(0, w)
+        y0 = rng.randint(0, h)
+        size = rng.randint(10, max(11, int(min(w, h) * intensity / 200)))
+        color = tuple(rng.randint(0, 256, 3).tolist())
+        draw.rectangle([x0, y0, x0 + size, y0 + size], fill=color)
+    return img
+
+
+NOISE_FNS = {
+    "gaussian": add_gaussian_noise,
+    "blur":     add_blur,
+    "shapes":   add_shapes,
+}
 
 
 class ImageDataset(Dataset):
     """
-    Loader para uma única imagem-alvo, corrompida progressivamente.
+    Loader para análise de robustez a ruído (Exp 4).
 
-    Estrutura esperada no disco:
+    Estrutura esperada:
         <root>/
-            <qualquer_imagem>.jpg|.png|...
+            image1.jpg
+            image2.jpg
+            ...
 
-    A Caixinha 1 (sampling) gera uma versão corrompida da imagem para cada
-    nível em `noise_levels`, salva em <root>/noise_cache/level_<NNN>.png,
-    para que a Caixinha 4 (scoring) possa abri-las via 'path'.
+    Para cada imagem × tipo de ruído × nível, gera e cacheia uma versão
+    corrompida em <root>/noise_cache/<noise_type>/level_<NNN>/<filename>.png.
     """
 
     def __init__(self, root: str, transform=None):
-        self.root = root
-        self.image_path = _find_image(root)
+        self.root      = root
         self.cache_dir = os.path.join(root, "noise_cache")
         os.makedirs(self.cache_dir, exist_ok=True)
 
-        self.df = pd.DataFrame({"level": [0]})
-        self.transform = transform or self._default_transform()
+        image_paths = _list_images(root)
+        if not image_paths:
+            raise FileNotFoundError(f"Nenhuma imagem encontrada em {root}")
 
-    # ------------------------------------------------------------------
-    # Interface Dataset
-    # ------------------------------------------------------------------
+        rows = [{"image_path": p, "filename": os.path.basename(p),
+                 "noise_type": "gaussian", "noise_level": 0}
+                for p in image_paths]
+        self.df        = pd.DataFrame(rows)
+        self.transform = transform or self._default_transform()
 
     def __len__(self) -> int:
         return len(self.df)
 
     def __getitem__(self, idx: int) -> dict:
-        level = int(self.df.iloc[idx]["level"])
+        row         = self.df.iloc[idx]
+        image_path  = row["image_path"]
+        filename    = row["filename"]
+        noise_type  = row["noise_type"]
+        noise_level = int(row["noise_level"])
 
-        filename = f"level_{level:03d}.png"
-        path = os.path.join(self.cache_dir, filename)
+        cache_subdir = os.path.join(self.cache_dir, noise_type, f"level_{noise_level:03d}")
+        os.makedirs(cache_subdir, exist_ok=True)
+        cached_path = os.path.join(cache_subdir, os.path.splitext(filename)[0] + ".png")
 
-        if not os.path.exists(path):
-            img = Image.open(self.image_path).convert("RGB")
-            if level > 0:
-                np.random.seed(level)
-                img = add_gaussian_noise(img, intensity=level)
-            img.save(path)
+        if not os.path.exists(cached_path):
+            img = Image.open(image_path).convert("RGB")
+            if noise_level > 0:
+                np.random.seed(noise_level)
+                img = NOISE_FNS[noise_type](img, noise_level)
+            img.save(cached_path)
 
-        image = Image.open(path).convert("RGB")
+        image   = Image.open(cached_path).convert("RGB")
         image_t = self.transform(image)
 
         return {
             "image":       image_t,
             "filename":    filename,
-            "path":        path,
-            "noise_level": level,
+            "path":        cached_path,
+            "noise_type":  noise_type,
+            "noise_level": noise_level,
         }
 
     @staticmethod
     def _default_transform() -> transforms.Compose:
-        """Normalização padrão do CLIP."""
         return transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -108,34 +128,45 @@ class ImageDataset(Dataset):
         ])
 
     def _make_subset(self, sampled_df: pd.DataFrame) -> "ImageDataset":
-        subset = ImageDataset.__new__(ImageDataset)
+        subset            = ImageDataset.__new__(ImageDataset)
         subset.root       = self.root
-        subset.image_path = self.image_path
         subset.cache_dir  = self.cache_dir
         subset.df         = sampled_df.reset_index(drop=True)
         subset.transform  = self.transform
         return subset
 
-    # ------------------------------------------------------------------
-    # Amostragem — chamada pela Caixinha 1
-    # ------------------------------------------------------------------
-
     def sample(self, n: int, strategy: str = "noise_levels", seed: int = 42,
-               noise_levels=None, **kwargs) -> "ImageDataset":
+               noise_levels=None, noise_types=None, **kwargs) -> "ImageDataset":
         """
-        Retorna um item por nível de ruído (versão progressivamente corrompida
-        da imagem-alvo).
+        Gera combinações imagem × tipo de ruído × nível.
 
         Args:
-            n:            Número de níveis desejados (trunca `noise_levels`).
-            strategy:     "noise_levels" — única estratégia suportada.
-            noise_levels: Lista de intensidades (0-100). Default: 0..100 em passos de 10.
+            n:           Número de imagens base (truncado ao disponível).
+            strategy:    "noise_levels" — única estratégia suportada.
+            noise_levels: Lista de intensidades 0-100.
+            noise_types:  Lista de tipos: "gaussian", "blur", "shapes".
         """
         if strategy != "noise_levels":
             raise ValueError(f"Estratégia desconhecida: '{strategy}'. Use 'noise_levels'.")
 
-        levels = noise_levels if noise_levels is not None else DEFAULT_NOISE_LEVELS
-        levels = list(levels)[:n] if n else list(levels)
+        levels = list(noise_levels) if noise_levels is not None else DEFAULT_NOISE_LEVELS
+        types  = list(noise_types)  if noise_types  is not None else DEFAULT_NOISE_TYPES
 
-        sampled_df = pd.DataFrame({"level": levels})
-        return self._make_subset(sampled_df)
+        # Amostra n imagens base
+        base_images = self.df[["image_path", "filename"]].drop_duplicates()
+        n = min(n, len(base_images))
+        base_images = base_images.sample(n=n, random_state=seed)
+
+        # Expande: cada imagem × cada tipo × cada nível
+        rows = []
+        for _, row in base_images.iterrows():
+            for noise_type in types:
+                for level in levels:
+                    rows.append({
+                        "image_path":  row["image_path"],
+                        "filename":    row["filename"],
+                        "noise_type":  noise_type,
+                        "noise_level": level,
+                    })
+
+        return self._make_subset(pd.DataFrame(rows))

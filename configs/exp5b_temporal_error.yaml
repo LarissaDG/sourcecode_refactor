@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────
+# EXP 5b — Análise temporal: erro procedural persistente
+# Introduz corrupção a partir de um frame fixo (persiste nos seguintes)
+# Objetivo: mostrar que ArtCLIP detecta degradação intencional
+# ─────────────────────────────────────────────
+experiment:
+  name: "exp5b_temporal_error"
+
+dataset:
+  name: video
+  path: "/sonic_home/larissa.gomide/data/temporal/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: false
+    generation: false
+    scoring:    true
+
+sampling:
+  strategy: "sequential_with_error"
+  n_samples: 500
+  error_frame: 12          # frame a partir do qual o erro é introduzido
+  error_type: "gaussian"   # tipo de ruído (baseado nos resultados do exp4)
+  error_level: 50          # nível de degradação (0-100)
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"

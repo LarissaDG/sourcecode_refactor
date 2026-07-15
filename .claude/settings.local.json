@@ -18,7 +18,8 @@
       "Skill(artifact-design)",
       "Skill(artifact-design:*)",
       "Bash(gh api *)",
-      "Bash(curl -s https://raw.githubusercontent.com/WillianJunior/SpeedUFMG/main/user/storage.md)"
+      "Bash(curl -s https://raw.githubusercontent.com/WillianJunior/SpeedUFMG/main/user/storage.md)",
+      "Bash(cp \"C:\\\\Users\\\\jggom\\\\Documents\\\\UFMG\\\\Mestrado\\\\All Portinari\\\\ICCC-Portinari\\\\links.txt\" \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\\\\scripts\\\\portinari_links.txt\")"
     ]
   }
 }
