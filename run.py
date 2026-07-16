@@ -34,6 +34,8 @@ if __name__ == "__main__":
     parser.add_argument("--config", required=True, help="Caminho para o .yaml do experimento")
     parser.add_argument("--test", action="store_true",
                         help="Modo de teste: limita n_samples a 5 e salva em outputs/test_<nome>/")
+    parser.add_argument("--steps", default=None,
+                        help="Sobrescreve os steps do YAML. Ex: sampling,captioning,generation")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -42,5 +44,10 @@ if __name__ == "__main__":
         cfg["sampling"]["n_samples"] = 5
         cfg["experiment"]["name"] = "test_" + cfg["experiment"]["name"]
         logger.info("[MODO TESTE] n_samples=5, saída em outputs/%s/", cfg["experiment"]["name"])
+
+    if args.steps:
+        requested = {s.strip() for s in args.steps.split(",")}
+        for step in cfg["pipeline"]["steps"]:
+            cfg["pipeline"]["steps"][step] = step in requested
 
     run_pipeline(cfg)
