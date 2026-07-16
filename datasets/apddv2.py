@@ -120,10 +120,10 @@ class APDDv2Dataset(Dataset):
         if self.score_col:
             sample["score"] = float(row[self.score_col])
 
-        # Adiciona atributos estéticos presentes no CSV
+        # Adiciona atributos estéticos (sempre inclui a chave para manter batch consistente)
         for attr in AESTHETIC_ATTRIBUTES:
-            if attr in row and pd.notna(row[attr]):
-                sample[attr.lower()] = float(row[attr])
+            val = row[attr] if attr in row.index else float("nan")
+            sample[attr.lower()] = float(val) if pd.notna(val) else float("nan")
 
         # Comentário linguístico (quando disponível — usado no Exp 3b)
         if self.comment_col and pd.notna(row[self.comment_col]):
