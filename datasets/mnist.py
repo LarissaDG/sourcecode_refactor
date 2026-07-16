@@ -101,7 +101,7 @@ class MNISTDataset(Dataset):
             sampled_df = (
                 self.df
                 .groupby("digit", group_keys=False)
-                .apply(lambda g: g.sample(min(len(g), per_digit), random_state=seed), include_groups=False)
+                .apply(lambda g: g.sample(min(len(g), per_digit), random_state=seed))
                 .sample(frac=1, random_state=seed)  # shuffle final
                 .head(n)
             )

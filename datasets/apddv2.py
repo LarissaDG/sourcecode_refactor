@@ -5,6 +5,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+from datasets.image import NOISE_FNS, DEFAULT_NOISE_LEVELS, DEFAULT_NOISE_TYPES
+
 
 # Os 10 atributos estéticos do APDDv2 (sem o score total)
 AESTHETIC_ATTRIBUTES = [
@@ -97,12 +99,22 @@ class APDDv2Dataset(Dataset):
         filename = str(row["filename"]).strip()
         path = self._resolve_path(filename)
         image = Image.open(path).convert("RGB")
+
+        noise_type  = row.get("noise_type")  if hasattr(row, "get") else None
+        noise_level = int(row["noise_level"]) if "noise_level" in row.index and pd.notna(row["noise_level"]) else 0
+
+        if noise_type and noise_level > 0:
+            np.random.seed(noise_level + idx)
+            image = NOISE_FNS[noise_type](image, noise_level)
+
         image_t = self.transform(image)
 
         sample = {
-            "image":    image_t,
-            "filename": filename,
-            "path":     path,
+            "image":       image_t,
+            "filename":    filename,
+            "path":        path,
+            "noise_type":  noise_type or "none",
+            "noise_level": noise_level,
         }
 
         if self.score_col:
@@ -167,7 +179,8 @@ class APDDv2Dataset(Dataset):
     # Amostragem — chamada pela Caixinha 1
     # ------------------------------------------------------------------
 
-    def sample(self, n: int, strategy: str = "random", seed: int = 42, n_bins: int = 30) -> "APDDv2Dataset":
+    def sample(self, n: int, strategy: str = "random", seed: int = 42, n_bins: int = 30,
+               noise_levels=None, noise_types=None, **kwargs) -> "APDDv2Dataset":
         """
         Retorna um subconjunto do dataset.
 
@@ -212,7 +225,7 @@ class APDDv2Dataset(Dataset):
             sampled_df = (
                 df_binned
                 .groupby("_bin", group_keys=False)
-                .apply(lambda g: g.sample(min(len(g), per_bin), random_state=seed), include_groups=False)
+                .apply(lambda g: g.sample(min(len(g), per_bin), random_state=seed))
                 .sample(frac=1, random_state=seed)  # shuffle final
                 .head(n)
             )
@@ -223,5 +236,19 @@ class APDDv2Dataset(Dataset):
                 f"Estratégia desconhecida: '{strategy}'. "
                 "Use 'random', 'stratified' ou 'uniform_bins'."
             )
+
+        # Expansão por ruído: cada imagem × tipo × nível
+        if noise_levels is not None or noise_types is not None:
+            levels = list(noise_levels) if noise_levels is not None else DEFAULT_NOISE_LEVELS
+            types  = list(noise_types)  if noise_types  is not None else DEFAULT_NOISE_TYPES
+            rows = []
+            for _, row in sampled_df.iterrows():
+                for noise_type in types:
+                    for level in levels:
+                        r = row.to_dict()
+                        r["noise_type"]  = noise_type
+                        r["noise_level"] = level
+                        rows.append(r)
+            sampled_df = pd.DataFrame(rows)
 
         return self._make_subset(sampled_df)
