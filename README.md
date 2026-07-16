@@ -1,161 +1,122 @@
-* Colocar algo que já monta o ambiente
-* Limpa os ambientes 
-* Faz o download dos dados. 
-* Colocar para usar multi-nós/paralelismo
-Tudo automatizado que eu não aguento mais essa bosta do SLURM
-* Colocar paper no archive
+# Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models
 
-Estrutura:
-* Coleta de dados
-* Análise exploratória
-* Pré-processamento
-* Experimento 1
-* Experimento 2
-* Experimento 3
-* Experimento 4
-* Experimento 5
+Code for the experiments in *Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models*, submitted to ICCC 2025.
 
+## Overview
 
-Como coletei os dados?
-Artigo: https://arxiv.org/abs/2411.08545
-Repositório: https://github.com/BestiVictory/APDDv2
-Modelos: Deepseek janus e APDDv2
+This pipeline evaluates the aesthetic quality of AI-generated paintings using ArtCLIP, a CLIP-based model trained on human aesthetic annotations. It covers five experiments across four datasets (APDDv2, Portinari, MNIST, and temporal video frames), organized as a 4-stage pipeline: **Sampling → Captioning → Generation → Scoring**.
 
-Análise exploratória de dados:
-Análise_Exploratória_de_Dados_APDDv2.ipynb
+---
 
-Pré-processamento
+## Repository Structure
 
+```
+configs/          YAML configs for each experiment (one per exp)
+datasets/         Dataset loaders (APDDv2, Portinari, MNIST, video frames, noise)
+pipeline/         Pipeline stages: sampling, captioning, generation, scoring
+scripts/          Data download and utility scripts
+tests/            Unit tests
+run.py            Entry point
+base.yaml         Default pipeline config (overridden per experiment)
+requirements.txt  Python dependencies for the pipeline venv
+```
 
-Rodar testes: python3 -m unittest tests/test_sampling.py na pasta: /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode 
-python3 -m visual_sanity_check.visualize_sampling a pasta: /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode 
+---
 
+## Environment Setup
 
-#Vamos remodelar com essa estrutura:
-* Coleta de dados -> Discursivo
-* Análise exploratória -> Notebook
-* Pré-processamento -> Amostragem/ Análise do impacto da amostragem
+Two virtual environments are required, one per pipeline stage group:
 
-Parte 1 (APDDv2 viabilidade "Teorica")
-* Experimento 1 -> 3.1 -> RQ1: Como a métrica se comporta em pinturas humanas vs IA (pequeno vs. grande) do mesmo estilo? 
-* Experimento 2 -> 3.2 -> RQ2: Qual o impacto do tamanho do modelo de geração de imagens na qualidade estética das pinturas sintéticas?
-* Experimento 3 -> 4.1 -> RQ3: Como a métrica se comporta em pinturas humanas de estilos diferentes? 
-RQ4: As descrições de pinturas geradas por IA são expressivas o suficiente para produzir versões sintéticas? (Acho que ele queria contrastar o uso do deepseek com a base do portinari que são descrições humanas). Era para entrar aqui a análise de prompts
-* Experimento 4 -> 4.2
-
-Parte 2 (Experimental "Prática")
-* Experimento 5 -> 5.1 -> RQ5: O quanto a métrica é sensível a ruído (modificações locais)?
-* Experimento 6 -> 5.2 
-
-Organizar o código de uma monografia de mestrado exige equilíbrio entre modularidade (para o desenvolvimento) e reprodutibilidade (para quem vai ler seu trabalho). 
-Aqui estão as três estratégias principais para lidar com seus múltiplos repositórios:
-1. Estratégia de Repositório Principal (Recomendado)
-Se você quer algo "bonitinho" como o seu repositório do artigo, a melhor abordagem é criar um "Repositório Mestre da Monografia" que conecte tudo. 
-Monorepo: Mova os 3 ou 4 repositórios para pastas dentro de um único repositório novo (ex: /core, /experimentos, /artigo). Isso facilita o versionamento conjunto.
-Git Submodules: Se preferir manter os repositórios separados, use submodules para "espelhar" o conteúdo deles dentro do repositório principal da monografia. 
-2. O "Kit de Reprodutibilidade" no README
-O examinador ou leitor deve conseguir rodar seu código sem sofrer. No repositório principal, inclua: 
-Script Mestre: Um arquivo (ex: main.py ou run_all.sh) que execute os experimentos sequencialmente.
-Gestão de Dependências: Use um arquivo requirements.txt ou ferramentas como Poetry para que o ambiente seja replicável.
-README de Alto Nível: Explique a árvore de diretórios e onde encontrar cada parte citada no texto da monografia. 
-3. Organização Interna Padrão
-Para cada repositório, siga esta estrutura mínima para manter o padrão "bonitinho" do artigo: 
-src/: Apenas o código-fonte estável.
-notebooks/: Para análises exploratórias (limpe os outputs antes de subir).
-data/: Dados brutos e processados (ou um README.md explicando como baixá-los, se forem grandes demais).
-docs/: Documentação extra ou figuras geradas. 
-Dica de Ouro: Adicione o link do repositório final no PDF da sua monografia e, se possível, gere um DOI (via Zenodo) para garantir que aquela versão específica do código seja citada corretamente. 
-Você prefere manter os repositórios separados (Multi-repo) ou prefere unir tudo em um único local (Monorepo) para facilitar a entrega final? 
-
-
-# Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models  
-
-This repository contains the code used to conduct experiments and generate results for the paper *Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models*, submitted to ICCC 2025.  
-
-## 📌 Overview  
-The project explores automatic methods for assessing the aesthetic quality of images generated by deep learning models. Additionally, it investigates how prompt variations influence the generated output, analyzing controllability aspects in text-to-image models.  
-
-## 📁 Repository Structure  
-What each file do? Or is here for?
-
-- **.gitgnore**: self-explanatory
-- **amostra.py**: Sample the original database so we can work with an expressive part of the hole, without the computational cost associeated with.
-- **get_descriptions.py**: Generate the descriptions based on the respective image of the dataset, using Janus 7b. 
-- **get_gen_img.py**: Generate the sintetic data based on the generated description in the script above.
-- **generate_scores.py**: Evaluate the generated images, using the image, only, to assess the different criteria encompassed by the ArtClip model
-- **oficial_script.sh**: Automatize running the scripts
-- **manda_email.py**: In oficial_script may need to change the directory. It's used to notify when the script has finished to run.
-- **metricas.py**: Sum-up the returned scores in order to produce a statistical analysis.
-- **README.md**: self-explanatory 
-- **requirements.txt**: self-explanatory
-
-## ⚙️ Setup  
-To set up the environment, there are some phases you must go through.
-
-### 1) Create a venv.
-
-First you create a enviroment using:
+### venv — Captioning + Generation (Janus)
 
 ```bash
 python3 -m venv venv
-```  
-Then you create a folder to be your home, where you will install your dependencies:
-```bash
-mkdir "/minha_home"
-```  
-Then start your venv using:
-```bash
 source venv/bin/activate
-```  
-
-Set your macros for the path of the created folder above:
-```bash
-export HOME="/minha_home"
-export TRANSFORMERS_CACHE="<path>/minha_home/.cache/huggingface"
-export CLIP_CACHE="<path>/minha_home/.cache/clip"
-export HF_HOME="<path>/minha_home/.cache/huggingface"
-export XDG_CACHE_HOME="/<path>/minha_home/.cache"
-export MPLCONFIGDIR="<path>/minha_home/.matplotlib"
-```  
-
-Finally copy the present repository with the command below:
-
-```bash
-https://github.com/LarissaDG/ICCC.git
+pip install --no-cache-dir -r requirements.txt
+pip install -e path/to/Janus   # see https://github.com/deepseek-ai/Janus
 ```
 
-And install the requirements:
+> **Note:** On Python 3.10 + torchvision, install `pip install "numpy<2.0"` to avoid a runtime error.
+
+### apddv2 — Scoring (ArtCLIP)
+
+Follow the setup instructions at https://github.com/BestiVictory/APDDv2 — the repo ships its own `requirements.txt`.
 
 ```bash
-pip install --no-cache-dir -r "<paht>/requirements.txt" && touch "<paht>/requirements_installed"
+python3 -m venv apddv2
+source apddv2/bin/activate
+pip install --no-cache-dir -r path/to/APDDv2/requirements.txt
 ```
 
-### 2) Datasets
+### Environment variables (SLURM cluster)
 
-All downloadable datasets can be acquired with the orchestrator script:
+Set these before running on the cluster to avoid writing to the shared `$HOME`:
 
 ```bash
-python3 scripts/download_all.py --out data/
+export HOME="/sonic_home/larissa.gomide/minha_home"
+export HF_HOME="$HOME/.cache/huggingface"
+export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
+export XDG_CACHE_HOME="$HOME/.cache"
+export MPLCONFIGDIR="$HOME/.matplotlib"
 ```
 
-To download individual datasets:
+---
+
+## Datasets
+
+### Download (automated)
+
+All datasets except APDDv2 can be downloaded with a single command:
+
+```bash
+python3 scripts/download_all.py --out /sonic_home/larissa.gomide/data
+```
+
+Or individually:
+
 ```bash
 python3 scripts/download_all.py --out data/ --only portinari
 python3 scripts/download_all.py --out data/ --only mnist
+python3 scripts/download_all.py --out data/ --only temporal   # requires yt-dlp
 ```
 
-This creates:
-```
-data/
-├── portinari/
-│   ├── acervoPortinari.csv
-│   └── Imagens/
-└── mnist/
-    ├── mnist_sample.csv
-    └── Imagens/
+On the SLURM cluster, submit the dedicated download job:
+
+```bash
+sbatch scripts/slurm_download_data.sh
 ```
 
-After downloading Portinari, generate the English translations for experiments 2b/3b:
+This job creates a throwaway `venv_download`, installs only the download dependencies, downloads all three datasets, runs the Portinari translation, and sends an e-mail notification when done.
+
+### APDDv2
+
+The public image download link is no longer available. Use an existing local copy or contact the authors.
+
+- Paper: https://arxiv.org/abs/2411.08545
+- Repository: https://github.com/BestiVictory/APDDv2
+
+Download the pre-trained ArtCLIP weights:
+
+```bash
+gdown --folder "1AOVKmSqZCW09J_Ypr7KzSYfRxQre-w_m" -O model_weights/
+```
+
+> Updated weights are also available at [Baidu Pan](https://pan.baidu.com/s/1HA8c9nnCRdBOR_zHNC781A?pwd=miwi) (requires Baidu account). Model 6 (*The sense of order*) has a known bug and is excluded from evaluation.
+
+Expected structure:
+```
+apddv2/
+├── APDDv2images/      (or images/)
+├── model_weights/
+└── APDDv2-10023.csv
+```
+
+### Portinari
+
+Downloaded automatically by `download_portinari.py` (32 ZIP archives from Google Drive + CSV from Google Sheets).
+
+After download, generate English translations for Exp 2b:
+
 ```bash
 python3 scripts/portinari_translate.py \
     --csv data/portinari/acervoPortinari.csv \
@@ -163,152 +124,85 @@ python3 scripts/portinari_translate.py \
     --n 500 --seed 42
 ```
 
-#### APDDv2
-
-The APDDv2 dataset (paper: [https://arxiv.org/abs/2411.08545](https://arxiv.org/abs/2411.08545)) contains 10,023 paintings annotated with 10 aesthetic attributes across 24 artistic styles. It also introduces ArtCLIP, a CLIP-based model for aesthetic evaluation.
-
-> **⚠️ The public image download link is no longer available.** Contact the authors or use an existing local copy. Repository: https://github.com/BestiVictory/APDDv2
-
-Clone the official repository:
-```bash
-git clone https://github.com/BestiVictory/APDDv2.git
-cd APDDv2
-```
-
-Download the pre-trained model weights:
-```bash
-gdown --folder "1AOVKmSqZCW09J_Ypr7KzSYfRxQre-w_m" -O model_weights
-```
-
-Expected folder structure:
-```
-APDDv2/
-├── APDDv2images/
-│   ├── image1.png
-│   └── image2.png
-├── model_weights/
-│   ├── model_v1.pth
-│   └── model_v2.pth
-├── APDDv2-10023.csv
-└── README.md
-```
-
-Install requirements:
-```bash
-pip install --no-cache-dir -r APDDv2/requirements.txt
-```
-
-> **Note:** The weights available via `gdown` above are the original release weights. Updated weights are available at [Baidu Pan](https://pan.baidu.com/s/1HA8c9nnCRdBOR_zHNC781A?pwd=miwi) (requires Baidu account). Model 6 (*The sense of order*) has a known bug and is excluded from evaluation.
-
-For the pipeline, set `dataset.path` in the experiment YAML to the root of this folder (where `APDDv2-10023.csv` lives). The dataset loader accepts both `images/` and `APDDv2images/` as the image subfolder name.
-
-### 3) Downloading and setting Portinari
-
-The Portinari dataset is built from the [Acervo Digital Portinari](http://www.portinari.org.br/) and must be generated via the preparation notebook. Three dataset variants are used across experiments:
+Three variants used across experiments:
 
 | Variant | Description | Used in |
 |---|---|---|
-| `BasePortinari` | Full dataset (~all images) | Reference |
-| `MiniBasePortinari` | 500-image sample (seed=42) | Exp 2a, 3a |
-| `TradBasePortinari` | CSV with English captions (`Description_en`) | Exp 2b, 3b |
+| Full dataset | All ~5000 images + `acervoPortinari.csv` | Reference |
+| 500-image sample | `n=500, seed=42` (sampled at runtime) | Exp 2a |
+| Translated CSV | `MiniBasePortinari_Translated.csv` with `Description_en` | Exp 2b |
 
-**To generate `BasePortinari` and `MiniBasePortinari`:**
+### MNIST
 
-Open and run the Colab notebook:
-[`base_portinari_organizada.ipynb`](https://colab.research.google.com/drive/14Ij6FahqcEfEt9HZirPbg2cgK3NEmkzN)
+Downloaded automatically by `download_mnist.py`. Samples 500 digits (balanced across 10 classes, seed=42).
 
-The notebook:
-1. Reads a `links.txt` file containing Google Drive ZIP URLs for the image archives.
-2. Downloads and extracts all images to `BasePortinari/Imagens/` and saves `acervoPortinari.csv`.
-3. Creates `MiniBasePortinari/AmostraImagens/` (500 images, `random_state=42`) and `AmostraacervoPortinari.csv`.
+### Temporal (video frames)
 
-**For `TradBasePortinari`:** This CSV (`MiniBasePortinari_Translated.csv`) contains English translations of painting descriptions in the `Description_en` column. It must be placed at:
-```
-/sonic_home/larissa.gomide/TradBasePortinari/MiniBasePortinari_Translated.csv
-```
+Downloaded automatically by `download_temporal.py` from `@ArtsyLolaCo` YouTube Shorts. Downloads up to 500 videos, extracts 1 frame/second into per-video subfolders.
 
-Set the corresponding `dataset.path` values in each experiment's YAML config.
+---
 
-### 4) Downloading and setting Janus
+## Running Experiments
 
-For more details in how to install APDDv2 dependêncies check their GitHub: https://github.com/deepseek-ai/Janus.git
-
-First, copy the repository:
-```bash
-git clone https://github.com/deepseek-ai/Janus.git
-```  
-
-Now it is time for the settings. First install the requirements:
-
-```bash
-pip install -e "<path>/Janus"
-``` 
-Finally test whether the sistem works. In order to do this you must run the script:
-
-```bash
-python3 "<path>/exemple_janus.py" || echo "Erro ao executar exemple_janus.py."
-```
-
-## 🚀 Running Experiments
-
-### Test mode (5 samples, fast)
-
-Use `--test` to verify the pipeline end-to-end without waiting for a full run. It limits `n_samples` to 5 and saves outputs to `outputs/test_<name>/`:
+### Test mode (5 samples — fast sanity check)
 
 ```bash
 python3 run.py --config configs/exp1_apdd.yaml --test
-python3 run.py --config configs/exp2_mnist.yaml --test
-python3 run.py --config configs/exp3a_portinari.yaml --test
+python3 run.py --config configs/exp2a_portinari.yaml --test
 ```
 
-### Full run (500 samples)
+### Full run
 
 ```bash
 python3 run.py --config configs/exp1_apdd.yaml
-python3 run.py --config configs/exp2_mnist.yaml
-python3 run.py --config configs/exp3a_portinari.yaml
-python3 run.py --config configs/exp3b_portinari_human.yaml
-python3 run.py --config configs/exp4_temporal.yaml
-python3 run.py --config configs/exp5_noise.yaml
+python3 run.py --config configs/exp2a_portinari.yaml
+python3 run.py --config configs/exp2b_portinari_human.yaml
+python3 run.py --config configs/exp3_mnist.yaml
+python3 run.py --config configs/exp4_noise.yaml
+python3 run.py --config configs/exp5a_temporal.yaml
+python3 run.py --config configs/exp5b_temporal_error.yaml
 ```
 
-### SLURM cluster
+### Experiment overview
+
+| Config | Description | Pipeline steps |
+|---|---|---|
+| `exp1_apdd.yaml` | APDDv2 → caption (Janus-7B) → generate (Janus-1B + 7B) → score | all |
+| `exp2a_portinari.yaml` | Portinari → caption → generate → score | all |
+| `exp2b_portinari_human.yaml` | Portinari with human descriptions → generate → score | skip captioning |
+| `exp3_mnist.yaml` | MNIST digits → score only (ArtCLIP baseline) | skip caption + gen |
+| `exp4_noise.yaml` | APDDv2 × 3 noise types × 10 levels → score | skip caption + gen |
+| `exp5a_temporal.yaml` | Video frames sequential → score | skip caption + gen |
+| `exp5b_temporal_error.yaml` | Video frames + persistent error from frame 12 → score | skip caption + gen |
+
+### Clean outputs
 
 ```bash
-sbatch oficial_script.sh
-```  
-
-## 📊 Results & Analysis  
-The results include:  
-- Aesthetic score comparisons across different models.  
-- Insights into prompt engineering techniques for better controllability.  
-
-## 📜 Citation  
-If you use this code, please cite our work:
-
+python3 scripts/clean_outputs.py                    # limpa tudo
+python3 scripts/clean_outputs.py --exp exp1_apdd    # limpa só um experimento
+python3 scripts/clean_outputs.py --dry-run          # prévia sem deletar
 ```
+
+---
+
+## Citation
+
+```bibtex
 @inproceedings{gomide2025iccc,
-      title={Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models},
-      author={Larissa Gomide and Lucas Nascimento Ferreira and Wagner Meira Jr.},
-      booktitle={Proceedings of the ICCC 2025},
-      year={2025}
-    }
-```  
+  title={Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models},
+  author={Larissa Gomide and Lucas Nascimento Ferreira and Wagner Meira Jr.},
+  booktitle={Proceedings of the ICCC 2025},
+  year={2025}
+}
+```
 
-Or as indicated by the CITATION.cff
+## Licenses
 
-## 📄 Repository Licenses
+| Content | License |
+|---|---|
+| Software | MIT — see [LICENSE](./LICENSE) |
+| Dataset | CC BY 4.0 |
 
-This repository contains different types of content, each with its own license. Please follow the instructions below when using any part of the material.
+## Contact
 
-| Content       | License | How to cite / give credit |
-|---------------|---------|--------------------------|
-| 💻 **Software** | ![MIT License](https://img.shields.io/badge/License-MIT-green) | You must retain credit in the code and redistributions. See the [LICENSE](./LICENSE) file for details. |
-| 🌐 **Website**  | ![CC BY 4.0](https://img.shields.io/badge/License-CC--BY%204.0-blue) | Apply CC BY license to text and images; include credits and citation instructions in the site footer. |
-| 📊 **Dataset**  | ![CC BY 4.0](https://img.shields.io/badge/License-CC--BY%204.0-blue) | Include a `LICENSE` file and a `README` with clear citation instructions and bibliographic references. |
-
-
-## 📬 Contact  
-For any questions or collaborations, feel free to reach out:  
-📧 lainterlocucao@gmail.com
-
+📧 laladg18@gmail.com
