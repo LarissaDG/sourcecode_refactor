@@ -1,0 +1,18 @@
+torch
+torchvision
+pandas
+numpy
+pillow
+pyyaml
+ftfy
+regex
+tqdm
+timm
+pytest
+# download scripts
+gdown
+requests
+# portinari_translate.py
+transformers
+sentencepiece
+sacremoses

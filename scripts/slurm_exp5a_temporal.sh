@@ -8,9 +8,9 @@
 set -x
 
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
+VENV="/sonic_home/larissa.gomide/venv"
 VENV_APDDV2="/sonic_home/larissa.gomide/apddv2"
 
-module load python3.12.1
 module load cuda/11.8.0
 
 export HOME="/sonic_home/larissa.gomide/minha_home"
@@ -21,12 +21,26 @@ export MPLCONFIGDIR="$HOME/.matplotlib"
 
 cd "$ROOT"
 
+notify() {
+    local code=$?
+    if [ $code -eq 0 ]; then
+        source "$VENV/bin/activate"
+        python3 scripts/manda_email.py \
+            "✅ exp5a_temporal CONCLUÍDO — Phocus4" \
+            "Job finalizado com sucesso. Resultados em: $ROOT/outputs/exp5a_temporal/"
+    else
+        source "$VENV/bin/activate"
+        python3 scripts/manda_email.py \
+            "❌ exp5a_temporal FALHOU — Phocus4" \
+            "Job abortou com erro (código $code). Verifique o log: $ROOT/slurm-${SLURM_JOB_ID}.out"
+    fi
+}
+trap notify EXIT
+
 echo "--- sampling + scoring (ArtCLIP) ---"
 source "$VENV_APDDV2/bin/activate"
 python3 run.py --config configs/exp5a_temporal.yaml --steps sampling,scoring \
-    || { echo "ERRO"; deactivate; exit 1; }
-
-python3 scripts/manda_email.py "exp5a_temporal concluído — Phocus4" "Resultados em: $ROOT/outputs/exp5a_temporal/"
+    || { echo "ERRO"; exit 1; }
 deactivate
 
 echo "=== FINALIZADO ===" && hostname

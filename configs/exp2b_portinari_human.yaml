@@ -8,7 +8,7 @@ experiment:
 
 dataset:
   name: portinari
-  path: "/sonic_home/larissa.gomide/data/portinari/"
+  path: "/sonic_home/larissa.gomide/sourcecode_refactor/data/portinari/"
   use_human_captions: true
 
 pipeline:

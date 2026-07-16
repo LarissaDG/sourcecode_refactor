@@ -1,0 +1,2941 @@
+.......FFFFF.FFF.F.F.FF.FF..FFFF..FF.FF..FFF..FFFF...FFF.FFFF            [100%]
+=================================== FAILURES ===================================
+______________________________ test_getitem_keys _______________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_getitem_keys(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+>       item = ds[0]
+
+tests/test_dataset_apdd.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601BA0E50>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_getitem_image_is_tensor _________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_getitem_image_is_tensor(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+>       item = ds[0]
+
+tests/test_dataset_apdd.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x79960196B190>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_getitem_score_is_float __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_getitem_score_is_float(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+>       item = ds[0]
+
+tests/test_dataset_apdd.py:39: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A788B0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_getitem_caption_present _________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_getitem_caption_present(mini_apdd_dir):
+        """O mini dataset tem coluna 'comment' → deve virar 'caption'."""
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+>       item = ds[0]
+
+tests/test_dataset_apdd.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601924CD0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+________________________ test_getitem_category_present _________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_getitem_category_present(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+>       item = ds[0]
+
+tests/test_dataset_apdd.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A50070>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_sample_is_reproducible __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_sample_is_reproducible(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+        s1 = ds.sample(n=5, seed=42)
+        s2 = ds.sample(n=5, seed=42)
+>       assert [s1[i]["filename"] for i in range(5)] == [s2[i]["filename"] for i in range(5)]
+
+tests/test_dataset_apdd.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_apdd.py:71: in <listcomp>
+    assert [s1[i]["filename"] for i in range(5)] == [s2[i]["filename"] for i in range(5)]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601923CA0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_sample_different_seeds __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_sample_different_seeds(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+        s1 = ds.sample(n=5, seed=0)
+        s2 = ds.sample(n=5, seed=99)
+>       names1 = [s1[i]["filename"] for i in range(5)]
+
+tests/test_dataset_apdd.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_apdd.py:78: in <listcomp>
+    names1 = [s1[i]["filename"] for i in range(5)]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x79961FEE3220>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________________ test_sample_stratified ____________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_sample_stratified(mini_apdd_dir):
+        ds     = APDDv2Dataset(root=mini_apdd_dir)
+        subset = ds.sample(n=6, strategy="stratified", seed=42)
+        assert len(subset) > 0
+>       categories = [subset[i]["category"] for i in range(len(subset))]
+
+tests/test_dataset_apdd.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_apdd.py:87: in <listcomp>
+    categories = [subset[i]["category"] for i in range(len(subset))]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601844250>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________ test_sample_uniform_bins_reproducible _____________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_sample_uniform_bins_reproducible(mini_apdd_dir):
+        ds = APDDv2Dataset(root=mini_apdd_dir)
+        s1 = ds.sample(n=6, strategy="uniform_bins", seed=42)
+        s2 = ds.sample(n=6, strategy="uniform_bins", seed=42)
+>       assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+tests/test_dataset_apdd.py:103: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_apdd.py:103: in <listcomp>
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996019065C0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+______________________ test_sample_returns_valid_dataset _______________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+
+    def test_sample_returns_valid_dataset(mini_apdd_dir):
+        """Subset retornado deve se comportar como Dataset normal."""
+        ds     = APDDv2Dataset(root=mini_apdd_dir)
+        subset = ds.sample(n=4)
+>       item   = subset[0]
+
+tests/test_dataset_apdd.py:117: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996019FE170>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+______________________________ test_getitem_keys _______________________________
+
+mini_gif_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_gifs0'
+
+    def test_getitem_keys(mini_gif_dir):
+        ds = GIFFramesDataset(root=mini_gif_dir)
+>       item = ds[0]
+
+tests/test_dataset_gif_frames.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/gif_frames.py:72: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601921210>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________________ test_getitem_saves_png ____________________________
+
+mini_gif_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_gifs0'
+
+    def test_getitem_saves_png(mini_gif_dir):
+        ds = GIFFramesDataset(root=mini_gif_dir)
+>       item = ds[0]
+
+tests/test_dataset_gif_frames.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/gif_frames.py:72: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996019D00D0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________ test_sample_sequential_preserves_order ____________________
+
+mini_gif_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_gifs0'
+
+    def test_sample_sequential_preserves_order(mini_gif_dir):
+        ds = GIFFramesDataset(root=mini_gif_dir)
+        subset = ds.sample(n=4, strategy="sequential", seed=42)
+        # Para cada gif presente, os frame_idx devem estar em ordem crescente
+        by_gif = {}
+        for i in range(len(subset)):
+>           item = subset[i]
+
+tests/test_dataset_gif_frames.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/gif_frames.py:72: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A740D0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_______________________ test_sample_random_reproducible ________________________
+
+mini_gif_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_gifs0'
+
+    def test_sample_random_reproducible(mini_gif_dir):
+        ds = GIFFramesDataset(root=mini_gif_dir)
+        s1 = ds.sample(n=4, strategy="random", seed=42)
+        s2 = ds.sample(n=4, strategy="random", seed=42)
+>       assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+tests/test_dataset_gif_frames.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_gif_frames.py:60: in <listcomp>
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+datasets/gif_frames.py:72: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996019060B0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+______________________________ test_getitem_keys _______________________________
+
+mini_image_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_image0'
+
+    def test_getitem_keys(mini_image_dir):
+        ds = ImageDataset(root=mini_image_dir)
+        subset = ds.sample(n=4, strategy="noise_levels", noise_levels=[0, 50])
+>       item = subset[0]
+
+tests/test_dataset_image.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/image.py:89: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A7FC70>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________________ test_getitem_saves_png ____________________________
+
+mini_image_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_image0'
+
+    def test_getitem_saves_png(mini_image_dir):
+        ds = ImageDataset(root=mini_image_dir)
+        subset = ds.sample(n=4, strategy="noise_levels", noise_levels=[0, 50])
+>       item = subset[0]
+
+tests/test_dataset_image.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/image.py:89: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996019FF640>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_level_zero_is_original __________________________
+
+mini_image_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_image0'
+
+    def test_level_zero_is_original(mini_image_dir):
+        """Nível 0 não deve aplicar ruído (imagem == original)."""
+        import numpy as np
+        from PIL import Image
+    
+        ds = ImageDataset(root=mini_image_dir)
+        subset = ds.sample(n=1, strategy="noise_levels", noise_levels=[0])
+>       item = subset[0]
+
+tests/test_dataset_image.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/image.py:89: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x79960196B3A0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+__________________________ test_levels_truncated_by_n __________________________
+
+mini_image_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_image0'
+
+    def test_levels_truncated_by_n(mini_image_dir):
+        ds = ImageDataset(root=mini_image_dir)
+        subset = ds.sample(n=2, strategy="noise_levels", noise_levels=[0, 10, 20, 30])
+        assert len(subset) == 2
+>       assert [subset[i]["noise_level"] for i in range(len(subset))] == [0, 10]
+
+tests/test_dataset_image.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_image.py:56: in <listcomp>
+    assert [subset[i]["noise_level"] for i in range(len(subset))] == [0, 10]
+datasets/image.py:89: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996018597B0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+______________________________ test_getitem_keys _______________________________
+
+mnist_root = '/tmp/pytest-of-larissadg/pytest-1/test_getitem_keys0'
+
+    def test_getitem_keys(mnist_root):
+        ds = MNISTDataset(root=mnist_root)
+>       item = ds[0]
+
+tests/test_dataset_mnist.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/mnist.py:51: in __getitem__
+    image_t = self.transform(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601BA2740>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________________ test_getitem_saves_png ____________________________
+
+mnist_root = '/tmp/pytest-of-larissadg/pytest-1/test_getitem_saves_png0'
+
+    def test_getitem_saves_png(mnist_root):
+        import os
+        ds = MNISTDataset(root=mnist_root)
+>       item = ds[0]
+
+tests/test_dataset_mnist.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/mnist.py:51: in __getitem__
+    image_t = self.transform(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A89210>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_______________________ test_sample_stratified_balanced ________________________
+
+mnist_root = '/tmp/pytest-of-larissadg/pytest-1/test_sample_stratified_balance0'
+
+    def test_sample_stratified_balanced(mnist_root):
+        ds = MNISTDataset(root=mnist_root)
+        subset = ds.sample(n=20, strategy="stratified", seed=42)
+>       digits = [subset[i]["digit"] for i in range(len(subset))]
+
+tests/test_dataset_mnist.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_mnist.py:73: in <listcomp>
+    digits = [subset[i]["digit"] for i in range(len(subset))]
+datasets/mnist.py:51: in __getitem__
+    image_t = self.transform(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601AF6320>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_______________________ test_sample_random_reproducible ________________________
+
+mnist_root = '/tmp/pytest-of-larissadg/pytest-1/test_sample_random_reproducibl0'
+
+    def test_sample_random_reproducible(mnist_root):
+        ds = MNISTDataset(root=mnist_root)
+        s1 = ds.sample(n=10, strategy="random", seed=42)
+        s2 = ds.sample(n=10, strategy="random", seed=42)
+>       assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+tests/test_dataset_mnist.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_mnist.py:81: in <listcomp>
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+datasets/mnist.py:51: in __getitem__
+    image_t = self.transform(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A4DAB0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+___________________ test_getitem_keys_without_human_captions ___________________
+
+mini_portinari_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_portinari0'
+
+    def test_getitem_keys_without_human_captions(mini_portinari_dir):
+        ds = PortinariDataset(root=mini_portinari_dir, use_human_captions=False)
+>       item = ds[0]
+
+tests/test_dataset_portinari.py:13: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/portinari.py:87: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601809840>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________ test_getitem_keys_with_human_captions _____________________
+
+mini_portinari_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_portinari0'
+
+    def test_getitem_keys_with_human_captions(mini_portinari_dir):
+        ds = PortinariDataset(root=mini_portinari_dir, use_human_captions=True)
+>       item = ds[0]
+
+tests/test_dataset_portinari.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+datasets/portinari.py:87: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601807A30>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________ test_sample_random_size_and_reproducibility __________________
+
+mini_portinari_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_portinari0'
+
+    def test_sample_random_size_and_reproducibility(mini_portinari_dir):
+        ds = PortinariDataset(root=mini_portinari_dir)
+        s1 = ds.sample(n=5, strategy="random", seed=42)
+        s2 = ds.sample(n=5, strategy="random", seed=42)
+        assert len(s1) == 5
+>       assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+tests/test_dataset_portinari.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_dataset_portinari.py:32: in <listcomp>
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+datasets/portinari.py:87: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601905FC0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+___________________________ test_full_pipeline_exp1 ____________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x799601669270>
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_full_pipeline_exp10')
+
+    def test_full_pipeline_exp1(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
+        """
+        Roda o pipeline completo: sampling → captioning → generation → scoring.
+        Valida que:
+          - Cada etapa passa dados para a próxima corretamente
+          - CSVs de scores são gerados para 'original', '1B' e '7B'
+          - Nenhum arquivo intermediário fica faltando
+        """
+        # ── Mocks ──────────────────────────────────────────────────────────────
+        import pipeline.captioning as cap
+        import pipeline.generation as gen
+        import pipeline.scoring    as sc
+    
+        fake_model     = MagicMock()
+        fake_processor = MagicMock()
+    
+        monkeypatch.setattr(cap, "_load_janus",     lambda *a, **kw: (fake_model, fake_processor))
+        monkeypatch.setattr(cap, "_describe_image", lambda *a, **kw: "A beautiful painting.")
+        monkeypatch.setattr(gen, "_load_janus",     lambda *a, **kw: (fake_model, fake_processor))
+        monkeypatch.setattr(gen, "_generate_image", lambda *a, **kw: [
+            Image.fromarray(np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8))
+        ])
+        import sys
+        from torchvision import transforms as T
+        fake_clip = MagicMock()
+        fake_clip.load.return_value = (None, T.Compose([T.Resize((224, 224)), T.ToTensor()]))
+        monkeypatch.setitem(sys.modules, "models",         MagicMock())
+        monkeypatch.setitem(sys.modules, "models.clip",    fake_clip)
+        monkeypatch.setitem(sys.modules, "models.aesclip", MagicMock())
+        monkeypatch.setattr(sc, "_load_agent", lambda *a, **kw: MagicMock())
+        monkeypatch.setattr(sc, "_predict",    lambda model, t: np.random.uniform(0.1, 1.0))
+    
+        # ── Config apontando para tmp_path ─────────────────────────────────────
+        cfg = {
+            **base_cfg,
+            "experiment": {
+                **base_cfg["experiment"],
+                "output_dir": str(tmp_path),
+            },
+            "dataset": {"name": "apdd", "path": mini_apdd_dir},
+        }
+    
+        # ── Rodar pipeline ─────────────────────────────────────────────────────
+        from pipeline.sampling   import run_sampling
+        from pipeline.captioning import run_captioning
+        from pipeline.generation import run_generation
+        from pipeline.scoring    import run_scoring
+    
+        loader = run_sampling(cfg)
+        assert isinstance(loader, DataLoader), "Sampling deve retornar DataLoader"
+    
+>       data = run_captioning(cfg, loader)
+
+tests/test_e2e.py:65: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+pipeline/captioning.py:60: in run_captioning
+    for batch in loader:
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x7996018BF130>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_captioning_returns_list _________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79961fee3880>
+
+    def test_captioning_returns_list(mini_apdd_dir, base_cfg, monkeypatch):
+        _mock_captioning_deps(monkeypatch)
+        from pipeline.captioning import run_captioning
+>       results = run_captioning(base_cfg, _make_loader(mini_apdd_dir))
+
+tests/test_pipeline.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+pipeline/captioning.py:60: in run_captioning
+    for batch in loader:
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601810700>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+_________________________ test_captioning_output_size __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x79960187dc90>
+
+    def test_captioning_output_size(mini_apdd_dir, base_cfg, monkeypatch):
+        _mock_captioning_deps(monkeypatch)
+        from pipeline.captioning import run_captioning
+>       results = run_captioning(base_cfg, _make_loader(mini_apdd_dir, n=4))
+
+tests/test_pipeline.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+pipeline/captioning.py:60: in run_captioning
+    for batch in loader:
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601922B30>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+______________________ test_captioning_output_has_caption ______________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7996019fc190>
+
+    def test_captioning_output_has_caption(mini_apdd_dir, base_cfg, monkeypatch):
+        _mock_captioning_deps(monkeypatch)
+        from pipeline.captioning import run_captioning
+>       results = run_captioning(base_cfg, _make_loader(mini_apdd_dir))
+
+tests/test_pipeline.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+pipeline/captioning.py:60: in run_captioning
+    for batch in loader:
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A782E0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+___________________________ test_scoring_creates_csv ___________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7996018a3c10>
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_scoring_creates_csv0')
+
+    def test_scoring_creates_csv(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
+        _mock_scoring_deps(monkeypatch)
+        from pipeline.scoring import run_scoring
+        cfg  = {**base_cfg, "experiment": {**base_cfg["experiment"], "output_dir": str(tmp_path)}}
+        run_scoring(cfg, _make_data_with_generated(mini_apdd_dir, tmp_path))
+        scores_dir = os.path.join(str(tmp_path), "test_exp1", "scores")
+        csvs = os.listdir(scores_dir)
+>       assert any("original"     in c for c in csvs)
+E       assert False
+E        +  where False = any(<generator object test_scoring_creates_csv.<locals>.<genexpr> at 0x7996019ed850>)
+
+tests/test_pipeline.py:161: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[scoring] 3 agentes carregados.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'original'.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_creates_csv0/generated/Janus-Pro-1B/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_creates_csv0/generated/Janus-Pro-1B/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_creates_csv0/generated/Janus-Pro-1B/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_creates_csv0/generated/Janus-Pro-1B/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'Janus-Pro-1B'.
+______________________ test_scoring_csv_has_agent_columns ______________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x799601907520>
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0')
+
+    def test_scoring_csv_has_agent_columns(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
+        _mock_scoring_deps(monkeypatch)
+        from pipeline.scoring import run_scoring
+        cfg  = {**base_cfg, "experiment": {**base_cfg["experiment"], "output_dir": str(tmp_path)}}
+        run_scoring(cfg, _make_data_with_generated(mini_apdd_dir, tmp_path))
+>       df = pd.read_csv(os.path.join(str(tmp_path), "test_exp1", "scores", "scores_original.csv"))
+
+tests/test_pipeline.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1026: in read_csv
+    return _read(filepath_or_buffer, kwds)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:620: in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1620: in __init__
+    self._engine = self._make_engine(f, self.engine)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1880: in _make_engine
+    self.handles = get_handle(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path_or_buf = '/tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/test_exp1/scores/scores_original.csv'
+mode = 'r'
+
+    @doc(compression_options=_shared_docs["compression_options"] % "path_or_buf")
+    def get_handle(
+        path_or_buf: FilePath | BaseBuffer,
+        mode: str,
+        *,
+        encoding: str | None = None,
+        compression: CompressionOptions | None = None,
+        memory_map: bool = False,
+        is_text: bool = True,
+        errors: str | None = None,
+        storage_options: StorageOptions | None = None,
+    ) -> IOHandles[str] | IOHandles[bytes]:
+        """
+        Get file handle for given path/buffer and mode.
+    
+        Parameters
+        ----------
+        path_or_buf : str or file handle
+            File path or object.
+        mode : str
+            Mode to open path_or_buf with.
+        encoding : str or None
+            Encoding to use.
+        {compression_options}
+    
+               May be a dict with key 'method' as compression mode
+               and other keys as compression options if compression
+               mode is 'zip'.
+    
+               Passing compression options as keys in dict is
+               supported for compression modes 'gzip', 'bz2', 'zstd' and 'zip'.
+    
+            .. versionchanged:: 1.4.0 Zstandard support.
+    
+        memory_map : bool, default False
+            See parsers._parser_params for more information. Only used by read_csv.
+        is_text : bool, default True
+            Whether the type of the content passed to the file/buffer is string or
+            bytes. This is not the same as `"b" not in mode`. If a string content is
+            passed to a binary file/buffer, a wrapper is inserted.
+        errors : str, default 'strict'
+            Specifies how encoding and decoding errors are to be handled.
+            See the errors argument for :func:`open` for a full list
+            of options.
+        storage_options: StorageOptions = None
+            Passed to _get_filepath_or_buffer
+    
+        Returns the dataclass IOHandles
+        """
+        # Windows does not default to utf-8. Set to utf-8 for a consistent behavior
+        encoding = encoding or "utf-8"
+    
+        errors = errors or "strict"
+    
+        # read_csv does not know whether the buffer is opened in binary/text mode
+        if _is_binary_mode(path_or_buf, mode) and "b" not in mode:
+            mode += "b"
+    
+        # validate encoding and errors
+        codecs.lookup(encoding)
+        if isinstance(errors, str):
+            codecs.lookup_error(errors)
+    
+        # open URLs
+        ioargs = _get_filepath_or_buffer(
+            path_or_buf,
+            encoding=encoding,
+            compression=compression,
+            mode=mode,
+            storage_options=storage_options,
+        )
+    
+        handle = ioargs.filepath_or_buffer
+        handles: list[BaseBuffer]
+    
+        # memory mapping needs to be the first step
+        # only used for read_csv
+        handle, memory_map, handles = _maybe_memory_map(handle, memory_map)
+    
+        is_path = isinstance(handle, str)
+        compression_args = dict(ioargs.compression)
+        compression = compression_args.pop("method")
+    
+        # Only for write methods
+        if "r" not in mode and is_path:
+            check_parent_directory(str(handle))
+    
+        if compression:
+            if compression != "zstd":
+                # compression libraries do not like an explicit text-mode
+                ioargs.mode = ioargs.mode.replace("t", "")
+            elif compression == "zstd" and "b" not in ioargs.mode:
+                # python-zstandard defaults to text mode, but we always expect
+                # compression libraries to use binary mode.
+                ioargs.mode += "b"
+    
+            # GZ Compression
+            if compression == "gzip":
+                if isinstance(handle, str):
+                    # error: Incompatible types in assignment (expression has type
+                    # "GzipFile", variable has type "Union[str, BaseBuffer]")
+                    handle = gzip.GzipFile(  # type: ignore[assignment]
+                        filename=handle,
+                        mode=ioargs.mode,
+                        **compression_args,
+                    )
+                else:
+                    handle = gzip.GzipFile(
+                        # No overload variant of "GzipFile" matches argument types
+                        # "Union[str, BaseBuffer]", "str", "Dict[str, Any]"
+                        fileobj=handle,  # type: ignore[call-overload]
+                        mode=ioargs.mode,
+                        **compression_args,
+                    )
+    
+            # BZ Compression
+            elif compression == "bz2":
+                # Overload of "BZ2File" to handle pickle protocol 5
+                # "Union[str, BaseBuffer]", "str", "Dict[str, Any]"
+                handle = get_bz2_file()(  # type: ignore[call-overload]
+                    handle,
+                    mode=ioargs.mode,
+                    **compression_args,
+                )
+    
+            # ZIP Compression
+            elif compression == "zip":
+                # error: Argument 1 to "_BytesZipFile" has incompatible type
+                # "Union[str, BaseBuffer]"; expected "Union[Union[str, PathLike[str]],
+                # ReadBuffer[bytes], WriteBuffer[bytes]]"
+                handle = _BytesZipFile(
+                    handle, ioargs.mode, **compression_args  # type: ignore[arg-type]
+                )
+                if handle.buffer.mode == "r":
+                    handles.append(handle)
+                    zip_names = handle.buffer.namelist()
+                    if len(zip_names) == 1:
+                        handle = handle.buffer.open(zip_names.pop())
+                    elif not zip_names:
+                        raise ValueError(f"Zero files found in ZIP file {path_or_buf}")
+                    else:
+                        raise ValueError(
+                            "Multiple files found in ZIP file. "
+                            f"Only one file per ZIP: {zip_names}"
+                        )
+    
+            # TAR Encoding
+            elif compression == "tar":
+                compression_args.setdefault("mode", ioargs.mode)
+                if isinstance(handle, str):
+                    handle = _BytesTarFile(name=handle, **compression_args)
+                else:
+                    # error: Argument "fileobj" to "_BytesTarFile" has incompatible
+                    # type "BaseBuffer"; expected "Union[ReadBuffer[bytes],
+                    # WriteBuffer[bytes], None]"
+                    handle = _BytesTarFile(
+                        fileobj=handle, **compression_args  # type: ignore[arg-type]
+                    )
+                assert isinstance(handle, _BytesTarFile)
+                if "r" in handle.buffer.mode:
+                    handles.append(handle)
+                    files = handle.buffer.getnames()
+                    if len(files) == 1:
+                        file = handle.buffer.extractfile(files[0])
+                        assert file is not None
+                        handle = file
+                    elif not files:
+                        raise ValueError(f"Zero files found in TAR archive {path_or_buf}")
+                    else:
+                        raise ValueError(
+                            "Multiple files found in TAR archive. "
+                            f"Only one file per TAR archive: {files}"
+                        )
+    
+            # XZ Compression
+            elif compression == "xz":
+                # error: Argument 1 to "LZMAFile" has incompatible type "Union[str,
+                # BaseBuffer]"; expected "Optional[Union[Union[str, bytes, PathLike[str],
+                # PathLike[bytes]], IO[bytes]], None]"
+                handle = get_lzma_file()(
+                    handle, ioargs.mode, **compression_args  # type: ignore[arg-type]
+                )
+    
+            # Zstd Compression
+            elif compression == "zstd":
+                zstd = import_optional_dependency("zstandard")
+                if "r" in ioargs.mode:
+                    open_args = {"dctx": zstd.ZstdDecompressor(**compression_args)}
+                else:
+                    open_args = {"cctx": zstd.ZstdCompressor(**compression_args)}
+                handle = zstd.open(
+                    handle,
+                    mode=ioargs.mode,
+                    **open_args,
+                )
+    
+            # Unrecognized Compression
+            else:
+                msg = f"Unrecognized compression type: {compression}"
+                raise ValueError(msg)
+    
+            assert not isinstance(handle, str)
+            handles.append(handle)
+    
+        elif isinstance(handle, str):
+            # Check whether the filename is to be opened in binary mode.
+            # Binary mode does not support 'encoding' and 'newline'.
+            if ioargs.encoding and "b" not in ioargs.mode:
+                # Encoding
+>               handle = open(
+                    handle,
+                    ioargs.mode,
+                    encoding=ioargs.encoding,
+                    errors=errors,
+                    newline="",
+                )
+E               FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/test_exp1/scores/scores_original.csv'
+
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/common.py:873: FileNotFoundError
+----------------------------- Captured stdout call -----------------------------
+[scoring] 3 agentes carregados.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'original'.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/generated/Janus-Pro-1B/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/generated/Janus-Pro-1B/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/generated/Janus-Pro-1B/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_csv_has_agent_col0/generated/Janus-Pro-1B/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'Janus-Pro-1B'.
+_______________________ test_scoring_no_all_nan_columns ________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+base_cfg = {'captioning': {'batch_size': 2, 'model': 'deepseek-ai/Janus-Pro-7B', 'model_path': 'deepseek-ai/Janus-Pro-7B'}, 'data...'Janus-Pro-1B'}, {'model_path': 'deepseek-ai/Janus-Pro-7B', 'name': 'Janus-Pro-7B'}], 'num_images_per_prompt': 1}, ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x799601a53160>
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0')
+
+    def test_scoring_no_all_nan_columns(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
+        _mock_scoring_deps(monkeypatch)
+        from pipeline.scoring import run_scoring
+        cfg  = {**base_cfg, "experiment": {**base_cfg["experiment"], "output_dir": str(tmp_path)}}
+        run_scoring(cfg, _make_data_with_generated(mini_apdd_dir, tmp_path))
+>       df = pd.read_csv(os.path.join(str(tmp_path), "test_exp1", "scores", "scores_original.csv"))
+
+tests/test_pipeline.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1026: in read_csv
+    return _read(filepath_or_buffer, kwds)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:620: in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1620: in __init__
+    self._engine = self._make_engine(f, self.engine)
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/parsers/readers.py:1880: in _make_engine
+    self.handles = get_handle(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path_or_buf = '/tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/test_exp1/scores/scores_original.csv'
+mode = 'r'
+
+    @doc(compression_options=_shared_docs["compression_options"] % "path_or_buf")
+    def get_handle(
+        path_or_buf: FilePath | BaseBuffer,
+        mode: str,
+        *,
+        encoding: str | None = None,
+        compression: CompressionOptions | None = None,
+        memory_map: bool = False,
+        is_text: bool = True,
+        errors: str | None = None,
+        storage_options: StorageOptions | None = None,
+    ) -> IOHandles[str] | IOHandles[bytes]:
+        """
+        Get file handle for given path/buffer and mode.
+    
+        Parameters
+        ----------
+        path_or_buf : str or file handle
+            File path or object.
+        mode : str
+            Mode to open path_or_buf with.
+        encoding : str or None
+            Encoding to use.
+        {compression_options}
+    
+               May be a dict with key 'method' as compression mode
+               and other keys as compression options if compression
+               mode is 'zip'.
+    
+               Passing compression options as keys in dict is
+               supported for compression modes 'gzip', 'bz2', 'zstd' and 'zip'.
+    
+            .. versionchanged:: 1.4.0 Zstandard support.
+    
+        memory_map : bool, default False
+            See parsers._parser_params for more information. Only used by read_csv.
+        is_text : bool, default True
+            Whether the type of the content passed to the file/buffer is string or
+            bytes. This is not the same as `"b" not in mode`. If a string content is
+            passed to a binary file/buffer, a wrapper is inserted.
+        errors : str, default 'strict'
+            Specifies how encoding and decoding errors are to be handled.
+            See the errors argument for :func:`open` for a full list
+            of options.
+        storage_options: StorageOptions = None
+            Passed to _get_filepath_or_buffer
+    
+        Returns the dataclass IOHandles
+        """
+        # Windows does not default to utf-8. Set to utf-8 for a consistent behavior
+        encoding = encoding or "utf-8"
+    
+        errors = errors or "strict"
+    
+        # read_csv does not know whether the buffer is opened in binary/text mode
+        if _is_binary_mode(path_or_buf, mode) and "b" not in mode:
+            mode += "b"
+    
+        # validate encoding and errors
+        codecs.lookup(encoding)
+        if isinstance(errors, str):
+            codecs.lookup_error(errors)
+    
+        # open URLs
+        ioargs = _get_filepath_or_buffer(
+            path_or_buf,
+            encoding=encoding,
+            compression=compression,
+            mode=mode,
+            storage_options=storage_options,
+        )
+    
+        handle = ioargs.filepath_or_buffer
+        handles: list[BaseBuffer]
+    
+        # memory mapping needs to be the first step
+        # only used for read_csv
+        handle, memory_map, handles = _maybe_memory_map(handle, memory_map)
+    
+        is_path = isinstance(handle, str)
+        compression_args = dict(ioargs.compression)
+        compression = compression_args.pop("method")
+    
+        # Only for write methods
+        if "r" not in mode and is_path:
+            check_parent_directory(str(handle))
+    
+        if compression:
+            if compression != "zstd":
+                # compression libraries do not like an explicit text-mode
+                ioargs.mode = ioargs.mode.replace("t", "")
+            elif compression == "zstd" and "b" not in ioargs.mode:
+                # python-zstandard defaults to text mode, but we always expect
+                # compression libraries to use binary mode.
+                ioargs.mode += "b"
+    
+            # GZ Compression
+            if compression == "gzip":
+                if isinstance(handle, str):
+                    # error: Incompatible types in assignment (expression has type
+                    # "GzipFile", variable has type "Union[str, BaseBuffer]")
+                    handle = gzip.GzipFile(  # type: ignore[assignment]
+                        filename=handle,
+                        mode=ioargs.mode,
+                        **compression_args,
+                    )
+                else:
+                    handle = gzip.GzipFile(
+                        # No overload variant of "GzipFile" matches argument types
+                        # "Union[str, BaseBuffer]", "str", "Dict[str, Any]"
+                        fileobj=handle,  # type: ignore[call-overload]
+                        mode=ioargs.mode,
+                        **compression_args,
+                    )
+    
+            # BZ Compression
+            elif compression == "bz2":
+                # Overload of "BZ2File" to handle pickle protocol 5
+                # "Union[str, BaseBuffer]", "str", "Dict[str, Any]"
+                handle = get_bz2_file()(  # type: ignore[call-overload]
+                    handle,
+                    mode=ioargs.mode,
+                    **compression_args,
+                )
+    
+            # ZIP Compression
+            elif compression == "zip":
+                # error: Argument 1 to "_BytesZipFile" has incompatible type
+                # "Union[str, BaseBuffer]"; expected "Union[Union[str, PathLike[str]],
+                # ReadBuffer[bytes], WriteBuffer[bytes]]"
+                handle = _BytesZipFile(
+                    handle, ioargs.mode, **compression_args  # type: ignore[arg-type]
+                )
+                if handle.buffer.mode == "r":
+                    handles.append(handle)
+                    zip_names = handle.buffer.namelist()
+                    if len(zip_names) == 1:
+                        handle = handle.buffer.open(zip_names.pop())
+                    elif not zip_names:
+                        raise ValueError(f"Zero files found in ZIP file {path_or_buf}")
+                    else:
+                        raise ValueError(
+                            "Multiple files found in ZIP file. "
+                            f"Only one file per ZIP: {zip_names}"
+                        )
+    
+            # TAR Encoding
+            elif compression == "tar":
+                compression_args.setdefault("mode", ioargs.mode)
+                if isinstance(handle, str):
+                    handle = _BytesTarFile(name=handle, **compression_args)
+                else:
+                    # error: Argument "fileobj" to "_BytesTarFile" has incompatible
+                    # type "BaseBuffer"; expected "Union[ReadBuffer[bytes],
+                    # WriteBuffer[bytes], None]"
+                    handle = _BytesTarFile(
+                        fileobj=handle, **compression_args  # type: ignore[arg-type]
+                    )
+                assert isinstance(handle, _BytesTarFile)
+                if "r" in handle.buffer.mode:
+                    handles.append(handle)
+                    files = handle.buffer.getnames()
+                    if len(files) == 1:
+                        file = handle.buffer.extractfile(files[0])
+                        assert file is not None
+                        handle = file
+                    elif not files:
+                        raise ValueError(f"Zero files found in TAR archive {path_or_buf}")
+                    else:
+                        raise ValueError(
+                            "Multiple files found in TAR archive. "
+                            f"Only one file per TAR archive: {files}"
+                        )
+    
+            # XZ Compression
+            elif compression == "xz":
+                # error: Argument 1 to "LZMAFile" has incompatible type "Union[str,
+                # BaseBuffer]"; expected "Optional[Union[Union[str, bytes, PathLike[str],
+                # PathLike[bytes]], IO[bytes]], None]"
+                handle = get_lzma_file()(
+                    handle, ioargs.mode, **compression_args  # type: ignore[arg-type]
+                )
+    
+            # Zstd Compression
+            elif compression == "zstd":
+                zstd = import_optional_dependency("zstandard")
+                if "r" in ioargs.mode:
+                    open_args = {"dctx": zstd.ZstdDecompressor(**compression_args)}
+                else:
+                    open_args = {"cctx": zstd.ZstdCompressor(**compression_args)}
+                handle = zstd.open(
+                    handle,
+                    mode=ioargs.mode,
+                    **open_args,
+                )
+    
+            # Unrecognized Compression
+            else:
+                msg = f"Unrecognized compression type: {compression}"
+                raise ValueError(msg)
+    
+            assert not isinstance(handle, str)
+            handles.append(handle)
+    
+        elif isinstance(handle, str):
+            # Check whether the filename is to be opened in binary mode.
+            # Binary mode does not support 'encoding' and 'newline'.
+            if ioargs.encoding and "b" not in ioargs.mode:
+                # Encoding
+>               handle = open(
+                    handle,
+                    ioargs.mode,
+                    encoding=ioargs.encoding,
+                    errors=errors,
+                    newline="",
+                )
+E               FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/test_exp1/scores/scores_original.csv'
+
+/home/larissadg/.local/lib/python3.10/site-packages/pandas/io/common.py:873: FileNotFoundError
+----------------------------- Captured stdout call -----------------------------
+[scoring] 3 agentes carregados.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/mini_apdd0/images/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'original'.
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/generated/Janus-Pro-1B/img_000.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/generated/Janus-Pro-1B/img_001.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/generated/Janus-Pro-1B/img_002.jpg: Numpy is not available
+  [!] Erro ao abrir /tmp/pytest-of-larissadg/pytest-1/test_scoring_no_all_nan_column0/generated/Janus-Pro-1B/img_003.jpg: Numpy is not available
+  [!] Nenhuma amostra pontuada para fonte 'Janus-Pro-1B'.
+__________________________ test_sampling_correct_size __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_sampling_correct_size0')
+
+    def test_sampling_correct_size(mini_apdd_dir, tmp_path):
+        cfg    = _make_cfg(mini_apdd_dir, tmp_path, n=6)
+        loader = run_sampling(cfg)
+>       total  = sum(len(b["filename"]) for b in loader)
+
+tests/test_sampling.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sampling.py:28: in <genexpr>
+    total  = sum(len(b["filename"]) for b in loader)
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601920070>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+____________________ test_sampling_batch_has_required_keys _____________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_sampling_batch_has_requir0')
+
+    def test_sampling_batch_has_required_keys(mini_apdd_dir, tmp_path):
+        cfg   = _make_cfg(mini_apdd_dir, tmp_path)
+>       batch = next(iter(run_sampling(cfg)))
+
+tests/test_sampling.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A89150>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+___________________________ test_sampling_stratified ___________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_sampling_stratified0')
+
+    def test_sampling_stratified(mini_apdd_dir, tmp_path):
+        cfg    = _make_cfg(mini_apdd_dir, tmp_path, strategy="stratified", n=6)
+        loader = run_sampling(cfg)
+>       total  = sum(len(b["filename"]) for b in loader)
+
+tests/test_sampling.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sampling.py:43: in <genexpr>
+    total  = sum(len(b["filename"]) for b in loader)
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601A514B0>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+__________________________ test_sampling_reproducible __________________________
+
+mini_apdd_dir = '/tmp/pytest-of-larissadg/pytest-1/mini_apdd0'
+tmp_path = PosixPath('/tmp/pytest-of-larissadg/pytest-1/test_sampling_reproducible0')
+
+    def test_sampling_reproducible(mini_apdd_dir, tmp_path):
+        cfg = _make_cfg(mini_apdd_dir, tmp_path, n=6)
+>       l1  = list(run_sampling(cfg))
+
+tests/test_sampling.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:633: in __next__
+    data = self._next_data()
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:677: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+/home/larissadg/.local/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py:51: in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+datasets/apddv2.py:100: in __getitem__
+    image_t = self.transform(image)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:95: in __call__
+    img = t(img)
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/transforms.py:137: in __call__
+    return F.to_tensor(pic)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pic = <PIL.Image.Image image mode=RGB size=224x224 at 0x799601926A10>
+
+    def to_tensor(pic) -> Tensor:
+        """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+        This function does not support torchscript.
+    
+        See :class:`~torchvision.transforms.ToTensor` for more details.
+    
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+    
+        Returns:
+            Tensor: Converted image.
+        """
+        if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+            _log_api_usage_once(to_tensor)
+        if not (F_pil._is_pil_image(pic) or _is_numpy(pic)):
+            raise TypeError(f"pic should be PIL Image or ndarray. Got {type(pic)}")
+    
+        if _is_numpy(pic) and not _is_numpy_image(pic):
+            raise ValueError(f"pic should be 2/3 dimensional. Got {pic.ndim} dimensions.")
+    
+        default_float_dtype = torch.get_default_dtype()
+    
+        if isinstance(pic, np.ndarray):
+            # handle numpy array
+            if pic.ndim == 2:
+                pic = pic[:, :, None]
+    
+            img = torch.from_numpy(pic.transpose((2, 0, 1))).contiguous()
+            # backward compatibility
+            if isinstance(img, torch.ByteTensor):
+                return img.to(dtype=default_float_dtype).div(255)
+            else:
+                return img
+    
+        if accimage is not None and isinstance(pic, accimage.Image):
+            nppic = np.zeros([pic.channels, pic.height, pic.width], dtype=np.float32)
+            pic.copyto(nppic)
+            return torch.from_numpy(nppic).to(dtype=default_float_dtype)
+    
+        # handle PIL Image
+        mode_to_nptype = {"I": np.int32, "I;16": np.int16, "F": np.float32}
+>       img = torch.from_numpy(np.array(pic, mode_to_nptype.get(pic.mode, np.uint8), copy=True))
+E       RuntimeError: Numpy is not available
+
+/home/larissadg/.local/lib/python3.10/site-packages/torchvision/transforms/functional.py:166: RuntimeError
+=============================== warnings summary ===============================
+../../../../../../../../home/larissadg/.local/lib/python3.10/site-packages/torchvision/models/detection/anchor_utils.py:63
+  /home/larissadg/.local/lib/python3.10/site-packages/torchvision/models/detection/anchor_utils.py:63: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at ../torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device("cpu"),
+
+tests/test_dataset_apdd.py::test_sample_stratified
+tests/test_sampling.py::test_sampling_stratified
+  /mnt/c/Users/jggom/Documents/Estudos/Mestrado/sourcecode_refactor/datasets/apddv2.py:196: FutureWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+    .apply(lambda g: g.sample(min(len(g), per_category), random_state=seed))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dataset_apdd.py::test_getitem_keys - RuntimeError: Numpy is...
+FAILED tests/test_dataset_apdd.py::test_getitem_image_is_tensor - RuntimeErro...
+FAILED tests/test_dataset_apdd.py::test_getitem_score_is_float - RuntimeError...
+FAILED tests/test_dataset_apdd.py::test_getitem_caption_present - RuntimeErro...
+FAILED tests/test_dataset_apdd.py::test_getitem_category_present - RuntimeErr...
+FAILED tests/test_dataset_apdd.py::test_sample_is_reproducible - RuntimeError...
+FAILED tests/test_dataset_apdd.py::test_sample_different_seeds - RuntimeError...
+FAILED tests/test_dataset_apdd.py::test_sample_stratified - RuntimeError: Num...
+FAILED tests/test_dataset_apdd.py::test_sample_uniform_bins_reproducible - Ru...
+FAILED tests/test_dataset_apdd.py::test_sample_returns_valid_dataset - Runtim...
+FAILED tests/test_dataset_gif_frames.py::test_getitem_keys - RuntimeError: Nu...
+FAILED tests/test_dataset_gif_frames.py::test_getitem_saves_png - RuntimeErro...
+FAILED tests/test_dataset_gif_frames.py::test_sample_sequential_preserves_order
+FAILED tests/test_dataset_gif_frames.py::test_sample_random_reproducible - Ru...
+FAILED tests/test_dataset_image.py::test_getitem_keys - RuntimeError: Numpy i...
+FAILED tests/test_dataset_image.py::test_getitem_saves_png - RuntimeError: Nu...
+FAILED tests/test_dataset_image.py::test_level_zero_is_original - RuntimeErro...
+FAILED tests/test_dataset_image.py::test_levels_truncated_by_n - RuntimeError...
+FAILED tests/test_dataset_mnist.py::test_getitem_keys - RuntimeError: Numpy i...
+FAILED tests/test_dataset_mnist.py::test_getitem_saves_png - RuntimeError: Nu...
+FAILED tests/test_dataset_mnist.py::test_sample_stratified_balanced - Runtime...
+FAILED tests/test_dataset_mnist.py::test_sample_random_reproducible - Runtime...
+FAILED tests/test_dataset_portinari.py::test_getitem_keys_without_human_captions
+FAILED tests/test_dataset_portinari.py::test_getitem_keys_with_human_captions
+FAILED tests/test_dataset_portinari.py::test_sample_random_size_and_reproducibility
+FAILED tests/test_e2e.py::test_full_pipeline_exp1 - RuntimeError: Numpy is no...
+FAILED tests/test_pipeline.py::test_captioning_returns_list - RuntimeError: N...
+FAILED tests/test_pipeline.py::test_captioning_output_size - RuntimeError: Nu...
+FAILED tests/test_pipeline.py::test_captioning_output_has_caption - RuntimeEr...
+FAILED tests/test_pipeline.py::test_scoring_creates_csv - assert False
+FAILED tests/test_pipeline.py::test_scoring_csv_has_agent_columns - FileNotFo...
+FAILED tests/test_pipeline.py::test_scoring_no_all_nan_columns - FileNotFound...
+FAILED tests/test_sampling.py::test_sampling_correct_size - RuntimeError: Num...
+FAILED tests/test_sampling.py::test_sampling_batch_has_required_keys - Runtim...
+FAILED tests/test_sampling.py::test_sampling_stratified - RuntimeError: Numpy...
+FAILED tests/test_sampling.py::test_sampling_reproducible - RuntimeError: Num...
+36 failed, 25 passed, 3 warnings in 6.47s

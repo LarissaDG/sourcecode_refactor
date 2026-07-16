@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 #SBATCH --job-name=run_experiments
 #SBATCH --time=20:00:00
 #SBATCH -N 1
@@ -7,16 +7,16 @@
 
 set -x
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# â”€â”€ Paths â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV="/sonic_home/larissa.gomide/venv"
 VENV_APDDV2="/sonic_home/larissa.gomide/apddv2"
 
-# ── Módulos ───────────────────────────────────────────────────────────────────
+# â”€â”€ MÃ³dulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module load python3.12.1
 module load cuda/11.8.0
 
-# ── Variáveis de cache ────────────────────────────────────────────────────────
+# â”€â”€ VariÃ¡veis de cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export HOME="/sonic_home/larissa.gomide/minha_home"
 export HF_HOME="$HOME/.cache/huggingface"
 export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
@@ -25,7 +25,7 @@ export MPLCONFIGDIR="$HOME/.matplotlib"
 
 cd "$ROOT"
 
-# ── Função auxiliar ───────────────────────────────────────────────────────────
+# â”€â”€ FunÃ§Ã£o auxiliar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 run_exp() {
     local CONFIG="$1"
     local STEPS_JANUS="$2"   # steps que rodam no venv (Janus)
@@ -52,56 +52,56 @@ run_exp() {
     deactivate
 }
 
-# ── Experimentos ──────────────────────────────────────────────────────────────
+# â”€â”€ Experimentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Altere "--test" para "" quando quiser rodar completo
 TEST="--test"
 
-# Exp 1 — APDDv2: todas as etapas
+# Exp 1 â€” APDDv2: todas as etapas
 run_exp "configs/exp1_apdd.yaml" \
         "sampling,captioning,generation" \
         "scoring" \
         "$TEST"
 
-# Exp 2a — Portinari (AI captions): todas as etapas
+# Exp 2a â€” Portinari (AI captions): todas as etapas
 run_exp "configs/exp2a_portinari.yaml" \
         "sampling,captioning,generation" \
         "scoring" \
         "$TEST"
 
-# Exp 2b — Portinari (human captions): sem captioning
+# Exp 2b â€” Portinari (human captions): sem captioning
 run_exp "configs/exp2b_portinari_human.yaml" \
         "sampling,generation" \
         "scoring" \
         "$TEST"
 
-# Exp 3 — MNIST: só scoring
+# Exp 3 â€” MNIST: sÃ³ scoring
 run_exp "configs/exp3_mnist.yaml" \
         "" \
         "sampling,scoring" \
         "$TEST"
 
-# Exp 4 — Ruído: só scoring
+# Exp 4 â€” RuÃ­do: sÃ³ scoring
 run_exp "configs/exp4_noise.yaml" \
         "" \
         "sampling,scoring" \
         "$TEST"
 
-# Exp 5a — Temporal sequencial: só scoring
+# Exp 5a â€” Temporal sequencial: sÃ³ scoring
 run_exp "configs/exp5a_temporal.yaml" \
         "" \
         "sampling,scoring" \
         "$TEST"
 
-# Exp 5b — Temporal com erro: só scoring
+# Exp 5b â€” Temporal com erro: sÃ³ scoring
 run_exp "configs/exp5b_temporal_error.yaml" \
         "" \
         "sampling,scoring" \
         "$TEST"
 
-# ── Notificação ───────────────────────────────────────────────────────────────
+# â”€â”€ NotificaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 source "$VENV/bin/activate"
 python3 scripts/manda_email.py \
-    "Experimentos concluídos — Phocus4" \
+    "Experimentos concluÃ­dos â€” Phocus4" \
     "slurm_run_experiments.sh finalizado. Resultados em: $ROOT/outputs/"
 deactivate
 

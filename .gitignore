@@ -7,4 +7,3 @@ src/pipelines
 *.log
 *.pyc
 **/__pycache__/
-*.txt
