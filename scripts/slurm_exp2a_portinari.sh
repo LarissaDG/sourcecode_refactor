@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 #SBATCH --job-name=exp2a_portinari
 #SBATCH --time=16:00:00
 #SBATCH -N 1
@@ -35,7 +35,7 @@ python3 run.py --config configs/exp2a_portinari.yaml --steps scoring \
 deactivate
 
 source "$VENV/bin/activate"
-python3 scripts/manda_email.py "exp2a_portinari concluído — Phocus4" "Resultados em: $ROOT/outputs/exp2a_portinari/"
+python3 scripts/manda_email.py "exp2a_portinari concluÃ­do â€” Phocus4" "Resultados em: $ROOT/outputs/exp2a_portinari/"
 deactivate
 
 echo "=== FINALIZADO ===" && hostname

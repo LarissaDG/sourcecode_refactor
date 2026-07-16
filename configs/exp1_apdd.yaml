@@ -7,7 +7,7 @@ experiment:
 
 dataset:
   name: apdd
-  path: "/sonic_home/larissa.gomide/data/apddv2/"
+  path: "/sonic_home/larissa.gomide/sourcecode_refactor/data/apddv2/"
 
 pipeline:
   steps:

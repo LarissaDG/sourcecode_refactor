@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 #SBATCH --job-name=exp1_apdd
 #SBATCH --time=16:00:00
 #SBATCH -N 1
@@ -35,7 +35,7 @@ python3 run.py --config configs/exp1_apdd.yaml --steps scoring \
 deactivate
 
 source "$VENV/bin/activate"
-python3 scripts/manda_email.py "exp1_apdd concluído — Phocus4" "Resultados em: $ROOT/outputs/exp1_apdd/"
+python3 scripts/manda_email.py "exp1_apdd concluÃ­do â€” Phocus4" "Resultados em: $ROOT/outputs/exp1_apdd/"
 deactivate
 
 echo "=== FINALIZADO ===" && hostname
