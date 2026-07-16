@@ -1,4 +1,4 @@
-# Configurações globais — sobrescritas pelos YAMLs de cada experimento
+﻿# ConfiguraÃ§Ãµes globais â€” sobrescritas pelos YAMLs de cada experimento
 
 experiment:
   name: "base"
@@ -10,7 +10,7 @@ dataset:
   path: null           # caminho para a base de dados
 
 pipeline:
-  steps:               # Ordem e ativação das caixinhas
+  steps:               # Ordem e ativaÃ§Ã£o das caixinhas
     sampling:   true
     captioning: false
     generation: false
@@ -36,7 +36,7 @@ generation:
 
 scoring:
   weights_dir: null        # caminho para a pasta com os pesos do ArtClip
-  agents:                  # quais agentes rodar (drop NaN é feito automaticamente)
+  agents:                  # quais agentes rodar (drop NaN Ã© feito automaticamente)
     - name: "score"
       weight_file: "1.Score/AesCLIP_reg_weight--e4-train0.4393-test0.6835_best.pth"
     - name: "theme"

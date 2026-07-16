@@ -1,8 +1,8 @@
-# ─────────────────────────────────────────────
-# EXP 3 — MNIST: score only (sem caption nem geração)
-# Objetivo: mostrar que ArtCLIP dá notas baixas para dígitos (não-artístico)
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 3 â€” MNIST: score only (sem caption nem geraÃ§Ã£o)
+# Objetivo: mostrar que ArtCLIP dÃ¡ notas baixas para dÃ­gitos (nÃ£o-artÃ­stico)
 # Contrastar com scores humanos do APDDv2 (exp1)
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp3_mnist"
 
@@ -22,4 +22,4 @@ sampling:
   strategy: "stratified"
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"

@@ -1,8 +1,8 @@
-# ─────────────────────────────────────────────
-# EXP 5b — Análise temporal: erro procedural persistente
-# Introduz corrupção a partir de um frame fixo (persiste nos seguintes)
-# Objetivo: mostrar que ArtCLIP detecta degradação intencional
-# ─────────────────────────────────────────────
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 5b â€” AnÃ¡lise temporal: erro procedural persistente
+# Introduz corrupÃ§Ã£o a partir de um frame fixo (persiste nos seguintes)
+# Objetivo: mostrar que ArtCLIP detecta degradaÃ§Ã£o intencional
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp5b_temporal_error"
 
@@ -20,9 +20,9 @@ pipeline:
 sampling:
   strategy: "sequential_with_error"
   n_samples: 500
-  error_frame: 12          # frame a partir do qual o erro é introduzido
-  error_type: "gaussian"   # tipo de ruído (baseado nos resultados do exp4)
-  error_level: 50          # nível de degradação (0-100)
+  error_frame: 12          # frame a partir do qual o erro Ã© introduzido
+  error_type: "gaussian"   # tipo de ruÃ­do (baseado nos resultados do exp4)
+  error_level: 50          # nÃ­vel de degradaÃ§Ã£o (0-100)
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"

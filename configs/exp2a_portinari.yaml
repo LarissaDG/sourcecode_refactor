@@ -1,8 +1,8 @@
-# ─────────────────────────────────────────────
-# EXP 2a — Portinari: pipeline completo (descrições geradas pelo Janus-7B)
-# Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
-# Ignora Description_en — trata como se não existisse (igual ao APDDv2)
-# ─────────────────────────────────────────────
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 2a â€” Portinari: pipeline completo (descriÃ§Ãµes geradas pelo Janus-7B)
+# Sampling â†’ Caption (Janus-7B) â†’ Generate (Janus-1B + Janus-7B) â†’ Score
+# Ignora Description_en â€” trata como se nÃ£o existisse (igual ao APDDv2)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp2a_portinari"
 
@@ -23,4 +23,4 @@ sampling:
   strategy: "random"
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"

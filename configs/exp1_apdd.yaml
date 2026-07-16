@@ -1,7 +1,7 @@
-# ─────────────────────────────────────────────
-# EXP 1 — APDDv2: pipeline completo
-# Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
-# ─────────────────────────────────────────────
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 1 â€” APDDv2: pipeline completo
+# Sampling â†’ Caption (Janus-7B) â†’ Generate (Janus-1B + Janus-7B) â†’ Score
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp1_apdd"
 
@@ -22,5 +22,5 @@ sampling:
   n_bins: 30
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"
 
