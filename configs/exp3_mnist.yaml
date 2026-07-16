@@ -22,4 +22,4 @@ sampling:
   strategy: "stratified"
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
