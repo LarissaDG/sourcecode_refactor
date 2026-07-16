@@ -50,7 +50,7 @@ cd "$ROOT"
 
 echo "=== [1/3] Portinari ==="
 python3 scripts/download_portinari.py --out "$DATA_DIR/portinari" \
-    || { echo "ERRO: download_portinari.py falhou"; exit 1; }
+    || echo "AVISO: download_portinari.py falhou (continue com MNIST e videos)"
 
 echo "=== Traducao Portinari ==="
 python3 scripts/portinari_translate.py \
