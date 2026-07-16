@@ -53,7 +53,7 @@ def run_captioning(cfg, loader: DataLoader) -> list:
     o campo 'caption' já vem preenchido e esta caixinha é pulada pelo pipeline.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_path = cfg["captioning"].get("model_path", "deepseek-ai/Janus-Pro-7B")
+    model_path = cfg["captioning"].get("model_path") or "deepseek-ai/Janus-Pro-7B"
     model, processor = _load_janus(model_path, device)
 
     results = []

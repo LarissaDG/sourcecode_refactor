@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=download_data
 #SBATCH --time=08:00:00
 #SBATCH -N 1
@@ -7,15 +7,10 @@
 
 set -x
 
-# â”€â”€ Paths â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
 DATA_DIR="/sonic_home/larissa.gomide/sourcecode_refactor/data"
 
-# â”€â”€ MÃ³dulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-module load python3.12.1
-
-# â”€â”€ VariÃ¡veis de cache (evita escrever em $HOME do cluster) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export HOME="/sonic_home/larissa.gomide/minha_home"
 export HF_HOME="$HOME/.cache/huggingface"
 export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
@@ -23,7 +18,22 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export MPLCONFIGDIR="$HOME/.matplotlib"
 mkdir -p "$HF_HOME" "$MPLCONFIGDIR"
 
-# â”€â”€ Cria venv de download (sÃ³ na primeira vez) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+notify() {
+    local code=$?
+    if [ $code -eq 0 ]; then
+        source "$VENV_DOWNLOAD/bin/activate"
+        python3 scripts/manda_email.py \
+            "Download concluido - Phocus4" \
+            "download_data job finalizado com sucesso. Datasets em: $DATA_DIR"
+    else
+        source "$VENV_DOWNLOAD/bin/activate"
+        python3 scripts/manda_email.py \
+            "Download FALHOU - Phocus4" \
+            "Job abortou com erro (codigo $code). Verifique o log: $ROOT/slurm-${SLURM_JOB_ID}.out"
+    fi
+}
+trap notify EXIT
+
 if [ ! -d "$VENV_DOWNLOAD" ]; then
     python3 -m venv "$VENV_DOWNLOAD"
 fi
@@ -36,14 +46,13 @@ pip install --quiet --no-cache-dir \
     transformers sentencepiece sacremoses \
     Pillow
 
-# â”€â”€ Download dos datasets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 cd "$ROOT"
 
 echo "=== [1/3] Portinari ==="
 python3 scripts/download_portinari.py --out "$DATA_DIR/portinari" \
     || { echo "ERRO: download_portinari.py falhou"; exit 1; }
 
-echo "=== TraduÃ§Ã£o Portinari (Description_en) ==="
+echo "=== Traducao Portinari ==="
 python3 scripts/portinari_translate.py \
     --csv "$DATA_DIR/portinari/acervoPortinari.csv" \
     --out "$DATA_DIR/portinari/MiniBasePortinari_Translated.csv" \
@@ -54,14 +63,8 @@ echo "=== [2/3] MNIST ==="
 python3 scripts/download_mnist.py --out "$DATA_DIR/mnist" \
     || { echo "ERRO: download_mnist.py falhou"; exit 1; }
 
-echo "=== [3/3] VÃ­deos temporais (@ArtsyLolaCo) ==="
+echo "=== [3/3] Videos temporais ==="
 python3 scripts/download_temporal.py --out "$DATA_DIR/temporal" \
     || { echo "ERRO: download_temporal.py falhou"; exit 1; }
 
-# â”€â”€ NotificaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-python3 scripts/manda_email.py \
-    "Download concluÃ­do â€” Phocus4" \
-    "download_data job finalizado. Datasets em: $DATA_DIR"
-
-echo "=== FINALIZADO ==="
-hostname
+echo "=== FINALIZADO ===" && hostname

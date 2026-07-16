@@ -25,4 +25,4 @@ sampling:
   error_level: 50          # nÃ­vel de degradaÃ§Ã£o (0-100)
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
