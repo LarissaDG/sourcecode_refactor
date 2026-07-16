@@ -1,12 +1,14 @@
 # ─────────────────────────────────────────────
-# EXP 3a — Portinari: pipeline completo (descrições do Janus-Pro)
+# EXP 2a — Portinari: pipeline completo (descrições geradas pelo Janus-7B)
+# Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
+# Ignora Description_en — trata como se não existisse (igual ao APDDv2)
 # ─────────────────────────────────────────────
 experiment:
-  name: "exp3a_portinari"
+  name: "exp2a_portinari"
 
 dataset:
   name: portinari
-  path: "/data/portinari/"
+  path: "/sonic_home/larissa.gomide/data/portinari/"
   use_human_captions: false
 
 pipeline:
@@ -15,3 +17,10 @@ pipeline:
     captioning: true
     generation: true
     scoring:    true
+
+sampling:
+  n_samples: 500
+  strategy: "random"
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"

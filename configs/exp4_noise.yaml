@@ -1,9 +1,10 @@
 # ─────────────────────────────────────────────
-# EXP 1 — APDDv2: pipeline completo
-# Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
+# EXP 4 — Análise de ruído
+# 500 imagens do APDDv2 × 10 níveis × 3 tipos de ruído → Score
+# Objetivo: curva nível de degradação × queda de score por tipo de ruído
 # ─────────────────────────────────────────────
 experiment:
-  name: "exp1_apdd"
+  name: "exp4_noise"
 
 dataset:
   name: apdd
@@ -12,15 +13,16 @@ dataset:
 pipeline:
   steps:
     sampling:   true
-    captioning: true
-    generation: true
+    captioning: false
+    generation: false
     scoring:    true
 
 sampling:
   n_samples: 500
   strategy: "uniform_bins"
   n_bins: 30
+  noise_types: ["gaussian", "blur", "shapes"]
+  noise_levels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
-

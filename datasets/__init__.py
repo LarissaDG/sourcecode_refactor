@@ -3,6 +3,7 @@ from datasets.portinari import PortinariDataset
 from datasets.mnist import MNISTDataset
 from datasets.gif_frames import GIFFramesDataset
 from datasets.image import ImageDataset
+from datasets.video_frames import VideoFramesDataset
 
 REGISTRY = {
     "apdd":      APDDv2Dataset,
@@ -10,6 +11,7 @@ REGISTRY = {
     "mnist":     MNISTDataset,
     "gif":       GIFFramesDataset,
     "image":     ImageDataset,
+    "video":     VideoFramesDataset,
 }
 
 

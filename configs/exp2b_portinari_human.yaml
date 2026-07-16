@@ -1,13 +1,14 @@
 # ─────────────────────────────────────────────
-# EXP 3b — Portinari com descrições humanas
-# (pula captioning — captions já vêm do CSV)
+# EXP 2b — Portinari com descrições humanas (Description_en)
+# Pula captioning — captions já vêm do CSV traduzido
+# Generate (Janus-1B + Janus-7B) → Score
 # ─────────────────────────────────────────────
 experiment:
-  name: "exp3b_portinari_human"
+  name: "exp2b_portinari_human"
 
 dataset:
   name: portinari
-  path: "/data/portinari/"
+  path: "/sonic_home/larissa.gomide/data/portinari/"
   use_human_captions: true
 
 pipeline:
@@ -20,3 +21,6 @@ pipeline:
 sampling:
   n_samples: 500
   strategy: "random"
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"

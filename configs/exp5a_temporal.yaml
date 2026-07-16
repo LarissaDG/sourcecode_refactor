@@ -1,12 +1,14 @@
 # ─────────────────────────────────────────────
-# EXP 4 — Consistência temporal em GIFs
+# EXP 5a — Análise temporal: consistência de frames contíguos
+# Frames sequenciais de vídeos de speed-drawing → Score
+# Objetivo: mostrar que frames consecutivos têm notas parecidas
 # ─────────────────────────────────────────────
 experiment:
-  name: "exp4_temporal"
+  name: "exp5a_temporal"
 
 dataset:
-  name: gif
-  path: "/data/gifs/"
+  name: video
+  path: "/sonic_home/larissa.gomide/data/temporal/"
 
 pipeline:
   steps:
@@ -17,4 +19,7 @@ pipeline:
 
 sampling:
   strategy: "sequential"
-  n_samples: 500           # total de frames amostrados
+  n_samples: 500
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
