@@ -50,7 +50,7 @@ def download_csv(out_dir: Path) -> Path:
     return csv_path
 
 
-def download_zips(zip_dir: Path) -> list[Path]:
+def download_zips(zip_dir: Path, done_file: Path) -> list[Path]:
     if not LINKS_FILE.exists():
         raise FileNotFoundError(f"Arquivo de links não encontrado: {LINKS_FILE}")
 
@@ -68,8 +68,7 @@ def download_zips(zip_dir: Path) -> list[Path]:
     print(f"Baixando {len(ids)} ZIPs → {zip_dir}")
     zip_dir.mkdir(parents=True, exist_ok=True)
 
-    # Arquivo de controle: guarda IDs já baixados com sucesso
-    done_file = zip_dir / ".downloaded_ids"
+    # done_file fica fora de zip_dir para sobreviver ao rmtree
     done = set(done_file.read_text().splitlines()) if done_file.exists() else set()
 
     falhas = []
@@ -85,17 +84,21 @@ def download_zips(zip_dir: Path) -> list[Path]:
             falhas.append(gid)
         else:
             done.add(gid)
-            done_file.write_text("\n".join(done))
+            done_file.write_text("\n".join(sorted(done)))
 
     if falhas:
-        print(f"\n  {len(falhas)} falha(s). Tentando novamente...")
+        print(f"\n  {len(falhas)} falha(s). Tentando novamente com --fuzzy...")
+        still_failing = []
         for gid in falhas:
-            ret = os.system(f'gdown "{gid}" --output "{zip_dir}/" --fuzzy')
+            ret = os.system(f'gdown --fuzzy "https://drive.google.com/file/d/{gid}/view" --output "{zip_dir}/"')
             if ret != 0:
                 print(f"  ERRO persistente: {gid}")
+                still_failing.append(gid)
             else:
                 done.add(gid)
-                done_file.write_text("\n".join(done))
+                done_file.write_text("\n".join(sorted(done)))
+        if still_failing:
+            print(f"\n  {len(still_failing)} ZIP(s) não baixado(s): {still_failing}")
 
     zips = list(zip_dir.glob("*.zip"))
     print(f"  {len(zips)} arquivo(s) ZIP baixado(s).")
@@ -188,12 +191,13 @@ def main():
         csv_path = download_csv(out)
 
     if not args.skip_images:
-        zips  = download_zips(zip_dir)
+        done_file = out / ".downloaded_ids"   # fora de zip_dir — sobrevive ao rmtree
+        zips  = download_zips(zip_dir, done_file)
         total = extract_zips(zips, images_dir)
         print(f"\nTotal de imagens extraídas: {total}")
         if not args.keep_zips:
             shutil.rmtree(zip_dir)
-            print("ZIPs temporários removidos.")
+            print("ZIPs temporários removidos (progresso salvo em .downloaded_ids).")
 
     if not args.skip_csv and not args.skip_images:
         verify(csv_path, images_dir)
