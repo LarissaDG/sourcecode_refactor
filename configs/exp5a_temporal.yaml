@@ -1,8 +1,8 @@
-# ─────────────────────────────────────────────
-# EXP 5a — Análise temporal: consistência de frames contíguos
-# Frames sequenciais de vídeos de speed-drawing → Score
-# Objetivo: mostrar que frames consecutivos têm notas parecidas
-# ─────────────────────────────────────────────
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 5a â€” AnÃ¡lise temporal: consistÃªncia de frames contÃ­guos
+# Frames sequenciais de vÃ­deos de speed-drawing â†’ Score
+# Objetivo: mostrar que frames consecutivos tÃªm notas parecidas
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp5a_temporal"
 
@@ -22,4 +22,4 @@ sampling:
   n_samples: 500
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"

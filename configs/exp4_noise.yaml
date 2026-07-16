@@ -1,8 +1,8 @@
-# ─────────────────────────────────────────────
-# EXP 4 — Análise de ruído
-# 500 imagens do APDDv2 × 10 níveis × 3 tipos de ruído → Score
-# Objetivo: curva nível de degradação × queda de score por tipo de ruído
-# ─────────────────────────────────────────────
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# EXP 4 â€” AnÃ¡lise de ruÃ­do
+# 500 imagens do APDDv2 Ã— 10 nÃ­veis Ã— 3 tipos de ruÃ­do â†’ Score
+# Objetivo: curva nÃ­vel de degradaÃ§Ã£o Ã— queda de score por tipo de ruÃ­do
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 experiment:
   name: "exp4_noise"
 
@@ -25,4 +25,4 @@ sampling:
   noise_levels: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 scoring:
-  weights_dir: "/sonic_home/larissa.gomide/data/apddv2/model_weights/"
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/model_weights/"
