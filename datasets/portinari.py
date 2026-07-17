@@ -83,19 +83,25 @@ class PortinariDataset(Dataset):
         row = self.df.iloc[idx]
         filename = str(row[self.filename_col]).strip()
         path = os.path.join(self.images_dir, filename)
-        image = Image.open(path).convert("RGB")
+
+        try:
+            image = Image.open(path).convert("RGB")
+        except FileNotFoundError:
+            print(f"AVISO: imagem não encontrada, pulando: {path}")
+            image = Image.new("RGB", (224, 224), color=(0, 0, 0))
+
         image_t = self.transform(image)
 
-        sample = {
+        caption = ""
+        if self.use_human_captions and self.caption_col and pd.notna(row[self.caption_col]):
+            caption = str(row[self.caption_col])
+
+        return {
             "image":    image_t,
             "filename": filename,
             "path":     path,
+            "caption":  caption,
         }
-
-        if self.use_human_captions and self.caption_col and pd.notna(row[self.caption_col]):
-            sample["caption"] = str(row[self.caption_col])
-
-        return sample
 
     @staticmethod
     def _default_transform() -> transforms.Compose:
