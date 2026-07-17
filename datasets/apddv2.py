@@ -117,21 +117,23 @@ class APDDv2Dataset(Dataset):
             "noise_level": noise_level,
         }
 
-        if self.score_col:
-            sample["score"] = float(row[self.score_col])
+        sample["score"] = float(row[self.score_col]) if self.score_col else float("nan")
 
-        # Adiciona atributos estéticos (sempre inclui a chave para manter batch consistente)
+        # Sempre inclui todas as chaves para manter dicts do batch consistentes
         for attr in AESTHETIC_ATTRIBUTES:
             val = row[attr] if attr in row.index else float("nan")
             sample[attr.lower()] = float(val) if pd.notna(val) else float("nan")
 
-        # Comentário linguístico (quando disponível — usado no Exp 3b)
-        if self.comment_col and pd.notna(row[self.comment_col]):
-            sample["caption"] = str(row[self.comment_col])
-
-        # Categoria artística
-        if self.category_col and pd.notna(row[self.category_col]):
-            sample["category"] = str(row[self.category_col])
+        sample["caption"] = (
+            str(row[self.comment_col])
+            if self.comment_col and pd.notna(row[self.comment_col])
+            else ""
+        )
+        sample["category"] = (
+            str(row[self.category_col])
+            if self.category_col and pd.notna(row[self.category_col])
+            else ""
+        )
 
         return sample
 

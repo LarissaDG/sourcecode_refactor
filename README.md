@@ -175,6 +175,37 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 | `exp5a_temporal.yaml` | Video frames sequential → score | skip caption + gen |
 | `exp5b_temporal_error.yaml` | Video frames + persistent error from frame 12 → score | skip caption + gen |
 
+### Running on SLURM (Phocus4)
+
+Submit jobs in this order. Each job sends an e-mail on success or failure.
+
+```bash
+# 1. Download all datasets (Portinari, MNIST, temporal videos)
+sbatch scripts/slurm_download_data.sh
+
+# 2. Download Portinari ZIP 32 separately (rate-limited by Google Drive)
+#    Run after slurm_download_data.sh finishes, or in parallel
+sbatch scripts/link_32.sh
+
+# 3. Run experiments (exp1, exp3, exp4 can start right after download)
+sbatch scripts/slurm_exp1_apdd.sh
+sbatch scripts/slurm_exp2a_portinari.sh
+sbatch scripts/slurm_exp2b_portinari_human.sh
+sbatch scripts/slurm_exp3_mnist.sh
+sbatch scripts/slurm_exp4_noise.sh
+sbatch scripts/slurm_exp5a_temporal.sh
+sbatch scripts/slurm_exp5b_temporal_error.sh
+```
+
+> **Note on ZIP 32:** Google Drive rate-limits downloads when many files are fetched in sequence.
+> `link_32.sh` downloads `obras_de_1001_a_1200.zip` (images 1001–1200) separately.
+> If it also fails, wait a few hours and resubmit.
+
+> **Note on git:** the cluster branch is `slurm`. To pull updates from `main`:
+> ```bash
+> git pull origin main
+> ```
+
 ### Clean outputs
 
 ```bash

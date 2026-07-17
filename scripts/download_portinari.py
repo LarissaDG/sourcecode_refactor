@@ -87,10 +87,12 @@ def download_zips(zip_dir: Path, done_file: Path) -> list[Path]:
             done_file.write_text("\n".join(sorted(done)))
 
     if falhas:
-        print(f"\n  {len(falhas)} falha(s). Tentando novamente com --fuzzy...")
+        import time
+        print(f"\n  {len(falhas)} falha(s). Aguardando 60s e tentando novamente...")
+        time.sleep(60)
         still_failing = []
         for gid in falhas:
-            ret = os.system(f'gdown --fuzzy "https://drive.google.com/file/d/{gid}/view" --output "{zip_dir}/"')
+            ret = os.system(f'gdown "{gid}" --output "{zip_dir}/"')
             if ret != 0:
                 print(f"  ERRO persistente: {gid}")
                 still_failing.append(gid)
