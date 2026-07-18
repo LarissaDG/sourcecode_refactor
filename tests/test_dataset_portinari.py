@@ -14,7 +14,8 @@ def test_getitem_keys_without_human_captions(mini_portinari_dir):
     assert "image" in item
     assert "filename" in item
     assert "path" in item
-    assert "caption" not in item
+    assert "caption" in item
+    assert item["caption"] == ""
 
 
 def test_getitem_keys_with_human_captions(mini_portinari_dir):
