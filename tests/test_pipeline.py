@@ -168,7 +168,7 @@ def test_scoring_csv_has_agent_columns(mini_apdd_dir, base_cfg, monkeypatch, tmp
     cfg  = {**base_cfg, "experiment": {**base_cfg["experiment"], "output_dir": str(tmp_path)}}
     run_scoring(cfg, _make_data_with_generated(mini_apdd_dir, tmp_path))
     df = pd.read_csv(os.path.join(str(tmp_path), "test_exp1", "scores", "scores_original.csv"))
-    for agent in ["score", "color", "mood"]:
+    for agent in ["Total aesthetic score", "Color", "Mood"]:
         assert agent in df.columns
 
 

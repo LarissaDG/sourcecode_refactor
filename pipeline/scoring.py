@@ -93,7 +93,7 @@ def run_scoring(cfg, data: list) -> None:
             for name, model in agents.items():
                 try:
                     score = _predict(model, image_t)
-                    row[name] = score * 10 if name == "score" else score
+                    row[name] = score * 10 if name == "Total aesthetic score" else score
                 except Exception as e:
                     print(f"  [!] Agente '{name}' falhou em {img_path}: {e}")
                     row[name] = np.nan
