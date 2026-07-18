@@ -56,7 +56,10 @@ def run_scoring(cfg, data: list) -> None:
     agents = {}
     for agent in agents_cfg:
         w_path = os.path.join(weights_dir, agent["weight_file"])
-        agents[agent["name"]] = _load_agent(w_path, base_weight, device)
+        try:
+            agents[agent["name"]] = _load_agent(w_path, base_weight, device)
+        except Exception as e:
+            print(f"  [!] Agente '{agent['name']}' ignorado (erro ao carregar peso): {e}")
     print(f"[scoring] {len(agents)} agentes carregados.")
 
     # ── Detecta quais "fontes" de imagem existem no data ─────────────────────
