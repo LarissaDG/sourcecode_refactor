@@ -39,6 +39,7 @@ if [ ! -d "$VENV_DOWNLOAD" ]; then
 fi
 source "$VENV_DOWNLOAD/bin/activate"
 
+python3 -m ensurepip --upgrade 2>/dev/null || true
 pip install --quiet --upgrade pip
 pip install --quiet --no-cache-dir \
     gdown requests pandas tqdm \

@@ -12,7 +12,8 @@ from datasets.image import ImageDataset
 def test_sample_noise_levels_size(mini_image_dir):
     ds = ImageDataset(root=mini_image_dir)
     levels = [0, 10, 20, 30]
-    subset = ds.sample(n=4, strategy="noise_levels", noise_levels=levels)
+    # 1 imagem base (mini_image_dir tem 1 imagem) × 1 tipo × 4 níveis = 4
+    subset = ds.sample(n=4, strategy="noise_levels", noise_levels=levels, noise_types=["gaussian"])
     assert len(subset) == 4
 
 
@@ -41,19 +42,23 @@ def test_level_zero_is_original(mini_image_dir):
     from PIL import Image
 
     ds = ImageDataset(root=mini_image_dir)
-    subset = ds.sample(n=1, strategy="noise_levels", noise_levels=[0])
+    subset = ds.sample(n=1, strategy="noise_levels", noise_levels=[0], noise_types=["gaussian"])
     item = subset[0]
 
-    original = np.array(Image.open(ds.image_path).convert("RGB"))
+    original_path = ds.df.iloc[0]["image_path"]
+    original = np.array(Image.open(original_path).convert("RGB"))
     level0 = np.array(Image.open(item["path"]).convert("RGB"))
     assert np.array_equal(original, level0)
 
 
-def test_levels_truncated_by_n(mini_image_dir):
+def test_levels_present_in_subset(mini_image_dir):
+    # 1 imagem × 1 tipo × 4 níveis = 4 itens; todos os níveis pedidos estão presentes
     ds = ImageDataset(root=mini_image_dir)
-    subset = ds.sample(n=2, strategy="noise_levels", noise_levels=[0, 10, 20, 30])
-    assert len(subset) == 2
-    assert [subset[i]["noise_level"] for i in range(len(subset))] == [0, 10]
+    levels = [0, 10, 20, 30]
+    subset = ds.sample(n=4, strategy="noise_levels", noise_levels=levels, noise_types=["gaussian"])
+    assert len(subset) == 4
+    found_levels = sorted({subset[i]["noise_level"] for i in range(len(subset))})
+    assert found_levels == levels
 
 
 def test_sample_unknown_strategy(mini_image_dir):
