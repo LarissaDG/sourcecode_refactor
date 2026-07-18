@@ -170,9 +170,9 @@ def base_cfg(mini_apdd_dir, tmp_path_factory):
             "weights_dir": "/fake/weights",
             "artclip_base_weight": "0.ArtCLIP/fake_best.pth",
             "agents": [
-                {"name": "score",      "weight_file": "1.Score/fake.pth"},
-                {"name": "color",      "weight_file": "8.Color/fake.pth"},
-                {"name": "mood",       "weight_file": "11.Mood/fake.pth"},
+                {"name": "Total aesthetic score", "weight_file": "1.Score/fake.pth"},
+                {"name": "Color",                 "weight_file": "8.Color/fake.pth"},
+                {"name": "Mood",                  "weight_file": "11.Mood/fake.pth"},
             ],
             "save_csv": True,
         },

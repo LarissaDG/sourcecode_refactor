@@ -59,13 +59,16 @@ def run_captioning(cfg, loader: DataLoader) -> list:
     results = []
     for batch in loader:
         for i, filename in enumerate(batch["filename"]):
-            caption = _describe_image(
-                Image.open(batch["path"][i]).convert("RGB"),
-                model, processor, device
-            )
+            img_path = batch["path"][i]
+            try:
+                pil_img = Image.open(img_path).convert("RGB")
+            except Exception:
+                print(f"  [!] Imagem não encontrada, pulando captioning: {img_path}")
+                continue
+            caption = _describe_image(pil_img, model, processor, device)
             results.append({
                 "filename": filename,
-                "path":     batch["path"][i],
+                "path":     img_path,
                 "image":    batch["image"][i],
                 "caption":  caption,
             })
