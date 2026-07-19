@@ -12,7 +12,7 @@ set -x
 
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
-DATA_DIR="$ROOT/data/portinari"
+DATA_DIR="/snfs1/speed/larissa.gomide/data/portinari"
 ZIP_ID="1-3Q3xH-O-yuIwy504PR17xB8mdk-mqkI"
 TMP_ZIP="/tmp/obras_de_1001_a_1200.zip"
 TMP_EXTRACT="/tmp/portinari_extract_32"
@@ -62,3 +62,4 @@ sort -u "$DATA_DIR/.downloaded_ids" -o "$DATA_DIR/.downloaded_ids"
 
 echo "Pronto: $count imagens extraidas do ZIP 32."
 echo "=== FINALIZADO ===" && hostname
+
