@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=exp2b_portinari
 #SBATCH --time=12:00:00
 #SBATCH -N 1

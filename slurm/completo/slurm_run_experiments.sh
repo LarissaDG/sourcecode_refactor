@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=run_experiments
 #SBATCH --time=20:00:00
 #SBATCH -N 1

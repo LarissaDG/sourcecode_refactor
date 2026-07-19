@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=exp3_mnist
 #SBATCH --time=04:00:00
 #SBATCH -N 1

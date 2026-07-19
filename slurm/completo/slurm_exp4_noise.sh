@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=exp4_noise
 #SBATCH --time=08:00:00
 #SBATCH -N 1

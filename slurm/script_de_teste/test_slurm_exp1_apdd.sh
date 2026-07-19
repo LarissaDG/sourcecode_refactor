@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 #SBATCH --job-name=test_exp1_apdd
 #SBATCH --time=02:00:00
 #SBATCH -N 1
