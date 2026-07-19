@@ -1,12 +1,12 @@
-import os
+﻿import os
 
 # Cache dirs — definidos antes de qualquer import HuggingFace/CLIP
 # Os scripts SLURM exportam as mesmas variáveis e sobrescrevem se necessário
 os.environ.setdefault("HF_HOME",            "/snfs1/speed/larissa.gomide/hf_cache")
 os.environ.setdefault("TRANSFORMERS_CACHE", "/snfs1/speed/larissa.gomide/hf_cache")
 os.environ.setdefault("CLIP_CACHE",         "/snfs1/speed/larissa.gomide/hf_cache")
-os.environ.setdefault("XDG_CACHE_HOME",     "/sonic_home/larissa.gomide/minha_home/.cache")
-os.environ.setdefault("MPLCONFIGDIR",       "/sonic_home/larissa.gomide/minha_home/.matplotlib")
+os.environ.setdefault("XDG_CACHE_HOME",     "/sonic_home/larissa.gomide/casa/.cache")
+os.environ.setdefault("MPLCONFIGDIR",       "/sonic_home/larissa.gomide/casa/.matplotlib")
 
 import json
 import argparse

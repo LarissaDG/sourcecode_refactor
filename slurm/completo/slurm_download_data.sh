@@ -11,12 +11,12 @@ ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
 DATA_DIR="/snfs1/speed/larissa.gomide/data"
 
-export HOME="/sonic_home/larissa.gomide/minha_home"
-export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
-export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
-export CLIP_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
-export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
-export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"
+export HOME="/sonic_home/larissa.gomide/casa/"
+export TRANSFORMERS_CACHE="/sonic_home/larissa.gomide/casa/.cache/huggingface"
+export CLIP_CACHE="/sonic_home/larissa.gomide/casa/.cache/clip"
+export HF_HOME="/sonic_home/larissa.gomide/casa/.cache/huggingface"
+export XDG_CACHE_HOME="/sonic_home/larissa.gomide/casa/.cache"
+export MPLCONFIGDIR="/sonic_home/larissa.gomide/casa/.matplotlib"
 
 mkdir -p "$DATA_DIR" "$HF_HOME" "$MPLCONFIGDIR"
 
