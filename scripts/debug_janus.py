@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault("HF_HOME",            "/snfs1/speed/larissa.gomide/hf_cache")
+os.environ.setdefault("TRANSFORMERS_CACHE", "/snfs1/speed/larissa.gomide/hf_cache")
+os.environ.setdefault("CLIP_CACHE",         "/snfs1/speed/larissa.gomide/hf_cache")
+
 import torch
 from transformers import AutoModelForCausalLM
 from janus.models import VLChatProcessor
