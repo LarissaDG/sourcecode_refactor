@@ -17,8 +17,8 @@ ZIP_ID="1-3Q3xH-O-yuIwy504PR17xB8mdk-mqkI"
 TMP_ZIP="/tmp/obras_de_1001_a_1200.zip"
 TMP_EXTRACT="/tmp/portinari_extract_32"
 
-export HF_HOME="/snfs1/larissa.gomide/hf_cache"
-export TRANSFORMERS_CACHE="/snfs1/larissa.gomide/hf_cache"
+export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
+export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
 export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
 export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"\n\ncd "$ROOT"
 

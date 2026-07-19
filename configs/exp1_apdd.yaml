@@ -7,7 +7,7 @@ experiment:
 
 dataset:
   name: apdd
-  path: "/snfs1/larissa.gomide/data/apddv2/"
+  path: "/snfs1/speed/larissa.gomide/data/apddv2/"
 
 pipeline:
   steps:

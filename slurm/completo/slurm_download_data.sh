@@ -9,7 +9,7 @@ set -x
 
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
-DATA_DIR="/snfs1/larissa.gomide/data"
+DATA_DIR="/snfs1/speed/larissa.gomide/data"
 
 mkdir -p "$HF_HOME" "$MPLCONFIGDIR"
 

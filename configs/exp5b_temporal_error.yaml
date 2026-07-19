@@ -8,7 +8,7 @@ experiment:
 
 dataset:
   name: video
-  path: "/snfs1/larissa.gomide/data/temporal/"
+  path: "/snfs1/speed/larissa.gomide/data/temporal/"
 
 pipeline:
   steps:

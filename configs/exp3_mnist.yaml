@@ -8,7 +8,7 @@ experiment:
 
 dataset:
   name: mnist
-  path: "/snfs1/larissa.gomide/data/mnist/"
+  path: "/snfs1/speed/larissa.gomide/data/mnist/"
 
 pipeline:
   steps:

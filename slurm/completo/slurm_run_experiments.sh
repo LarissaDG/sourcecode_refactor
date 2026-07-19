@@ -18,8 +18,8 @@ module load cuda/11.8.0
 
 # â”€â”€ VariÃ¡veis de cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export HF_HOME="/snfs1/larissa.gomide/hf_cache"
-export TRANSFORMERS_CACHE="/snfs1/larissa.gomide/hf_cache"
+export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
+export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
 export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
 export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"\n\ncd "$ROOT"
 
