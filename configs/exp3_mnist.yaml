@@ -8,7 +8,7 @@ experiment:
 
 dataset:
   name: mnist
-  path: "/sonic_home/larissa.gomide/sourcecode_refactor/data/mnist/"
+  path: "/snfs1/speed/larissa.gomide/data/mnist/"
 
 pipeline:
   steps:

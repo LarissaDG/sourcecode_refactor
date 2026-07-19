@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 #SBATCH --job-name=download_data
 #SBATCH --time=08:00:00
 #SBATCH -N 1
@@ -9,13 +9,8 @@ set -x
 
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
-DATA_DIR="/sonic_home/larissa.gomide/sourcecode_refactor/data"
+DATA_DIR="/snfs1/speed/larissa.gomide/data"
 
-export HOME="/sonic_home/larissa.gomide/minha_home"
-export HF_HOME="$HOME/.cache/huggingface"
-export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
-export XDG_CACHE_HOME="$HOME/.cache"
-export MPLCONFIGDIR="$HOME/.matplotlib"
 mkdir -p "$HF_HOME" "$MPLCONFIGDIR"
 
 notify() {

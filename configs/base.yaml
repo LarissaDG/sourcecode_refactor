@@ -1,9 +1,9 @@
-# Configuracoes globais -- sobrescritas pelos YAMLs de cada experimento
+﻿# Configuracoes globais -- sobrescritas pelos YAMLs de cada experimento
 
 experiment:
   name: "base"
   seed: 42
-  output_dir: "outputs/"
+  output_dir: "/snfs1/speed/larissa.gomide/outputs/"
 
 dataset:
   name: null           # apdd | mnist | portinari | gif | image
