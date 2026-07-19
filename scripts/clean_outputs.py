@@ -30,14 +30,18 @@ def _delete(path: Path, dry_run: bool):
 
 def main():
     parser = argparse.ArgumentParser(description="Limpa outputs do pipeline")
-    parser.add_argument("--exp",     default=None,        help="Experimento específico a limpar")
-    parser.add_argument("--dry-run", action="store_true", help="Só mostra, não deleta")
+    parser.add_argument("--exp",           default=None,        help="Experimento específico a limpar")
+    parser.add_argument("--dry-run",       action="store_true", help="Só mostra, não deleta")
+    parser.add_argument("--clean-legacy",  action="store_true", help="Deleta diretório legado casa/ se existir")
     args = parser.parse_args()
 
-    # Limpa diretório legado 'casa' se existir
-    if CASA_DIR.exists():
-        print(f"Diretório legado encontrado: {CASA_DIR}")
-        _delete(CASA_DIR, args.dry_run)
+    # Limpa diretório legado 'casa' se solicitado
+    if args.clean_legacy:
+        if CASA_DIR.exists():
+            print(f"Diretório legado encontrado: {CASA_DIR}")
+            _delete(CASA_DIR, args.dry_run)
+        else:
+            print(f"Diretório legado não encontrado: {CASA_DIR}")
 
     outputs_dir = Path("/snfs1/speed/larissa.gomide/outputs")
 
