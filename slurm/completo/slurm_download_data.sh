@@ -46,7 +46,7 @@ pip install --quiet --upgrade pip
 pip install --quiet --no-cache-dir \
     gdown requests pandas tqdm \
     yt-dlp imageio imageio-ffmpeg \
-    transformers sentencepiece sacremoses \
+    deep-translator \
     Pillow
 
 cd "$ROOT"
