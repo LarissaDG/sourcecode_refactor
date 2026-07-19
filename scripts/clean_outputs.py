@@ -1,5 +1,5 @@
 """
-Limpa os outputs da última execução do pipeline.
+Limpa os outputs da última execução do pipeline e diretórios de cache obsoletos.
 
 Uso:
     python3 scripts/clean_outputs.py                    # limpa outputs/ inteiro
@@ -15,6 +15,18 @@ import argparse
 import shutil
 from pathlib import Path
 
+CASA_DIR = Path("/sonic_home/larissa.gomide/casa")
+
+
+def _delete(path: Path, dry_run: bool):
+    size = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+    size_mb = size / (1024 * 1024)
+    if dry_run:
+        print(f"  [dry-run] Deletaria: {path}/ ({size_mb:.1f} MB)")
+    else:
+        shutil.rmtree(path)
+        print(f"  Deletado: {path}/ ({size_mb:.1f} MB)")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Limpa outputs do pipeline")
@@ -22,7 +34,12 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Só mostra, não deleta")
     args = parser.parse_args()
 
-    outputs_dir = Path("outputs")
+    # Limpa diretório legado 'casa' se existir
+    if CASA_DIR.exists():
+        print(f"Diretório legado encontrado: {CASA_DIR}")
+        _delete(CASA_DIR, args.dry_run)
+
+    outputs_dir = Path("/snfs1/speed/larissa.gomide/outputs")
 
     if not outputs_dir.exists():
         print("Pasta outputs/ não encontrada. Nada a limpar.")
@@ -41,13 +58,7 @@ def main():
         if not target.exists():
             print(f"  Não encontrado: {target}")
             continue
-        size = sum(f.stat().st_size for f in target.rglob("*") if f.is_file())
-        size_mb = size / (1024 * 1024)
-        if args.dry_run:
-            print(f"  [dry-run] Deletaria: {target}/ ({size_mb:.1f} MB)")
-        else:
-            shutil.rmtree(target)
-            print(f"  Deletado: {target}/ ({size_mb:.1f} MB)")
+        _delete(target, args.dry_run)
 
     if not args.dry_run:
         print("\nOutputs limpos. Próxima execução começa do zero.")
