@@ -42,6 +42,13 @@ pip install --quiet --no-cache-dir \
     transformers sentencepiece sacremoses \
     Pillow
 
+export HOME="/sonic_home/larissa.gomide/minha_home"
+export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
+export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
+export CLIP_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
+export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
+export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"
+
 cd "$ROOT"
 
 echo "=== [1/3] Portinari ==="

@@ -16,12 +16,17 @@ VENV_APDDV2="/sonic_home/larissa.gomide/apddv2"
 module load python3.12.1
 module load cuda/11.8.0
 
-# â”€â”€ VariÃ¡veis de cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
+export HOME="/sonic_home/larissa.gomide/minha_home"
 export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
 export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
+export CLIP_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
 export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
-export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"\n\ncd "$ROOT"
+export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"
+
+
+
+# â”€â”€ VariÃ¡veis de cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 # â”€â”€ FunÃ§Ã£o auxiliar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 run_exp() {

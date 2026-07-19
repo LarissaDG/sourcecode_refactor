@@ -13,10 +13,15 @@ VENV_APDDV2="/sonic_home/larissa.gomide/apddv2"
 
 module load cuda/11.8.0
 
+export HOME="/sonic_home/larissa.gomide/minha_home"
 export HF_HOME="/snfs1/speed/larissa.gomide/hf_cache"
 export TRANSFORMERS_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
+export CLIP_CACHE="/snfs1/speed/larissa.gomide/hf_cache"
 export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
-export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"\n\ncd "$ROOT"
+export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"
+
+
+
 
 notify() {
     local code=$?
