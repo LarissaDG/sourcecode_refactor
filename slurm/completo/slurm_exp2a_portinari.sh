@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 #SBATCH --job-name=exp2a_portinari
 #SBATCH --time=16:00:00
 #SBATCH -N 1
@@ -13,13 +13,10 @@ VENV_APDDV2="/sonic_home/larissa.gomide/apddv2"
 
 module load cuda/11.8.0
 
-export HOME="/sonic_home/larissa.gomide/minha_home"
-export HF_HOME="$HOME/.cache/huggingface"
-export TRANSFORMERS_CACHE="$HOME/.cache/huggingface"
-export XDG_CACHE_HOME="$HOME/.cache"
-export MPLCONFIGDIR="$HOME/.matplotlib"
-
-cd "$ROOT"
+export HF_HOME="/snfs1/larissa.gomide/hf_cache"
+export TRANSFORMERS_CACHE="/snfs1/larissa.gomide/hf_cache"
+export XDG_CACHE_HOME="/sonic_home/larissa.gomide/minha_home/.cache"
+export MPLCONFIGDIR="/sonic_home/larissa.gomide/minha_home/.matplotlib"\n\ncd "$ROOT"
 
 notify() {
     local code=$?

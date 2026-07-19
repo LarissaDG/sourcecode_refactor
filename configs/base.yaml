@@ -3,7 +3,7 @@
 experiment:
   name: "base"
   seed: 42
-  output_dir: "outputs/"
+  output_dir: "/snfs1/larissa.gomide/outputs/"
 
 dataset:
   name: null           # apdd | mnist | portinari | gif | image

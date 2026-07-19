@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Script de recovery: baixa e extrai o ZIP 32 do Portinari (obras 1001-1200)
 # que falha por rate limit do Google Drive quando baixado em sequencia.
 # Uso: bash scripts/download_portinari_zip32.sh
