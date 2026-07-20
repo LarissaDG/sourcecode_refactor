@@ -47,6 +47,7 @@ pip install --quiet --no-cache-dir \
     gdown requests pandas tqdm \
     yt-dlp imageio imageio-ffmpeg \
     deep-translator \
+    torch torchvision --index-url https://download.pytorch.org/whl/cpu \
     Pillow
 
 cd "$ROOT"
