@@ -56,37 +56,57 @@ echo "=== [1/4] APDDv2 (imagens + CSVs) ==="
 APDDV2_DIR="$DATA_DIR/apddv2"
 mkdir -p "$APDDV2_DIR/APDDv2images"
 
-curl -L "https://raw.githubusercontent.com/BestiVictory/APDDv2/main/APDDv2-10023.csv" \
-    -o "$APDDV2_DIR/APDDv2-10023.csv"
-curl -L "https://raw.githubusercontent.com/BestiVictory/APDDv2/main/filesource.csv" \
-    -o "$APDDV2_DIR/filesource.csv"
-
-CLONE_DIR="$(mktemp -d)/ICCC"
-git clone --filter=blob:none --sparse https://github.com/LarissaDG/ICCC.git "$CLONE_DIR"
-cd "$CLONE_DIR"
-git sparse-checkout set APDDv2images
-mv "$CLONE_DIR/APDDv2images/"* "$APDDV2_DIR/APDDv2images/"
-rm -rf "$CLONE_DIR"
-cd "$ROOT"
-echo "  Imagens: $(ls "$APDDV2_DIR/APDDv2images" | wc -l)"
+N_APDDV2=$(ls "$APDDV2_DIR/APDDv2images" 2>/dev/null | wc -l)
+if [ "$N_APDDV2" -ge 10023 ]; then
+    echo "  APDDv2 já completo ($N_APDDV2 imagens). Pulando."
+else
+    echo "  APDDv2 incompleto ($N_APDDV2 imagens). Baixando CSVs e imagens do ICCC..."
+    curl -L "https://raw.githubusercontent.com/BestiVictory/APDDv2/main/APDDv2-10023.csv" \
+        -o "$APDDV2_DIR/APDDv2-10023.csv"
+    curl -L "https://raw.githubusercontent.com/BestiVictory/APDDv2/main/filesource.csv" \
+        -o "$APDDV2_DIR/filesource.csv"
+    CLONE_DIR="$(mktemp -d)/ICCC"
+    git clone --filter=blob:none --sparse https://github.com/LarissaDG/ICCC.git "$CLONE_DIR"
+    cd "$CLONE_DIR"
+    git sparse-checkout set APDDv2images
+    mv "$CLONE_DIR/APDDv2images/"* "$APDDV2_DIR/APDDv2images/"
+    rm -rf "$CLONE_DIR"
+    cd "$ROOT"
+    echo "  Imagens: $(ls "$APDDV2_DIR/APDDv2images" | wc -l)"
+fi
 
 echo "=== [2/4] Portinari ==="
-python3 scripts/download_portinari.py --out "$DATA_DIR/portinari" \
-    || echo "AVISO: download_portinari.py falhou (continue com MNIST e videos)"
-
-echo "=== Tradução Portinari ==="
-python3 scripts/portinari_translate.py \
-    --csv "$DATA_DIR/portinari/acervoPortinari.csv" \
-    --out "$DATA_DIR/portinari/MiniBasePortinari_Translated.csv" \
-    --n 500 --seed 42 \
-    || echo "AVISO: portinari_translate.py falhou (pode rodar separado depois)"
+if [ -f "$DATA_DIR/portinari/MiniBasePortinari_Translated.csv" ]; then
+    echo "  Portinari já baixado e traduzido. Pulando."
+else
+    if [ ! -f "$DATA_DIR/portinari/acervoPortinari.csv" ]; then
+        python3 scripts/download_portinari.py --out "$DATA_DIR/portinari" \
+            || echo "AVISO: download_portinari.py falhou (continue com MNIST e videos)"
+    else
+        echo "  Portinari já baixado. Pulando download."
+    fi
+    echo "=== Tradução Portinari ==="
+    python3 scripts/portinari_translate.py \
+        --csv "$DATA_DIR/portinari/acervoPortinari.csv" \
+        --out "$DATA_DIR/portinari/MiniBasePortinari_Translated.csv" \
+        --n 500 --seed 42 \
+        || echo "AVISO: portinari_translate.py falhou (pode rodar separado depois)"
+fi
 
 echo "=== [3/4] MNIST ==="
-python3 scripts/download_mnist.py --out "$DATA_DIR/mnist" \
-    || { echo "ERRO: download_mnist.py falhou"; exit 1; }
+if [ -d "$DATA_DIR/mnist" ] && [ "$(ls "$DATA_DIR/mnist" 2>/dev/null | wc -l)" -gt 0 ]; then
+    echo "  MNIST já baixado. Pulando."
+else
+    python3 scripts/download_mnist.py --out "$DATA_DIR/mnist" \
+        || { echo "ERRO: download_mnist.py falhou"; exit 1; }
+fi
 
 echo "=== [4/4] Vídeos temporais ==="
-python3 scripts/download_temporal.py --out "$DATA_DIR/temporal" \
-    || { echo "ERRO: download_temporal.py falhou"; exit 1; }
+if [ -d "$DATA_DIR/temporal/frames" ] && [ "$(ls "$DATA_DIR/temporal/frames" 2>/dev/null | wc -l)" -gt 0 ]; then
+    echo "  Vídeos temporais já baixados. Pulando."
+else
+    python3 scripts/download_temporal.py --out "$DATA_DIR/temporal" \
+        || { echo "ERRO: download_temporal.py falhou"; exit 1; }
+fi
 
 echo "=== FINALIZADO ===" && hostname
