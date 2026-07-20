@@ -56,8 +56,9 @@ echo "=== [1/4] APDDv2 (imagens + CSVs) ==="
 APDDV2_DIR="$DATA_DIR/apddv2"
 mkdir -p "$APDDV2_DIR/APDDv2images"
 
+# TODO: subir dataset completo para o Kaggle e atualizar threshold para 10023
 N_APDDV2=$(ls "$APDDV2_DIR/APDDv2images" 2>/dev/null | wc -l)
-if [ "$N_APDDV2" -ge 10023 ]; then
+if [ "$N_APDDV2" -ge 986 ]; then  # 10023 quando dataset completo estiver disponível
     echo "  APDDv2 já completo ($N_APDDV2 imagens). Pulando."
 else
     echo "  APDDv2 incompleto ($N_APDDV2 imagens). Baixando CSVs e imagens do ICCC..."
