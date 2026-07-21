@@ -18,11 +18,9 @@ pipeline:
     scoring:    true
 
 sampling:
-  strategy: "sequential_with_error"
-  n_samples: 500
-  error_frame: 12          # frame a partir do qual o erro Ã© introduzido
-  error_type: "gaussian"   # tipo de ruÃ­do (baseado nos resultados do exp4)
-  error_level: 50          # nÃ­vel de degradaÃ§Ã£o (0-100)
+  strategy: "progressive_degradation"
+  # 500 videos x 24 frames x 3 tipos de ruido = 36.000 linhas
+  # frame 0 -> 0% degradacao, frame 23 -> 100% degradacao
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"

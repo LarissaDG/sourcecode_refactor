@@ -77,14 +77,15 @@ class VideoFramesDataset(Dataset):
             image = NOISE_FNS[noise_type](image, noise_level)
 
         return {
-            "image":         self.transform(image),
-            "filename":      row["filename"],
-            "path":          frame_path,
-            "video_id":      row["video_id"],
-            "frame_idx":     int(row["frame_idx"]),
-            "noise_type":    noise_type or "none",
-            "noise_level":   noise_level,
-            "error_applied": bool(row["error_applied"]),
+            "image":           self.transform(image),
+            "filename":        row["filename"],
+            "path":            frame_path,
+            "video_id":        row["video_id"],
+            "frame_idx":       int(row["frame_idx"]),
+            "noise_type":      noise_type or "none",
+            "noise_level":     noise_level,
+            "degradation_pct": float(row.get("degradation_pct", 0.0)),
+            "error_applied":   bool(row["error_applied"]),
         }
 
     @staticmethod
@@ -108,17 +109,28 @@ class VideoFramesDataset(Dataset):
 
     def sample(self, n: int, strategy: str = "sequential", seed: int = 42,
                error_frame: int = 12, error_type: str = "gaussian",
-               error_level: int = 50, **kwargs) -> "VideoFramesDataset":
+               error_level: int = 50, noise_types=None, **kwargs) -> "VideoFramesDataset":
         """
         Args:
-            n:           Número de frames a selecionar (por vídeo, em ordem).
-            strategy:    "sequential" ou "sequential_with_error".
-            error_frame: Frame a partir do qual o erro é aplicado (exp 5b).
-            error_type:  Tipo de ruído para o erro ("gaussian", "blur", "shapes").
-            error_level: Intensidade do erro (0-100).
+            n:           Número de frames por vídeo (sequential/sequential_with_error)
+                         ou total de linhas desejado (progressive_degradation ignora este parâmetro
+                         e usa todos os frames disponíveis × tipos de ruído).
+            strategy:    "sequential"              — todos os frames em ordem, sem ruído.
+                         "sequential_with_error"   — ruído fixo a partir de error_frame.
+                         "progressive_degradation" — degradação crescente proporcional ao
+                                                     frame_idx (frame 0 = 0 %, último = 100 %),
+                                                     expandida por noise_types.
+            error_frame: Frame a partir do qual o erro é aplicado (sequential_with_error).
+            error_type:  Tipo de ruído para sequential_with_error.
+            error_level: Intensidade para sequential_with_error (0-100).
+            noise_types: Lista de tipos para progressive_degradation (padrão: todos).
         """
-        if strategy not in ("sequential", "sequential_with_error"):
-            raise ValueError(f"Estratégia inválida: '{strategy}'. Use 'sequential' ou 'sequential_with_error'.")
+        valid = ("sequential", "sequential_with_error", "progressive_degradation")
+        if strategy not in valid:
+            raise ValueError(f"Estratégia inválida: '{strategy}'. Use {valid}.")
+
+        if strategy == "progressive_degradation":
+            return self._sample_progressive(noise_types)
 
         rng = np.random.default_rng(seed)
         video_ids = sorted(self.df["video_id"].unique())
@@ -135,6 +147,7 @@ class VideoFramesDataset(Dataset):
             )
             for _, row in vid_frames.iterrows():
                 r = row.to_dict()
+                r.setdefault("degradation_pct", 0.0)
                 if strategy == "sequential_with_error" and int(row["frame_idx"]) >= error_frame:
                     r["noise_type"]    = error_type
                     r["noise_level"]   = error_level
@@ -145,3 +158,33 @@ class VideoFramesDataset(Dataset):
                 break
 
         return self._make_subset(pd.DataFrame(rows[:n]))
+
+    def _sample_progressive(self, noise_types=None) -> "VideoFramesDataset":
+        """
+        Para cada vídeo, pega todos os frames em ordem e aplica degradação
+        proporcional ao índice: frame i → noise_level = round(i / (total-1) * 100).
+        Expande por noise_types → n_videos × n_frames × n_tipos linhas.
+        """
+        from datasets.image import DEFAULT_NOISE_TYPES
+        types = list(noise_types) if noise_types is not None else DEFAULT_NOISE_TYPES
+
+        rows = []
+        for vid in sorted(self.df["video_id"].unique()):
+            vid_frames = (
+                self.df[self.df["video_id"] == vid]
+                .sort_values("frame_idx")
+                .reset_index(drop=True)
+            )
+            n_frames = len(vid_frames)
+            for i, (_, row) in enumerate(vid_frames.iterrows()):
+                degradation_pct = round(i / max(n_frames - 1, 1) * 100, 2)
+                noise_level     = round(degradation_pct)
+                for noise_type in types:
+                    r = row.to_dict()
+                    r["noise_type"]      = noise_type
+                    r["noise_level"]     = noise_level
+                    r["degradation_pct"] = degradation_pct
+                    r["error_applied"]   = noise_level > 0
+                    rows.append(r)
+
+        return self._make_subset(pd.DataFrame(rows))

@@ -19,7 +19,7 @@ pipeline:
 
 sampling:
   strategy: "sequential"
-  n_samples: 500
+  n_samples: 12000  # 500 videos x 24 frames
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
