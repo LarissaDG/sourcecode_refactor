@@ -61,9 +61,9 @@ def test_captioning_output_has_caption(mini_apdd_dir, base_cfg, monkeypatch):
 def _mock_generation_deps(monkeypatch):
     import pipeline.generation as gen
     monkeypatch.setattr(gen, "_load_janus", lambda *a, **kw: (MagicMock(), MagicMock()))
-    monkeypatch.setattr(gen, "_generate_image", lambda *a, **kw: [
+    monkeypatch.setattr(gen, "_generate_token_based", lambda *a, **kw:
         Image.fromarray(np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8))
-    ])
+    )
 
 
 def _make_sample_data(mini_apdd_dir, n=4):

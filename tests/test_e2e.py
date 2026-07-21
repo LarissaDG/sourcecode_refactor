@@ -30,9 +30,9 @@ def test_full_pipeline_exp1(mini_apdd_dir, base_cfg, monkeypatch, tmp_path):
     monkeypatch.setattr(cap, "_load_janus",     lambda *a, **kw: (fake_model, fake_processor))
     monkeypatch.setattr(cap, "_describe_image", lambda *a, **kw: "A beautiful painting.")
     monkeypatch.setattr(gen, "_load_janus",     lambda *a, **kw: (fake_model, fake_processor))
-    monkeypatch.setattr(gen, "_generate_image", lambda *a, **kw: [
+    monkeypatch.setattr(gen, "_generate_token_based", lambda *a, **kw:
         Image.fromarray(np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8))
-    ])
+    )
     import sys
     from torchvision import transforms as T
     fake_clip = MagicMock()
