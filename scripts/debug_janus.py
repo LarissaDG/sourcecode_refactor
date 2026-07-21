@@ -77,7 +77,7 @@ dec = model.gen_vision_model.decode_code(
     generated_tokens.to(torch.int),
     shape=[1, 8, IMG_SIZE // PATCH_SIZE, IMG_SIZE // PATCH_SIZE],
 )
-dec = dec.to(torch.float32).cpu().numpy().transpose(0, 2, 3, 1)
+dec = dec.to(torch.float32).cpu().detach().numpy().transpose(0, 2, 3, 1)
 dec = np.clip((dec + 1) / 2 * 255, 0, 255).astype(np.uint8)
 
 import PIL.Image

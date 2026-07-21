@@ -90,7 +90,7 @@ def _generate_token_based(
         generated_tokens.to(torch.int),
         shape=[1, 8, img_size // patch_size, img_size // patch_size],
     )
-    dec = dec.to(torch.float32).cpu().numpy().transpose(0, 2, 3, 1)
+    dec = dec.to(torch.float32).cpu().detach().numpy().transpose(0, 2, 3, 1)
     dec = np.clip((dec + 1) / 2 * 255, 0, 255).astype(np.uint8)
     return PIL.Image.fromarray(dec[0])
 
