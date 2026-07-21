@@ -15,7 +15,7 @@ notify() {
     if [ $code -eq 0 ]; then
         python3 "$ROOT/scripts/manda_email.py" \
             "✅ unzip APDDv2 concluído" \
-            "Total de imagens: $(ls "$APDDV2_DIR/APDDv2images" | wc -l)"
+            "Total de imagens: $(ls "$APDDV2_DIR/APDDv2images/APDDv2images" | wc -l)"
     else
         python3 "$ROOT/scripts/manda_email.py" \
             "❌ unzip APDDv2 FALHOU" \
@@ -29,5 +29,5 @@ set -euo pipefail
 echo "Descomprimindo APDDv2images.zip..."
 unzip -o "$APDDV2_DIR/APDDv2images.zip" -d "$APDDV2_DIR/APDDv2images/"
 
-N=$(ls "$APDDV2_DIR/APDDv2images" | wc -l)
+N=$(ls "$APDDV2_DIR/APDDv2images/APDDv2images" | wc -l)
 echo "Total de imagens apos unzip: $N"
