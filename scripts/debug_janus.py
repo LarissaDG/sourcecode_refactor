@@ -82,6 +82,6 @@ dec = np.clip((dec + 1) / 2 * 255, 0, 255).astype(np.uint8)
 
 import PIL.Image
 img = PIL.Image.fromarray(dec[0])
-out = "/tmp/debug_janus_output.png"
+out = "/sonic_home/larissa.gomide/debug_janus_output.png"
 img.save(out)
 print(f"Imagem salva em: {out} ({img.size})")
