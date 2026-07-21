@@ -132,10 +132,7 @@ class VideoFramesDataset(Dataset):
         if strategy == "progressive_degradation":
             return self._sample_progressive(noise_types)
 
-        rng = np.random.default_rng(seed)
         video_ids = sorted(self.df["video_id"].unique())
-        rng.shuffle(video_ids)
-
         frames_per_video = max(1, n // max(len(video_ids), 1))
         rows = []
 
@@ -157,7 +154,8 @@ class VideoFramesDataset(Dataset):
             if len(rows) >= n:
                 break
 
-        return self._make_subset(pd.DataFrame(rows[:n]))
+        df = pd.DataFrame(rows[:n]).sort_values(["video_id", "frame_idx"]).reset_index(drop=True)
+        return self._make_subset(df)
 
     def _sample_progressive(self, noise_types=None) -> "VideoFramesDataset":
         """
@@ -187,4 +185,5 @@ class VideoFramesDataset(Dataset):
                     r["error_applied"]   = noise_level > 0
                     rows.append(r)
 
-        return self._make_subset(pd.DataFrame(rows))
+        df = pd.DataFrame(rows).sort_values(["video_id", "frame_idx", "noise_type"]).reset_index(drop=True)
+        return self._make_subset(df)
