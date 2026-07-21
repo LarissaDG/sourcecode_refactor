@@ -29,7 +29,7 @@ notify() {
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \
             "✅ exp4_noise CONCLUÍDO — Phocus4" \
-            "Job finalizado com sucesso. Resultados em: $ROOT/outputs/exp4_noise/"
+            "Job finalizado com sucesso. Resultados em: /snfs1/speed/larissa.gomide/outputs/exp4_noise/"
     else
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \

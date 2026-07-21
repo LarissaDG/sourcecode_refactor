@@ -30,7 +30,7 @@ notify() {
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \
             "✅ exp1_apdd CONCLUÍDO — Phocus4" \
-            "Job finalizado com sucesso. Resultados em: $ROOT/outputs/exp1_apdd/"
+            "Job finalizado com sucesso. Resultados em: /snfs1/speed/larissa.gomide/outputs/exp1_apdd/"
     else
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \
