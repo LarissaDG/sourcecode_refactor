@@ -26,8 +26,8 @@ trap notify EXIT
 
 set -euo pipefail
 
-echo "Descomprimindo APDDv2images.zip..."
-unzip -o "$APDDV2_DIR/APDDv2images.zip" -d "$APDDV2_DIR/APDDv2images/"
+echo "Descomprimindo APDDv2images_full.zip..."
+unzip -o "$APDDV2_DIR/APDDv2images_full.zip" -d "$APDDV2_DIR/APDDv2images/"
 
 N=$(ls "$APDDV2_DIR/APDDv2images/APDDv2images" | wc -l)
 echo "Total de imagens apos unzip: $N"
