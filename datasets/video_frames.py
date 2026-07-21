@@ -82,7 +82,7 @@ class VideoFramesDataset(Dataset):
             "path":          frame_path,
             "video_id":      row["video_id"],
             "frame_idx":     int(row["frame_idx"]),
-            "noise_type":    noise_type,
+            "noise_type":    noise_type or "none",
             "noise_level":   noise_level,
             "error_applied": bool(row["error_applied"]),
         }
