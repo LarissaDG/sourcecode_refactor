@@ -62,8 +62,8 @@ class APDDv2Dataset(Dataset):
             transform: Transformações torchvision. Se None, usa o padrão para CLIP.
         """
         self.root = root
-        # Aceita "images" ou "APDDv2images" (nome original do dataset)
-        for _candidate in ("images", "APDDv2images"):
+        # Aceita variações do nome/estrutura da pasta de imagens
+        for _candidate in ("images", "APDDv2images", os.path.join("APDDv2images", "APDDv2images")):
             _candidate_path = os.path.join(root, _candidate)
             if os.path.isdir(_candidate_path):
                 self.images_dir = _candidate_path
@@ -84,6 +84,20 @@ class APDDv2Dataset(Dataset):
 
         if split != "all" and "split" in self.df.columns:
             self.df = self.df[self.df["split"] == split].reset_index(drop=True)
+
+        # Filtra linhas cujo arquivo não existe no disco (dataset parcialmente disponível)
+        mask = self.df["filename"].apply(
+            lambda f: os.path.exists(self._resolve_path(str(f).strip()))
+        )
+        n_total = len(self.df)
+        self.df = self.df[mask].reset_index(drop=True)
+        if len(self.df) < n_total:
+            import warnings
+            warnings.warn(
+                f"APDDv2Dataset: {n_total - len(self.df)} imagens ausentes no disco "
+                f"(de {n_total}). Usando {len(self.df)} disponíveis.",
+                RuntimeWarning,
+            )
 
         self.transform = transform or self._default_transform()
 
