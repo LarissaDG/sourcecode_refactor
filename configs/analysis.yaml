@@ -1,0 +1,212 @@
+# ── Paleta e acessibilidade ────────────────────────────────────────────────────
+# Paleta daltonismo-friendly + hachuras para diferenciar séries sem depender só de cor
+palette:
+  original:    "#448FF2"   # azul     — imagens reais / baseline
+  janus_1b:    "#33A650"   # verde    — Janus-Pro-1B
+  janus_7b:    "#F2A007"   # laranja  — Janus-Pro-7B
+  mnist:       "#F23838"   # vermelho — MNIST (não-arte)
+  highlight:   "#1A00F2"   # azul escuro — threshold / destaque
+
+hatches:
+  original:  ""
+  janus_1b:  "///"
+  janus_7b:  "xxx"
+  mnist:     "..."
+  highlight: "---"
+
+linestyles:
+  original:  "solid"
+  janus_1b:  "dashed"
+  janus_7b:  "dotted"
+  mnist:     "dashdot"
+
+markers:
+  original:  "o"
+  janus_1b:  "s"
+  janus_7b:  "^"
+  mnist:     "D"
+
+# ── Idioma ─────────────────────────────────────────────────────────────────────
+lang: "en"   # "en" | "pt"
+
+labels:
+  en:
+    datasets:
+      original:  "Original"
+      janus_1b:  "Janus-Pro-1B"
+      janus_7b:  "Janus-Pro-7B"
+      portinari: "Portinari"
+      mnist:     "MNIST"
+      exp2a:     "AI Captions (2a)"
+      exp2b:     "Human Captions (2b)"
+
+    attributes:
+      Total aesthetic score:   "Total Score"
+      Theme and logic:         "Theme & Logic"
+      Creativity:              "Creativity"
+      Layout and composition:  "Layout & Composition"
+      Space and perspective:   "Space & Perspective"
+      The sense of order:      "Sense of Order"
+      Light and shadow:        "Light & Shadow"
+      Color:                   "Color"
+      Details and texture:     "Details & Texture"
+      The overall:             "Overall"
+      Mood:                    "Mood"
+
+    noise_types:
+      gaussian: "Gaussian Noise"
+      blur:     "Blur"
+      shapes:   "Geometric Shapes"
+
+    axes:
+      score:       "Aesthetic Score"
+      noise_level: "Noise Level (%)"
+      degradation: "Degradation (%)"
+      frame_idx:   "Frame Index"
+      category:    "Artistic Category"
+      sample_rank: "Sample (ranked by original score)"
+
+    titles:
+      dist_scores:        "Score Distribution — APDDv2 Baseline"
+      by_category:        "Score by Artistic Category"
+      original_vs_janus:  "Original vs. Generated Images"
+      score_diff:         "Score Difference (Original − Generated)"
+      radar:              "Mean Attribute Scores"
+      noise_impact:       "Noise Impact on Aesthetic Score"
+      noise_threshold:    "Score vs. Noise Level by Type"
+      temporal_consist:   "Temporal Score Consistency"
+      degradation_detect: "Progressive Degradation Detection"
+      art_vs_noart:       "Art vs. Non-Art Discrimination"
+      portinari_compare:  "Portinari: Original vs. Generated"
+      caption_source:     "Caption Source Impact on Generated Score"
+
+    stats:
+      ttest:      "Welch's t-test"
+      mannwhitney: "Mann-Whitney U"
+      anova:      "One-way ANOVA"
+      pearson:    "Pearson r"
+      spearman:   "Spearman ρ"
+      significant: "significant"
+      not_significant: "not significant"
+
+  pt:
+    datasets:
+      original:  "Original"
+      janus_1b:  "Janus-Pro-1B"
+      janus_7b:  "Janus-Pro-7B"
+      portinari: "Portinari"
+      mnist:     "MNIST"
+      exp2a:     "Captions do Janus (2a)"
+      exp2b:     "Captions Humanas (2b)"
+
+    attributes:
+      Total aesthetic score:   "Score Total"
+      Theme and logic:         "Tema e Lógica"
+      Creativity:              "Criatividade"
+      Layout and composition:  "Layout e Composição"
+      Space and perspective:   "Espaço e Perspectiva"
+      The sense of order:      "Senso de Ordem"
+      Light and shadow:        "Luz e Sombra"
+      Color:                   "Cor"
+      Details and texture:     "Detalhes e Textura"
+      The overall:             "Geral"
+      Mood:                    "Humor"
+
+    noise_types:
+      gaussian: "Ruído Gaussiano"
+      blur:     "Desfoque"
+      shapes:   "Formas Geométricas"
+
+    axes:
+      score:       "Score Estético"
+      noise_level: "Nível de Ruído (%)"
+      degradation: "Degradação (%)"
+      frame_idx:   "Índice de Frame"
+      category:    "Categoria Artística"
+      sample_rank: "Amostra (ordenada pelo score original)"
+
+    titles:
+      dist_scores:        "Distribuição dos Scores — Baseline APDDv2"
+      by_category:        "Score por Categoria Artística"
+      original_vs_janus:  "Originais vs. Imagens Geradas"
+      score_diff:         "Diferença de Score (Original − Gerado)"
+      radar:              "Médias por Atributo"
+      noise_impact:       "Impacto do Ruído no Score Estético"
+      noise_threshold:    "Score vs. Nível de Ruído por Tipo"
+      temporal_consist:   "Consistência Temporal dos Scores"
+      degradation_detect: "Detecção de Degradação Progressiva"
+      art_vs_noart:       "Discriminação Arte vs. Não-Arte"
+      portinari_compare:  "Portinari: Originais vs. Geradas"
+      caption_source:     "Impacto da Fonte de Caption no Score"
+
+    stats:
+      ttest:      "Teste t de Welch"
+      mannwhitney: "Mann-Whitney U"
+      anova:      "ANOVA One-way"
+      pearson:    "Pearson r"
+      spearman:   "Spearman ρ"
+      significant: "significativo"
+      not_significant: "não significativo"
+
+# ── Figuras ────────────────────────────────────────────────────────────────────
+figures:
+  dpi:        150
+  figsize:    [12, 6]
+  figsize_sq: [8, 8]     # para radar e scatter
+  font_size:  12
+  title_size: 14
+  legend_loc: "best"
+  grid:       true
+  format:     "png"      # "png" | "pdf" | "svg"
+
+# ── Testes estatísticos ────────────────────────────────────────────────────────
+stats:
+  alpha: 0.05            # nível de significância
+  tests:
+    - ttest
+    - mannwhitney
+    - anova
+    - pearson
+    - spearman
+
+# ── Clustering (exp1 — melhores/piores imagens) ────────────────────────────────
+clustering:
+  n_clusters:  3
+  n_top:       10        # top-N melhores e piores a destacar
+  method:      "kmeans"  # "kmeans" | "agglomerative"
+
+# ── Temporal (exp5) ────────────────────────────────────────────────────────────
+temporal:
+  n_videos_to_plot: 5    # nº de vídeos individuais no gráfico de linhas
+
+# ── Score attributes usados nas análises ───────────────────────────────────────
+score_attributes:
+  - "Total aesthetic score"
+  - "Theme and logic"
+  - "Creativity"
+  - "Layout and composition"
+  - "Space and perspective"
+  - "The sense of order"
+  - "Light and shadow"
+  - "Color"
+  - "Details and texture"
+  - "The overall"
+  - "Mood"
+
+radar_attributes:
+  - "Theme and logic"
+  - "Creativity"
+  - "Layout and composition"
+  - "Space and perspective"
+  - "The sense of order"
+  - "Light and shadow"
+  - "Color"
+  - "Details and texture"
+  - "The overall"
+  - "Mood"
+
+# ── Caminhos ───────────────────────────────────────────────────────────────────
+paths:
+  outputs:    "/snfs1/speed/larissa.gomide/outputs/"
+  reports:    "/snfs1/speed/larissa.gomide/reports/"
+  apddv2_csv: "/snfs1/speed/larissa.gomide/data/apddv2/APDDv2-10023.csv"
