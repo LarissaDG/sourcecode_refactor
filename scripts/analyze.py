@@ -13,6 +13,10 @@ import argparse
 import json
 import os
 import random
+import sys
+
+# Garante que o raiz do projeto está no path (necessário quando rodado como script)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import textwrap
 import warnings
 from pathlib import Path
