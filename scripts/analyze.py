@@ -572,17 +572,17 @@ def exp4_analysis(cfg, out_dir: str, report: list):
         sk   = style_keys_noise[i % len(style_keys_noise)]
         sub  = merged[merged["noise_type"] == nt]
         mean = sub.groupby("noise_level")[total].mean()
-        sem  = sub.groupby("noise_level")[total].sem()
+        sem  = sub.groupby("noise_level")[total].sem().fillna(0).astype(float)
         lbl  = lang_noise.get(nt, nt)
 
-        ax.plot(mean.index, mean.values,
+        ax.plot(mean.index, mean.values.astype(float),
                 color=get_color(cfg, sk),
                 linestyle=get_ls(cfg, sk),
                 marker=get_marker(cfg, sk),
                 label=lbl, linewidth=2)
-        ax.fill_between(mean.index,
-                        mean.values - sem.values,
-                        mean.values + sem.values,
+        ax.fill_between(mean.index.astype(float),
+                        (mean.values - sem.values).astype(float),
+                        (mean.values + sem.values).astype(float),
                         color=get_color(cfg, sk), alpha=0.15,
                         hatch=get_hatch(cfg, sk))
 
@@ -728,17 +728,17 @@ def exp5b_analysis(cfg, out_dir: str, report: list, baseline_dir: str = None):
         sk  = style_keys_noise[i % len(style_keys_noise)]
         sub = merged[merged["noise_type"] == nt]
         mean = sub.groupby("degradation_pct")[total].mean()
-        sem  = sub.groupby("degradation_pct")[total].sem()
+        sem  = sub.groupby("degradation_pct")[total].sem().fillna(0).astype(float)
         lbl  = lang_noise.get(nt, nt)
 
-        ax.plot(mean.index, mean.values,
+        ax.plot(mean.index.astype(float), mean.values.astype(float),
                 color=get_color(cfg, sk),
                 linestyle=get_ls(cfg, sk),
                 marker=get_marker(cfg, sk),
                 markersize=3, linewidth=2, label=lbl)
-        ax.fill_between(mean.index,
-                        mean.values - sem.values,
-                        mean.values + sem.values,
+        ax.fill_between(mean.index.astype(float),
+                        (mean.values - sem.values).astype(float),
+                        (mean.values + sem.values).astype(float),
                         color=get_color(cfg, sk), alpha=0.12,
                         hatch=get_hatch(cfg, sk))
 
