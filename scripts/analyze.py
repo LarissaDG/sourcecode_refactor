@@ -988,7 +988,7 @@ def samples_exp5_degradation(cfg, samples_dir):
         else:
             ax.set_facecolor("#CCCCCC")
         ax.axis("off")
-        ax.set_title(f"{s.get('degradation_pct', 0):.0f}%", fontsize=9)
+        ax.set_title(f"{float(s.get('degradation_pct') or 0):.0f}%", fontsize=9)
 
     plt.tight_layout()
     save(fig, os.path.join(samples_dir, "exp5b_degradation_sequence.png"), cfg)
