@@ -802,7 +802,7 @@ def _gen_path(exp_dir, model_name, filename):
 def _frames_for_video(data, video_id, max_frames=None):
     frames = sorted(
         [s for s in data if s.get("video_id") == video_id],
-        key=lambda s: s.get("frame_idx", 0),
+        key=lambda s: s.get("frame_idx") or 0,
     )
     return frames[:max_frames] if max_frames else frames
 
@@ -969,7 +969,7 @@ def samples_exp5_degradation(cfg, samples_dir):
 
     frames_all = sorted(
         [s for s in data if s.get("video_id") == vid and s.get("noise_type") == "gaussian"],
-        key=lambda s: s.get("frame_idx", 0),
+        key=lambda s: s.get("frame_idx") or 0,
     )
     step   = max(1, len(frames_all) // 8)
     frames = frames_all[::step][:8]
