@@ -216,6 +216,54 @@ python3 scripts/clean_outputs.py --dry-run          # prévia sem deletar
 
 ---
 
+## Analysis and Visualizations
+
+After all experiments have finished, generate figures, sample panels, and the statistical report with a single script.
+All outputs go to the paths defined in `configs/analysis.yaml` (`paths.reports`).
+
+### Full run (analysis + sample panels)
+
+```bash
+python3 scripts/analyze.py --config configs/analysis.yaml
+```
+
+### Analysis charts only (skip sample images)
+
+```bash
+python3 scripts/analyze.py --config configs/analysis.yaml --skip-samples
+```
+
+### Sample panels only (skip charts + stats report)
+
+```bash
+python3 scripts/analyze.py --config configs/analysis.yaml --skip-analysis
+```
+
+### Outputs
+
+| Directory | Contents |
+|---|---|
+| `<reports>/figures/` | All analysis charts (distribution, radar, cluster, noise, temporal, …) |
+| `<reports>/samples/` | Visual sample panels per experiment + animated GIFs (exp5) |
+| `<reports>/stats_report.txt` | Statistical tests (t-test, Mann-Whitney, ANOVA, Pearson, Spearman) |
+
+### APDDv2 upload (Windows → cluster)
+
+Because the full APDDv2 image set (10 023 images) is too large for a single SCP transfer, use the split-zip script on your Windows machine:
+
+```
+python zip_and_upload.py
+```
+
+This creates `APDDv2images_part1.zip` and `APDDv2images_part2.zip`, uploads both to the cluster, then submit the unzip job:
+
+```bash
+git pull
+sbatch slurm/completo/slurm_unzip_apddv2.sh
+```
+
+---
+
 ## Citation
 
 ```bibtex
