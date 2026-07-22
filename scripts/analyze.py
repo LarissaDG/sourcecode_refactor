@@ -224,25 +224,38 @@ def exp1_sampling_diagnostic(cfg, out_dir: str):
         print("[diag/exp1] Coluna de score não encontrada no CSV — pulando diagnóstico.")
         return
 
+    fn_col   = next((c for c in df_full.columns if "filename" in c.lower()), None)
+
     # Filtra imagens disponíveis no exp_dir
-    img_root = os.path.join(cfg["paths"].get("apddv2_images",
-                            os.path.join(os.path.dirname(meta_csv),
-                                         "APDDv2images", "APDDv2images")))
+    img_root = cfg["paths"].get("apddv2_images",
+                os.path.join(os.path.dirname(meta_csv), "APDDv2images", "APDDv2images"))
     if os.path.isdir(img_root):
         available = set(os.listdir(img_root))
-        fn_col = next((c for c in df_full.columns if "filename" in c.lower()), None)
         if fn_col:
             df_full = df_full[df_full[fn_col].apply(
                 lambda f: os.path.basename(str(f).strip()) in available)]
 
     scores_full = df_full[score_col].dropna()
 
-    # ── Conjunto amostrado ─────────────────────────────────────────────────────
+    # ── Conjunto amostrado: tenta pipeline_data.json, depois scores CSV ──────
     pipeline = load_pipeline_data(exp_dir)
     scores_sampled = pd.Series(
         [s.get("score") for s in pipeline if s.get("score") is not None],
         dtype=float,
     ).dropna()
+
+    # Fallback: usa scores_original.csv (campo "Total aesthetic score") quando
+    # o pipeline_data não tem scores ainda
+    if len(scores_sampled) == 0:
+        df_scores = load_scores(exp_dir, "original")
+        if df_scores is not None and total in df_scores.columns:
+            scores_sampled = df_scores[total].dropna()
+        # Fallback 2: usa o score do CSV completo filtrado pelos filenames amostrados
+        if len(scores_sampled) == 0 and pipeline and fn_col:
+            sampled_fns = {os.path.basename(str(s.get("filename", ""))) for s in pipeline}
+            scores_sampled = df_full[df_full[fn_col].apply(
+                lambda f: os.path.basename(str(f).strip()) in sampled_fns
+            )][score_col].dropna()
 
     n_full    = len(scores_full)
     n_sampled = len(scores_sampled)
@@ -257,6 +270,11 @@ def exp1_sampling_diagnostic(cfg, out_dir: str):
         (axes[0], scores_full,    f"Antes (N={n_full})",    "original"),
         (axes[1], scores_sampled, f"Depois (N={n_sampled})", "janus_1b"),
     ]:
+        if len(scores) == 0:
+            ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=12)
+            ax.set_title(label)
+            continue
         ax.hist(scores, bins=30,
                 color=get_color(cfg, sk), hatch=get_hatch(cfg, sk),
                 edgecolor="black", alpha=0.7, label=label, density=True)
