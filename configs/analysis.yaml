@@ -207,6 +207,7 @@ radar_attributes:
 
 # ── Caminhos ───────────────────────────────────────────────────────────────────
 paths:
-  outputs:    "/snfs1/speed/larissa.gomide/outputs/"
-  reports:    "/snfs1/speed/larissa.gomide/reports/"
-  apddv2_csv: "/snfs1/speed/larissa.gomide/data/apddv2/APDDv2-10023.csv"
+  outputs:       "/snfs1/speed/larissa.gomide/outputs/"
+  reports:       "/snfs1/speed/larissa.gomide/reports/"
+  apddv2_csv:    "/snfs1/speed/larissa.gomide/data/apddv2/APDDv2-10023.csv"
+  apddv2_images: "/snfs1/speed/larissa.gomide/data/apddv2/APDDv2images/APDDv2images"
