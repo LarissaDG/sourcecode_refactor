@@ -12,17 +12,21 @@ Gera todos os gráficos e relatório estatístico em:
 import argparse
 import json
 import os
+import random
 import textwrap
 import warnings
 from pathlib import Path
 
+import imageio
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 import yaml
+from PIL import Image
 from scipy.stats import (f_oneway, mannwhitneyu, pearsonr, spearmanr,
                          ttest_ind)
 from sklearn.cluster import KMeans
@@ -754,48 +758,365 @@ def exp5b_analysis(cfg, out_dir: str, report: list, baseline_dir: str = None):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Amostras visuais — helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _show_image(ax, path, title=None):
+    if path and os.path.exists(path):
+        ax.imshow(Image.open(path).convert("RGB"))
+    else:
+        ax.set_facecolor("#CCCCCC")
+        ax.text(0.5, 0.5, "N/A", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, color="#666666")
+    ax.axis("off")
+    if title:
+        ax.set_title(title, fontsize=9, pad=3)
+
+
+def _show_text(ax, text, title=None, fontsize=8):
+    ax.axis("off")
+    if title:
+        ax.set_title(title, fontsize=9, pad=3)
+    wrapped = textwrap.fill(str(text) if text else "(sem texto)", width=38)
+    ax.text(0.05, 0.95, wrapped, ha="left", va="top",
+            transform=ax.transAxes, fontsize=fontsize, family="monospace",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="#F5F5F5",
+                      edgecolor="#CCCCCC", alpha=0.8))
+
+
+def _pick_samples(data, n=3, seed=42):
+    rng  = random.Random(seed)
+    pool = [s for s in data if s.get("path") and os.path.exists(s["path"])]
+    return rng.sample(pool, min(n, len(pool)))
+
+
+def _gen_path(exp_dir, model_name, filename):
+    base = os.path.splitext(os.path.basename(filename))[0]
+    return os.path.join(exp_dir, "generated", model_name, base + ".png")
+
+
+def _frames_for_video(data, video_id, max_frames=None):
+    frames = sorted(
+        [s for s in data if s.get("video_id") == video_id],
+        key=lambda s: s.get("frame_idx", 0),
+    )
+    return frames[:max_frames] if max_frames else frames
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Amostras visuais — por experimento
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def samples_exp1(cfg, samples_dir):
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        print("[samples/exp1] pipeline_data.json não encontrado — pulando.")
+        return
+
+    items   = _pick_samples(data, n=3)
+    n_rows  = len(items)
+    fig     = plt.figure(figsize=(16, 5 * n_rows))
+    fig.suptitle("EXP 1 — APDDv2: Original → Caption → Generated", fontsize=13, y=1.01)
+    gs = gridspec.GridSpec(n_rows, 4, figure=fig, hspace=0.4, wspace=0.15)
+
+    for row, s in enumerate(items):
+        _show_image(_ax(fig, gs, row, 0), s.get("path"),           title="Original (APDDv2)")
+        _show_text (_ax(fig, gs, row, 1), s.get("caption", ""),    title="Caption (Janus-7B)")
+        _show_image(_ax(fig, gs, row, 2), _gen_path(exp_dir, "Janus-Pro-1B", s["filename"]),
+                    title="Generated — Janus-Pro-1B")
+        _show_image(_ax(fig, gs, row, 3), _gen_path(exp_dir, "Janus-Pro-7B", s["filename"]),
+                    title="Generated — Janus-Pro-7B")
+
+    save(fig, os.path.join(samples_dir, "exp1_samples.png"), cfg)
+
+
+def samples_exp2(cfg, samples_dir):
+    for exp_name, cap_title in [("exp2a_portinari", "Caption (Janus-7B)"),
+                                  ("exp2b_portinari_human", "Caption (humana/EN)")]:
+        exp_dir = os.path.join(cfg["paths"]["outputs"], exp_name)
+        data    = load_pipeline_data(exp_dir)
+        if not data:
+            print(f"[samples/{exp_name}] pipeline_data.json não encontrado — pulando.")
+            continue
+
+        items  = _pick_samples(data, n=3)
+        n_rows = len(items)
+        fig    = plt.figure(figsize=(20, 5 * n_rows))
+        fig.suptitle(f"EXP 2 — Portinari ({exp_name})", fontsize=13, y=1.01)
+        gs = gridspec.GridSpec(n_rows, 4, figure=fig, hspace=0.4, wspace=0.15)
+
+        for row, s in enumerate(items):
+            _show_text (_ax(fig, gs, row, 0), s.get("caption", ""),  title=cap_title)
+            _show_image(_ax(fig, gs, row, 1), s.get("path"),          title="Original (Portinari)")
+            _show_image(_ax(fig, gs, row, 2), _gen_path(exp_dir, "Janus-Pro-1B", s["filename"]),
+                        title="Generated — Janus-Pro-1B")
+            _show_image(_ax(fig, gs, row, 3), _gen_path(exp_dir, "Janus-Pro-7B", s["filename"]),
+                        title="Generated — Janus-Pro-7B")
+
+        save(fig, os.path.join(samples_dir, f"{exp_name}_samples.png"), cfg)
+
+
+def samples_exp3(cfg, samples_dir):
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        print("[samples/exp3] pipeline_data.json não encontrado — pulando.")
+        return
+
+    pool    = [s for s in data if s.get("path") and os.path.exists(s["path"])]
+    items   = random.Random(42).sample(pool, min(20, len(pool)))
+    cols    = 5
+    rows    = (len(items) + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
+    fig.suptitle("EXP 3 — MNIST: Amostras", fontsize=13)
+    axes = np.array(axes).flatten()
+
+    for ax, s in zip(axes, items):
+        _show_image(ax, s.get("path"), title=f"label={s.get('label','?')}")
+    for ax in axes[len(items):]:
+        ax.axis("off")
+
+    plt.tight_layout()
+    save(fig, os.path.join(samples_dir, "exp3_mnist_samples.png"), cfg)
+
+
+def samples_exp4(cfg, samples_dir):
+    from datasets.image import NOISE_FNS
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp4_noise")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        print("[samples/exp4] pipeline_data.json não encontrado — pulando.")
+        return
+
+    seen, base_items = set(), []
+    for s in data:
+        fn = s.get("filename")
+        if fn not in seen and s.get("path") and os.path.exists(s["path"]):
+            base_items.append(s)
+            seen.add(fn)
+        if len(base_items) == 3:
+            break
+
+    noise_types = ["gaussian", "blur", "shapes"]
+    lang_noise  = cfg["labels"][cfg["lang"]]["noise_types"]
+    n_cols      = 1 + len(noise_types)
+
+    fig, axes = plt.subplots(len(base_items), n_cols,
+                             figsize=(n_cols * 3.5, len(base_items) * 3.5))
+    fig.suptitle("EXP 4 — Ruído: Original vs. Tipos de Ruído (nível 50)", fontsize=13)
+
+    for row, s in enumerate(base_items):
+        img = Image.open(s["path"]).convert("RGB")
+        _show_image(axes[row, 0], s["path"], title="Original" if row == 0 else "")
+        for col, nt in enumerate(noise_types, start=1):
+            ax = axes[row, col]
+            ax.imshow(NOISE_FNS[nt](img, 50))
+            ax.axis("off")
+            if row == 0:
+                ax.set_title(lang_noise.get(nt, nt), fontsize=9)
+
+    plt.tight_layout()
+    save(fig, os.path.join(samples_dir, "exp4_noise_samples.png"), cfg)
+
+
+def samples_exp5_grid(cfg, samples_dir):
+    """Primeiros 5 frames de 3 vídeos diferentes."""
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        print("[samples/exp5a] pipeline_data.json não encontrado — pulando.")
+        return
+
+    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})[:3]
+    n_frames  = 5
+    fig, axes = plt.subplots(len(video_ids), n_frames,
+                             figsize=(n_frames * 3, len(video_ids) * 3))
+    fig.suptitle("EXP 5a — Primeiros 5 frames de 3 vídeos", fontsize=13)
+
+    for row, vid in enumerate(video_ids):
+        frames = _frames_for_video(data, vid, max_frames=n_frames)
+        for col in range(n_frames):
+            ax = axes[row, col]
+            if col < len(frames):
+                _show_image(ax, frames[col].get("frame_path"),
+                            title=f"f{frames[col].get('frame_idx',col)}" if row == 0 else "")
+            else:
+                ax.axis("off")
+        axes[row, 0].set_ylabel(f"Video {vid}", fontsize=9, rotation=90, labelpad=4)
+
+    plt.tight_layout()
+    save(fig, os.path.join(samples_dir, "exp5a_frame_grid.png"), cfg)
+
+
+def samples_exp5_degradation(cfg, samples_dir):
+    """Sequência de frames com degradação crescente (exp5b)."""
+    from datasets.image import NOISE_FNS
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5b_temporal_error")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        print("[samples/exp5b] pipeline_data.json não encontrado — pulando.")
+        return
+
+    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})
+    if not video_ids:
+        return
+    vid = video_ids[0]
+
+    frames_all = sorted(
+        [s for s in data if s.get("video_id") == vid and s.get("noise_type") == "gaussian"],
+        key=lambda s: s.get("frame_idx", 0),
+    )
+    step   = max(1, len(frames_all) // 8)
+    frames = frames_all[::step][:8]
+
+    fig, axes = plt.subplots(1, len(frames), figsize=(len(frames) * 3, 3.5))
+    fig.suptitle(f"EXP 5b — Degradação progressiva (Video {vid}, Gaussian)", fontsize=12)
+
+    for ax, s in zip(axes, frames):
+        path = s.get("frame_path")
+        if path and os.path.exists(path):
+            img = Image.open(path).convert("RGB")
+            lvl = int(s.get("noise_level", 0))
+            if lvl > 0:
+                img = NOISE_FNS["gaussian"](img, lvl)
+            ax.imshow(img)
+        else:
+            ax.set_facecolor("#CCCCCC")
+        ax.axis("off")
+        ax.set_title(f"{s.get('degradation_pct', 0):.0f}%", fontsize=9)
+
+    plt.tight_layout()
+    save(fig, os.path.join(samples_dir, "exp5b_degradation_sequence.png"), cfg)
+
+
+def samples_exp5_noise_types(cfg, samples_dir):
+    """Mesmo frame com os 3 tipos de ruído."""
+    from datasets.image import NOISE_FNS
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        return
+
+    sample = next((s for s in data if s.get("frame_path") and
+                   os.path.exists(s["frame_path"])), None)
+    if not sample:
+        print("[samples/exp5] Nenhum frame encontrado — pulando noise_types panel.")
+        return
+
+    noise_types = ["gaussian", "blur", "shapes"]
+    lang_noise  = cfg["labels"][cfg["lang"]]["noise_types"]
+    img_orig    = Image.open(sample["frame_path"]).convert("RGB")
+
+    fig, axes = plt.subplots(1, 4, figsize=(14, 3.5))
+    fig.suptitle("EXP 5 — Frame com diferentes tipos de ruído (nível 50)", fontsize=12)
+    axes[0].imshow(img_orig); axes[0].axis("off"); axes[0].set_title("Original", fontsize=9)
+
+    for ax, nt in zip(axes[1:], noise_types):
+        ax.imshow(NOISE_FNS[nt](img_orig, 50))
+        ax.axis("off")
+        ax.set_title(lang_noise.get(nt, nt), fontsize=9)
+
+    plt.tight_layout()
+    save(fig, os.path.join(samples_dir, "exp5_noise_types.png"), cfg)
+
+
+def samples_exp5_gif(cfg, samples_dir):
+    """GIF animado com frames sequenciais de 3 vídeos."""
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
+    data    = load_pipeline_data(exp_dir)
+    if not data:
+        return
+
+    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})[:3]
+    for vid in video_ids:
+        paths = [s.get("frame_path") for s in _frames_for_video(data, vid)
+                 if s.get("frame_path") and os.path.exists(s["frame_path"])]
+        if not paths:
+            continue
+        imgs     = [np.array(Image.open(p).convert("RGB").resize((256, 256))) for p in paths]
+        gif_path = os.path.join(samples_dir, f"exp5a_video_{vid}.gif")
+        imageio.mimsave(gif_path, imgs, fps=4, loop=0)
+        print(f"  → {gif_path}")
+
+
+# ── Tiny helper used only by samples functions ────────────────────────────────
+
+def _ax(fig, gs, row, col):
+    return fig.add_subplot(gs[row, col])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/analysis.yaml")
+    parser.add_argument("--skip-analysis", action="store_true",
+                        help="Pula gráficos de análise; gera só amostras")
+    parser.add_argument("--skip-samples", action="store_true",
+                        help="Pula painéis de amostras; gera só análise")
     args = parser.parse_args()
 
-    cfg     = load_cfg(args.config)
-    out_dir = os.path.join(cfg["paths"]["reports"], "figures")
-    os.makedirs(out_dir, exist_ok=True)
+    cfg      = load_cfg(args.config)
+    fig_dir  = os.path.join(cfg["paths"]["reports"], "figures")
+    samp_dir = os.path.join(cfg["paths"]["reports"], "samples")
+    os.makedirs(fig_dir,  exist_ok=True)
+    os.makedirs(samp_dir, exist_ok=True)
 
-    report = ["RELATÓRIO DE ANÁLISE", "=" * 60]
+    # ── Análise ────────────────────────────────────────────────────────────────
+    if not args.skip_analysis:
+        report = ["RELATÓRIO DE ANÁLISE", "=" * 60]
 
-    print("=== EXP 1 — APDDv2 Baseline ===")
-    exp1_analysis(cfg, out_dir, report)
+        print("=== EXP 1 — APDDv2 Baseline ===")
+        exp1_analysis(cfg, fig_dir, report)
 
-    print("=== EXP 2 — Portinari ===")
-    exp2_analysis(cfg, out_dir, report)
+        print("=== EXP 2 — Portinari ===")
+        exp2_analysis(cfg, fig_dir, report)
 
-    print("=== EXP 3 — Arte vs. Não-Arte ===")
-    exp3_analysis(cfg, out_dir, report)
+        print("=== EXP 3 — Arte vs. Não-Arte ===")
+        exp3_analysis(cfg, fig_dir, report)
 
-    print("=== EXP 4 — Ruído ===")
-    exp4_analysis(cfg, out_dir, report)
+        print("=== EXP 4 — Ruído ===")
+        exp4_analysis(cfg, fig_dir, report)
 
-    print("=== EXP 5a — Consistência Temporal ===")
-    exp5a_analysis(cfg, out_dir, report)
+        print("=== EXP 5a — Consistência Temporal ===")
+        exp5a_analysis(cfg, fig_dir, report)
 
-    print("=== EXP 5b — Degradação Progressiva ===")
-    exp5b_analysis(
-        cfg, out_dir, report,
-        baseline_dir=os.path.join(cfg["paths"]["outputs"], "exp5a_temporal"),
-    )
+        print("=== EXP 5b — Degradação Progressiva ===")
+        exp5b_analysis(
+            cfg, fig_dir, report,
+            baseline_dir=os.path.join(cfg["paths"]["outputs"], "exp5a_temporal"),
+        )
 
-    # Salva relatório estatístico
-    report_path = os.path.join(cfg["paths"]["reports"], "stats_report.txt")
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    with open(report_path, "w") as f:
-        f.write("\n".join(report))
-    print(f"\nRelatório salvo em: {report_path}")
-    print(f"Figuras salvas em:  {out_dir}/")
+        report_path = os.path.join(cfg["paths"]["reports"], "stats_report.txt")
+        with open(report_path, "w") as f:
+            f.write("\n".join(report))
+        print(f"\nRelatório salvo em: {report_path}")
+        print(f"Figuras salvas em:  {fig_dir}/")
+
+    # ── Amostras visuais ───────────────────────────────────────────────────────
+    if not args.skip_samples:
+        print("\n=== EXP 1 — Amostras ===")
+        samples_exp1(cfg, samp_dir)
+
+        print("=== EXP 2 — Amostras ===")
+        samples_exp2(cfg, samp_dir)
+
+        print("=== EXP 3 — Amostras ===")
+        samples_exp3(cfg, samp_dir)
+
+        print("=== EXP 4 — Amostras ===")
+        samples_exp4(cfg, samp_dir)
+
+        print("=== EXP 5 — Amostras (frames, degradação, GIF) ===")
+        samples_exp5_grid(cfg, samp_dir)
+        samples_exp5_degradation(cfg, samp_dir)
+        samples_exp5_noise_types(cfg, samp_dir)
+        samples_exp5_gif(cfg, samp_dir)
+
+        print(f"Amostras salvas em: {samp_dir}/")
 
 
 if __name__ == "__main__":
