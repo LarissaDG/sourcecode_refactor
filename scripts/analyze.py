@@ -383,9 +383,9 @@ def exp2_analysis(cfg, out_dir: str, report: list):
     save(fig, os.path.join(out_dir, "exp2_boxplot.png"), cfg)
 
     # ── 2b. Linha: original vs 1B vs 7B (ordenado pelo original) ─────────────
-    df_orig = dfs.get("exp2a_original") or dfs.get("exp2b_original")
-    df_1b   = dfs.get("exp2a_Janus-Pro-1B") or dfs.get("exp2b_Janus-Pro-1B")
-    df_7b   = dfs.get("exp2a_Janus-Pro-7B") or dfs.get("exp2b_Janus-Pro-7B")
+    df_orig = dfs.get("exp2a_original") if dfs.get("exp2a_original") is not None else dfs.get("exp2b_original")
+    df_1b   = dfs.get("exp2a_Janus-Pro-1B") if dfs.get("exp2a_Janus-Pro-1B") is not None else dfs.get("exp2b_Janus-Pro-1B")
+    df_7b   = dfs.get("exp2a_Janus-Pro-7B") if dfs.get("exp2a_Janus-Pro-7B") is not None else dfs.get("exp2b_Janus-Pro-7B")
 
     if df_orig is not None and total in df_orig.columns:
         orig_sorted = df_orig[total].dropna().sort_values().reset_index(drop=True)
