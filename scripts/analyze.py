@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_cfg(path: str) -> dict:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -112,6 +112,15 @@ def load_human_gt(cfg) -> "pd.DataFrame | None":
 
 def _stem(filename) -> str:
     return os.path.splitext(os.path.basename(str(filename)))[0]
+
+
+def _available_attrs(cfg, *dfs) -> list:
+    """Retorna só os score_attributes presentes em todos os DataFrames fornecidos."""
+    all_attrs = cfg["score_attributes"]
+    dfs_valid = [d for d in dfs if d is not None]
+    if not dfs_valid:
+        return all_attrs
+    return [a for a in all_attrs if all(a in d.columns for d in dfs_valid)]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -471,6 +480,7 @@ def analyse_exp1(cfg, out_dir: str):
         return
 
     total_attr = "Total aesthetic score"
+    attrs = _available_attrs(cfg, df_orig, df_1b, df_7b)
 
     # ── 1. Distribuição de scores ───────────────────────────────────────────
     fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
@@ -500,7 +510,7 @@ def analyse_exp1(cfg, out_dir: str):
         fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
         data_list = [d[total_attr].dropna().values for _, d, _ in available]
         labels = [ds_label(cfg, k) for _, _, k in available]
-        bp = ax.boxplot(data_list, labels=labels, patch_artist=True)
+        bp = ax.boxplot(data_list, tick_labels=labels, patch_artist=True)
         _style_median(bp)
         for patch, (_, _, k) in zip(bp["boxes"], available):
             patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
@@ -576,6 +586,10 @@ def _exp1_category_table(df_orig, cfg, out_dir, attrs, total_attr):
 def _score_diff_bars(df_orig, df_1b, df_7b, cfg, out_dir, prefix="exp1", title="Score Difference"):
     attrs = cfg["score_attributes"]
     pal = _palette(cfg); ht = _hatches(cfg)
+
+    # Só usa atributos presentes em pelo menos df_orig
+    if df_orig is not None:
+        attrs = [a for a in attrs if a in df_orig.columns]
 
     # Align by stem
     def align(df_a, df_b, attr):
@@ -773,7 +787,7 @@ def analyse_exp2(cfg, out_dir: str):
         fig, ax = plt.subplots(figsize=(max(10, len(available_box) * 1.5), 6))
         data_list = [_total(d) for _, d, _ in available_box]
         labels = [n for n, _, _ in available_box]
-        bp = ax.boxplot(data_list, labels=labels, patch_artist=True)
+        bp = ax.boxplot(data_list, tick_labels=labels, patch_artist=True)
         _style_median(bp)
         for patch, (_, _, k) in zip(bp["boxes"], available_box):
             patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
@@ -877,7 +891,7 @@ def analyse_exp3(cfg, out_dir: str):
     if len(sources) >= 2:
         fig, ax = plt.subplots(figsize=(8, 6))
         bp = ax.boxplot([s[1].values for s in sources],
-                        labels=[s[0] for s in sources], patch_artist=True)
+                        tick_labels=[s[0] for s in sources], patch_artist=True)
         _style_median(bp)
         for patch, (_, _, k) in zip(bp["boxes"], sources):
             patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
@@ -1025,7 +1039,7 @@ def analyse_exp4(cfg, out_dir: str):
         box_labels = [L(cfg, "noise_types", nt) if nt in cfg["labels"][cfg["lang"]].get("noise_types", {}) else nt
                       for nt in sorted(noise_types) if nt in df["noise_type"].values]
         if box_data:
-            bp = ax.boxplot(box_data, labels=box_labels, patch_artist=True)
+            bp = ax.boxplot(box_data, tick_labels=box_labels, patch_artist=True)
             _style_median(bp)
             for patch, nt in zip(bp["boxes"], sorted(noise_types)):
                 patch.set_facecolor(noise_colors.get(nt, "#888888"))

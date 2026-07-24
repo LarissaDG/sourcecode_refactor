@@ -1,0 +1,143 @@
+REPRODUCIBILITY GUIDE
+Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models
+ICCC 2025 — Larissa Gomide, Lucas Nascimento Ferreira, Wagner Meira Jr.
+================================================================================
+
+This file explains how to reproduce the results from the paper and documents
+the differences between the original ICCC codebase and the refactored pipeline.
+
+
+1. ORIGINAL CODEBASE (ICCC)
+================================================================================
+Repository: https://github.com/LarissaDG/ICCC
+
+Key scripts:
+  amostra.py         — Stratified sampling from APDDv2-10023.csv (20% per category)
+  get_descriptions.py — Caption generation using Janus-Pro-7B
+  generate_scores.py  — ArtCLIP scoring of generated images
+  metricas.py        — Statistical analysis and visualizations
+
+Statistical methodology used in the paper:
+  - Welch's t-test (independent samples, unequal variances)
+  - Mann-Whitney U test (non-parametric alternative)
+  - One-way ANOVA (across aesthetic attributes within generated set)
+  - Pearson and Spearman correlation (between "The overall" and "Mood")
+  - Radar chart for visual comparison of mean attribute scores
+
+NaN handling (APDDv2 is sparse — human annotations are partial):
+  For each attribute column, rows where the human ground truth (APDDv2-10023.csv)
+  is NaN are excluded from comparison. Applied per-column, NOT globally.
+  Implementation in metricas.py:
+      mask = df_original[col].isna()
+      df_new.loc[mask, col] = np.nan
+  Note: original uses positional alignment (reset_index); this refactored version
+  uses filename stem matching, which is more robust to row ordering.
+
+
+2. REFACTORED PIPELINE (this repository)
+================================================================================
+Repository: https://github.com/LarissaDG/sourcecode_refactor
+
+The pipeline has been restructured into 4 stages:
+  Sampling → Captioning → Generation → Scoring
+
+Each experiment is configured via a YAML file in configs/.
+Outputs are saved to outputs/<exp_name>/ with scores in scores/*.csv.
+
+Analysis scripts:
+  scripts/analyze_iccc.py  — Faithful port of metricas.py (ICCC methodology)
+  scripts/analyze.py       — New methodology (see section 3)
+  scripts/analyze_all.py   — Runs both in sequence
+
+
+3. METHODOLOGICAL DIFFERENCES
+================================================================================
+
+  Feature                  | ICCC (metricas.py)          | New (analyze.py)
+  -------------------------|-----------------------------|--------------------------
+  Statistical test         | t-test + Mann-Whitney       | Friedman + Wilcoxon
+  Test type                | Independent samples         | Paired (matched by stem)
+  Multiple comparisons     | None                        | Bonferroni via CLD letters
+  Post-hoc letters         | Not used                    | a/b/c CLD superscripts
+  ANOVA                    | Across attributes (1 set)   | Not used
+  Radar chart              | Yes                         | No (accessibility: advisor
+                           |                             |   is colorblind)
+  Score diff visualization | Bar chart (Human − Janus)   | Bar chart (same)
+  Output format            | Plotly (interactive) +      | Matplotlib PNG only
+                           |   Matplotlib                |
+  Alignment                | Positional (reset_index)    | By filename stem
+  Distribution analysis    | Not included                | KS test + Wasserstein + KL
+  Statistical table        | Plain text                  | Formatted PNG image
+
+
+4. WHY RESULTS MAY DIFFER FROM THE PAPER
+================================================================================
+
+  a) Sample size: The original pipeline sampled ~500 images from APDDv2 using
+     stratified sampling (20% per Artistic Category). If APDDv2 now has all
+     10,023 images available, the sample composition may differ slightly.
+
+  b) NaN alignment: The original uses positional alignment. This refactored
+     version uses filename stem matching. If row ordering differs between
+     APDDv2-10023.csv and the generated scores CSV, results will differ.
+     Stem matching is more reliable.
+
+  c) "The sense of order" (Model 6): This attribute has a known bug in the
+     original ArtCLIP weights and was excluded from analyses. The refactored
+     pipeline also excludes it (the model fails to load and returns NaN).
+     Paper Table 4.2 does not include this attribute.
+
+  d) Score scale: ArtCLIP returns raw values. "Total aesthetic score" is
+     multiplied by 10 (to approximate the 1–10 scale). Attribute scores are
+     used as-is. This matches both the original and refactored code.
+
+  e) The bar chart "Comparison of Aesthetic Scores Across Categories" shows
+     AVG(Human − Janus) differences, NOT raw scores. The values 0–1 in that
+     chart are correct; raw scores (5–7 range) appear in the stat table and
+     distribution plots.
+
+
+5. HOW TO REPRODUCE THE PAPER'S TABLE 4.2
+================================================================================
+
+Requirements:
+  - APDDv2-10023.csv (human ground truth, sparse annotations)
+  - Completed Exp1 run: outputs/exp1_apdd/scores/scores_Janus-Pro-*.csv
+
+Steps:
+  1. Set paths.apddv2_csv in configs/analysis.yaml (or analysis_local.yaml)
+  2. Run the ICCC-faithful analysis:
+
+         python scripts/analyze_iccc.py --config configs/analysis.yaml
+
+  3. Open reports/iccc_stats_report.txt or reports/figures_iccc/iccc_summary_table.png
+
+  To run both analyses at once:
+
+         python scripts/analyze_all.py --config configs/analysis.yaml --skip-samples
+
+
+6. OUTPUT DIRECTORIES
+================================================================================
+
+  reports/figures_iccc/    — ICCC faithful outputs (radar, histograms, boxplots,
+                             scatter, mean-diff bars, summary table)
+  reports/figures/         — New methodology outputs (Friedman stat tables,
+                             distribution diff tables, cluster charts, etc.)
+  reports/samples/         — Visual sample panels per experiment
+  reports/iccc_stats_report.txt  — ICCC statistical test results (text)
+
+
+7. CITATION
+================================================================================
+
+  @inproceedings{gomide2025iccc,
+    title={Automatic Aesthetic Evaluation and Prompt Controllability
+           in Generative Image Models},
+    author={Larissa Gomide and Lucas Nascimento Ferreira and Wagner Meira Jr.},
+    booktitle={Proceedings of the ICCC 2025},
+    year={2025}
+  }
+
+  Original code: https://github.com/LarissaDG/ICCC
+  Refactored pipeline: https://github.com/LarissaDG/sourcecode_refactor
