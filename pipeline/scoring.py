@@ -62,6 +62,10 @@ def run_scoring(cfg, data: list) -> None:
             print(f"  [!] Agente '{agent['name']}' ignorado (erro ao carregar peso): {e}")
     print(f"[scoring] {len(agents)} agentes carregados.")
 
+    # Campos de metadados preservados da amostra no CSV de scores
+    META_FIELDS = ("noise_type", "noise_level", "degradation_pct",
+                   "frame_idx", "video_id", "error_applied")
+
     # ── Detecta quais "fontes" de imagem existem no data ─────────────────────
     # Sempre tem a imagem original; pode ter também generated_Janus-Pro-1B, etc.
     sources = {"original": lambda s: s.get("path", s["filename"])}
@@ -88,6 +92,22 @@ def run_scoring(cfg, data: list) -> None:
                 continue
 
             row = {"filename": os.path.basename(img_path)}
+
+            # Para imagens geradas, guarda o filename original para matching
+            if source_name != "original":
+                row["original_filename"] = os.path.basename(
+                    str(sample.get("filename", ""))
+                )
+
+            # Preserva metadados relevantes (ruído, frame, vídeo, etc.)
+            for field in META_FIELDS:
+                val = sample.get(field)
+                if val is not None:
+                    if hasattr(val, "item"):
+                        val = val.item()
+                    elif hasattr(val, "tolist"):
+                        val = val.tolist()
+                    row[field] = val
 
             # Score total (×10 para escala 0–10, como no demo.py original)
             for name, model in agents.items():

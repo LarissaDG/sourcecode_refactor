@@ -19,6 +19,7 @@ pipeline:
     scoring:    true
 
 sampling:
+  reuse_from: "exp2a_portinari"
   n_samples: 500
   strategy: "random"
 

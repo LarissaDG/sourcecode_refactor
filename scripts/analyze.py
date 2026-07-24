@@ -1,12 +1,10 @@
 """
-Análise e visualização dos experimentos.
+Análise, visualização e amostras dos experimentos.
 
 Uso:
     python3 scripts/analyze.py --config configs/analysis.yaml
-
-Gera todos os gráficos e relatório estatístico em:
-    <paths.reports>/figures/
-    <paths.reports>/stats_report.txt
+    python3 scripts/analyze.py --config configs/analysis.yaml --skip-samples
+    python3 scripts/analyze.py --config configs/analysis.yaml --skip-analysis
 """
 
 import argparse
@@ -14,12 +12,9 @@ import json
 import os
 import random
 import sys
-
-# Garante que o raiz do projeto está no path (necessário quando rodado como script)
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import textwrap
 import warnings
-from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import imageio
 import matplotlib
@@ -30,18 +25,19 @@ import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 import yaml
-from PIL import Image
-from scipy.stats import (f_oneway, mannwhitneyu, pearsonr, spearmanr,
-                         ttest_ind)
+from itertools import combinations
+from PIL import Image, ImageDraw
+from scipy.stats import (friedmanchisquare, ks_2samp, pearsonr,
+                         spearmanr, wasserstein_distance, wilcoxon)
+from scipy.special import rel_entr
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# Configuração
+# Config helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_cfg(path: str) -> dict:
@@ -49,27 +45,26 @@ def load_cfg(path: str) -> dict:
         return yaml.safe_load(f)
 
 
-def L(cfg: dict, *keys):
-    """Acessa rótulo no idioma configurado."""
+def L(cfg, *keys):
     node = cfg["labels"][cfg["lang"]]
     for k in keys:
         node = node[k]
     return node
 
 
-def attr_label(cfg: dict, attr: str) -> str:
+def attr_label(cfg, attr):
     return cfg["labels"][cfg["lang"]]["attributes"].get(attr, attr)
 
 
-def ds_label(cfg: dict, key: str) -> str:
+def ds_label(cfg, key):
     return cfg["labels"][cfg["lang"]]["datasets"].get(key, key)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Carregamento de dados
+# Data loading
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def load_scores(exp_dir: str, source: str) -> pd.DataFrame | None:
+def load_scores(exp_dir: str, source: str) -> "pd.DataFrame | None":
     path = os.path.join(exp_dir, "scores", f"scores_{source}.csv")
     if not os.path.exists(path):
         return None
@@ -84,7 +79,7 @@ def load_pipeline_data(exp_dir: str) -> list:
         return json.load(f)
 
 
-def available_sources(exp_dir: str) -> list[str]:
+def available_sources(exp_dir: str) -> list:
     scores_dir = os.path.join(exp_dir, "scores")
     if not os.path.isdir(scores_dir):
         return []
@@ -95,959 +90,1457 @@ def available_sources(exp_dir: str) -> list[str]:
     return sources
 
 
+def load_human_gt(cfg) -> "pd.DataFrame | None":
+    """Carrega APDDv2-10023.csv como ground truth humano."""
+    path = cfg["paths"].get("apddv2_csv", "")
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        df = pd.read_csv(path, encoding="ISO-8859-1")
+    except Exception:
+        try:
+            df = pd.read_csv(path)
+        except Exception:
+            return None
+    fn_col = next((c for c in df.columns if "filename" in c.lower()), None)
+    if fn_col is None:
+        fn_col = df.columns[0]
+    df = df.rename(columns={fn_col: "filename"})
+    df["stem"] = df["filename"].apply(_stem)
+    return df
+
+
+def _stem(filename) -> str:
+    return os.path.splitext(os.path.basename(str(filename)))[0]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# Helpers visuais
+# Visual helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def style_key(name: str) -> str:
-    """Mapeia nome de fonte/dataset para chave de estilo."""
-    n = name.lower()
-    if "1b" in n:   return "janus_1b"
-    if "7b" in n:   return "janus_7b"
-    if "mnist" in n: return "mnist"
-    return "original"
+def _palette(cfg) -> dict:
+    return cfg.get("palette", {
+        "original": "#448FF2",
+        "janus_1b": "#33A650",
+        "janus_7b": "#F2A007",
+        "mnist":    "#F23838",
+        "highlight": "#1A00F2",
+    })
 
 
-def get_color(cfg, key: str) -> str:
-    return cfg["palette"].get(key, cfg["palette"]["original"])
+def _hatches(cfg) -> dict:
+    return cfg.get("hatches", {
+        "original": "",
+        "janus_1b": "///",
+        "janus_7b": "xxx",
+        "mnist":    "...",
+        "highlight": "---",
+    })
 
 
-def get_hatch(cfg, key: str) -> str:
-    return cfg["hatches"].get(key, "")
+def _linestyles(cfg) -> dict:
+    return cfg.get("linestyles", {
+        "original": "solid",
+        "janus_1b": "dashed",
+        "janus_7b": "dotted",
+        "mnist":    "dashdot",
+    })
 
 
-def get_ls(cfg, key: str) -> str:
-    return cfg["linestyles"].get(key, "solid")
+def _markers(cfg) -> dict:
+    return cfg.get("markers", {
+        "original": "o",
+        "janus_1b": "s",
+        "janus_7b": "^",
+        "mnist":    "D",
+    })
 
 
-def get_marker(cfg, key: str) -> str:
-    return cfg["markers"].get(key, "o")
+SOURCE_KEYS = {
+    "original": "original",
+    "Janus-Pro-1B": "janus_1b",
+    "Janus-Pro-7B": "janus_7b",
+    "mnist": "mnist",
+    "Human_description": "original",
+    "Gen_description": "janus_1b",
+}
 
 
-def fig_base(cfg, square=False):
-    size = cfg["figures"]["figsize_sq"] if square else cfg["figures"]["figsize"]
-    fig, ax = plt.subplots(figsize=size)
-    plt.rcParams.update({"font.size": cfg["figures"]["font_size"]})
-    return fig, ax
+def _skey(source_name: str) -> str:
+    return SOURCE_KEYS.get(source_name, "original")
 
 
-def save(fig, path: str, cfg: dict):
+def save(fig, path: str, cfg):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    fig.savefig(path, dpi=cfg["figures"]["dpi"], bbox_inches="tight")
+    dpi = cfg.get("figures", {}).get("dpi", 150)
+    fmt = cfg.get("figures", {}).get("format", "png")
+    fig.savefig(path, dpi=dpi, bbox_inches="tight", format=fmt)
     plt.close(fig)
-    print(f"  → {path}")
 
 
-def sig_marker(p, alpha=0.05) -> str:
-    if p < 0.001: return "***"
-    if p < 0.01:  return "**"
-    if p < alpha: return "*"
-    return "ns"
+def _style_median(bp):
+    for med in bp.get("medians", []):
+        med.set_color("black")
+        med.set_linewidth(2.5)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Testes estatísticos
+# Statistics: Friedman + Wilcoxon + CLD
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def run_stats(cfg, groups: dict[str, pd.Series], attr: str, report_lines: list):
+def _compact_letters(group_names: list, means: dict, pval_dict: dict, alpha=0.05) -> dict:
+    """Compact Letter Display: grupos sem diferença significativa compartilham uma letra."""
+    if len(group_names) < 2:
+        return {g: "a" for g in group_names}
+
+    sorted_names = sorted(group_names, key=lambda g: means.get(g, 0), reverse=True)
+    letter_groups = []  # list of sets
+
+    for g in sorted_names:
+        placed = []
+        for idx, lg in enumerate(letter_groups):
+            can_join = all(
+                pval_dict.get(tuple(sorted([g, m])), 1.0) >= alpha
+                for m in lg
+            )
+            if can_join:
+                placed.append(idx)
+        if placed:
+            for idx in placed:
+                letter_groups[idx].add(g)
+        else:
+            letter_groups.append({g})
+
+    result = {g: "" for g in group_names}
+    for idx, lg in enumerate(letter_groups):
+        char = chr(ord("a") + idx)
+        for g in lg:
+            result[g] += char
+    return result
+
+
+def friedman_wilcoxon(groups_dict: dict, attrs: list, alpha=0.05) -> dict:
     """
-    groups: dict {label -> Series of scores}
+    groups_dict: {group_name: DataFrame com coluna 'stem' e colunas de atributos}
+    Retorna: {attr: {group_name: {"mean": float, "std": float, "letter": str, "n": int},
+                     "_friedman_p": float}}
     """
-    alpha = cfg["stats"]["alpha"]
-    report_lines.append(f"\n  Attribute: {attr_label(cfg, attr)}")
+    result = {}
+    group_names = list(groups_dict.keys())
 
-    keys  = list(groups.keys())
-    vals  = [groups[k].dropna() for k in keys]
-
-    # ANOVA (se ≥ 3 grupos)
-    if "anova" in cfg["stats"]["tests"] and len(vals) >= 3:
-        stat, p = f_oneway(*vals)
-        report_lines.append(f"    ANOVA: F={stat:.3f}, p={p:.4f} {sig_marker(p, alpha)}")
-
-    # Pairwise t-test + Mann-Whitney
-    for i in range(len(keys)):
-        for j in range(i + 1, len(keys)):
-            a, b = vals[i], vals[j]
-            if len(a) < 2 or len(b) < 2:
+    for attr in attrs:
+        dfs = []
+        for name, df in groups_dict.items():
+            if df is None or attr not in df.columns:
                 continue
-            if "ttest" in cfg["stats"]["tests"]:
-                t, p_t = ttest_ind(a, b, equal_var=False, nan_policy="omit")
-                report_lines.append(
-                    f"    t-test [{keys[i]} vs {keys[j]}]: t={t:.3f}, p={p_t:.4f} {sig_marker(p_t, alpha)}"
-                )
-            if "mannwhitney" in cfg["stats"]["tests"]:
-                u, p_u = mannwhitneyu(a, b, alternative="two-sided")
-                report_lines.append(
-                    f"    Mann-Whitney [{keys[i]} vs {keys[j]}]: U={u:.1f}, p={p_u:.4f} {sig_marker(p_u, alpha)}"
-                )
+            if "stem" not in df.columns:
+                df = df.copy()
+                df["stem"] = df["filename"].apply(_stem)
+            dfs.append(df[["stem", attr]].rename(columns={attr: name}))
 
-    # Correlação Pearson / Spearman entre os dois primeiros grupos
-    if len(keys) >= 2 and len(vals[0]) == len(vals[1]):
-        combined = pd.concat([vals[0].reset_index(drop=True),
-                               vals[1].reset_index(drop=True)], axis=1).dropna()
-        if len(combined) >= 3:
-            if "pearson" in cfg["stats"]["tests"]:
-                r, p = pearsonr(*combined.T.values)
-                report_lines.append(f"    Pearson r={r:.3f}, p={p:.4f} {sig_marker(p, alpha)}")
-            if "spearman" in cfg["stats"]["tests"]:
-                r, p = spearmanr(*combined.T.values)
-                report_lines.append(f"    Spearman ρ={r:.3f}, p={p:.4f} {sig_marker(p, alpha)}")
+        if len(dfs) < 2:
+            continue
+
+        merged = dfs[0]
+        for d in dfs[1:]:
+            merged = merged.merge(d, on="stem", how="inner")
+        merged = merged.dropna()
+
+        if len(merged) < 3:
+            continue
+
+        valid = [g for g in group_names if g in merged.columns]
+        vals = [merged[g].values for g in valid]
+
+        friedman_p = 1.0
+        if len(vals) >= 3:
+            try:
+                _, friedman_p = friedmanchisquare(*vals)
+            except Exception:
+                pass
+
+        pval_dict = {}
+        for g1, g2 in combinations(valid, 2):
+            pair = tuple(sorted([g1, g2]))
+            try:
+                _, p = wilcoxon(merged[g1].values, merged[g2].values)
+                pval_dict[pair] = p
+            except Exception:
+                pval_dict[pair] = 1.0
+
+        means = {g: float(merged[g].mean()) for g in valid}
+        stds  = {g: float(merged[g].std())  for g in valid}
+        letters = _compact_letters(valid, means, pval_dict, alpha)
+
+        result[attr] = {
+            g: {"mean": means[g], "std": stds[g], "letter": letters[g], "n": len(merged)}
+            for g in valid
+        }
+        result[attr]["_friedman_p"] = friedman_p
+
+    return result
+
+
+def distribution_diff(s1: pd.Series, s2: pd.Series, name1="A", name2="B") -> "dict | None":
+    a = s1.dropna().values
+    b = s2.dropna().values
+    if len(a) < 2 or len(b) < 2:
+        return None
+    ks_stat, ks_p = ks_2samp(a, b)
+    w = wasserstein_distance(a, b)
+    bins = 50
+    r = (min(a.min(), b.min()), max(a.max(), b.max()))
+    if r[0] == r[1]:
+        kl = 0.0
+    else:
+        ph, _ = np.histogram(a, bins=bins, range=r, density=True)
+        qh, _ = np.histogram(b, bins=bins, range=r, density=True)
+        ph += 1e-10; qh += 1e-10
+        kl = float(np.sum(rel_entr(ph, qh)))
+    return {"pair": (name1, name2), "ks_stat": ks_stat, "ks_p": ks_p,
+            "wasserstein": w, "kl": kl, "n1": len(a), "n2": len(b)}
+
+
+def apply_nan_mask(df_ref: pd.DataFrame, df_target: pd.DataFrame, attr: str):
+    """
+    Alinha ref e target por stem e propaga o NaN do ref para o target,
+    por atributo (view-only — não modifica os DataFrames originais).
+    Retorna (ref_vals, target_vals) com NaN onde ref é NaN.
+    """
+    if "stem" not in df_ref.columns:
+        df_ref = df_ref.copy(); df_ref["stem"] = df_ref["filename"].apply(_stem)
+    if "stem" not in df_target.columns:
+        df_target = df_target.copy(); df_target["stem"] = df_target["filename"].apply(_stem)
+    merged = df_ref[["stem", attr]].merge(
+        df_target[["stem", attr]].rename(columns={attr: attr + "_t"}),
+        on="stem", how="inner"
+    )
+    mask = merged[attr].isna()
+    ref_vals = merged[attr].copy()
+    tgt_vals = merged[attr + "_t"].copy()
+    tgt_vals[mask] = np.nan
+    return ref_vals, tgt_vals
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# EXP 1 — APDDv2 baseline
+# Statistical table as PNG
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def exp1_analysis(cfg, out_dir: str, report: list):
+def render_stat_table_png(fw_result: dict, attrs: list, group_names: list,
+                           path: str, cfg, title="", best_is="highest"):
+    """
+    Renderiza a tabela Friedman/Wilcoxon como imagem PNG.
+    Células: "mean ± std^letter"; melhor valor em negrito.
+    """
+    pal = _palette(cfg)
+    col_labels = [ds_label(cfg, _skey(g)) if _skey(g) in cfg.get("labels", {}).get(cfg.get("lang", "en"), {}).get("datasets", {})
+                  else g for g in group_names]
+
+    # adiciona coluna p-value Friedman
+    col_labels_full = col_labels + ["Friedman p"]
+    row_labels = [attr_label(cfg, a) for a in attrs]
+
+    cell_text = []
+    cell_bold = []  # (row, col) to bold
+
+    for i, attr in enumerate(attrs):
+        row_text = []
+        row_info = fw_result.get(attr, {})
+        fp = row_info.get("_friedman_p", None)
+
+        means = {g: row_info[g]["mean"] for g in group_names if g in row_info}
+        if means:
+            best_g = max(means, key=means.get) if best_is == "highest" else min(means, key=means.get)
+        else:
+            best_g = None
+
+        for g in group_names:
+            if g not in row_info:
+                row_text.append("—")
+            else:
+                m = row_info[g]["mean"]
+                s = row_info[g]["std"]
+                l = row_info[g]["letter"]
+                cell = f"{m:.2f}±{s:.2f}{l}"
+                if g == best_g:
+                    cell = f"*{cell}*"
+                row_text.append(cell)
+
+        if fp is not None:
+            row_text.append(f"{fp:.3f}" if fp >= 0.001 else "<0.001")
+        else:
+            row_text.append("—")
+        cell_text.append(row_text)
+
+    n_rows = len(cell_text)
+    n_cols = len(col_labels_full)
+    fig_w = max(8, 2 + n_cols * 2.8)
+    fig_h = max(2, 0.5 + n_rows * 0.5)
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.axis("off")
+
+    tbl = ax.table(
+        cellText=cell_text,
+        rowLabels=row_labels,
+        colLabels=col_labels_full,
+        cellLoc="center",
+        rowLoc="right",
+        loc="center",
+    )
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1, 1.7)
+
+    for j in range(n_cols):
+        cell = tbl[(0, j)]
+        cell.set_facecolor("#CCCCCC")
+        cell.set_text_props(fontweight="bold")
+    for i in range(n_rows):
+        tbl[(i + 1, -1)].set_facecolor("#F5F5F5")
+
+    if title:
+        ax.set_title(title, pad=12, fontsize=11, fontweight="bold")
+
+    plt.tight_layout()
+    save(fig, path, cfg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Distribution difference table as PNG
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def render_dist_diff_table(pairs_results: list, path: str, cfg, title=""):
+    """
+    pairs_results: list of dicts from distribution_diff()
+    """
+    if not pairs_results:
+        return
+    rows = []
+    for r in pairs_results:
+        if r is None:
+            continue
+        rows.append([
+            f"{r['pair'][0]} vs {r['pair'][1]}",
+            f"{r['ks_stat']:.3f}",
+            f"{r['ks_p']:.3f}" if r['ks_p'] >= 0.001 else "<0.001",
+            f"{r['wasserstein']:.3f}",
+            f"{r['kl']:.3f}",
+            str(r['n1']), str(r['n2']),
+        ])
+    if not rows:
+        return
+    col_labels = ["Pair", "KS stat", "KS p", "Wasserstein", "KL div", "n₁", "n₂"]
+    n_rows = len(rows)
+    n_cols = len(col_labels)
+    fig_w = max(10, 2 + n_cols * 1.8)
+    fig_h = max(2, 0.5 + n_rows * 0.45)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.axis("off")
+    tbl = ax.table(cellText=rows, colLabels=col_labels, cellLoc="center", loc="center")
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1, 1.6)
+    for j in range(n_cols):
+        tbl[(0, j)].set_facecolor("#CCCCCC")
+        tbl[(0, j)].set_text_props(fontweight="bold")
+    if title:
+        ax.set_title(title, pad=12, fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, path, cfg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Exp 1 — APDDv2
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyse_exp1(cfg, out_dir: str):
     exp_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    attrs = cfg["score_attributes"]
+    alpha = cfg["stats"]["alpha"]
+    pal = _palette(cfg); ht = _hatches(cfg)
+    ls = _linestyles(cfg); mk = _markers(cfg)
+
+    df_orig  = load_scores(exp_dir, "original")
+    df_1b    = load_scores(exp_dir, "Janus-Pro-1B")
+    df_7b    = load_scores(exp_dir, "Janus-Pro-7B")
+    df_human = load_human_gt(cfg)
+
+    if df_orig is None:
+        print("[exp1] scores não encontrados, pulando.")
+        return
+
+    total_attr = "Total aesthetic score"
+
+    # ── 1. Distribuição de scores ───────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+    for src, df, key in [
+        ("original", df_orig, "original"),
+        ("Janus-Pro-1B", df_1b, "janus_1b"),
+        ("Janus-Pro-7B", df_7b, "janus_7b"),
+    ]:
+        if df is None or total_attr not in df.columns:
+            continue
+        vals = df[total_attr].dropna()
+        ax.hist(vals, bins=30, alpha=0.6, color=pal[key],
+                label=ds_label(cfg, key), hatch=ht[key], edgecolor="black")
+    ax.set_xlabel(L(cfg, "axes", "score"))
+    ax.set_ylabel("Count")
+    ax.set_title(L(cfg, "titles", "dist_scores"))
+    ax.legend()
+    ax.grid(cfg["figures"]["grid"], alpha=0.3)
+    save(fig, os.path.join(out_dir, "exp1_score_distributions.png"), cfg)
+
+    # ── 2. Boxplot por fonte ────────────────────────────────────────────────
+    sources = [("original", df_orig, "original"),
+               ("Janus-Pro-1B", df_1b, "janus_1b"),
+               ("Janus-Pro-7B", df_7b, "janus_7b")]
+    available = [(n, d, k) for n, d, k in sources if d is not None and total_attr in d.columns]
+    if available:
+        fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+        data_list = [d[total_attr].dropna().values for _, d, _ in available]
+        labels = [ds_label(cfg, k) for _, _, k in available]
+        bp = ax.boxplot(data_list, labels=labels, patch_artist=True)
+        _style_median(bp)
+        for patch, (_, _, k) in zip(bp["boxes"], available):
+            patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title("APDDv2 — Score by Source")
+        ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        save(fig, os.path.join(out_dir, "exp1_boxplot_sources.png"), cfg)
+
+    # ── 3. Category table ───────────────────────────────────────────────────
+    if df_orig is not None and "category" in df_orig.columns:
+        _exp1_category_table(df_orig, cfg, out_dir, attrs, total_attr)
+
+    # ── 4. Stat table (Friedman + Wilcoxon + CLD) ──────────────────────────
+    groups = {}
+    group_order = []
+    for gname, df in [("original", df_orig), ("Janus-Pro-1B", df_1b), ("Janus-Pro-7B", df_7b)]:
+        if df is not None:
+            d = df.copy()
+            if "stem" not in d.columns:
+                d["stem"] = d["filename"].apply(_stem)
+            groups[gname] = d
+            group_order.append(gname)
+
+    if len(groups) >= 2:
+        fw = friedman_wilcoxon(groups, attrs, alpha)
+        render_stat_table_png(
+            fw, attrs, group_order,
+            os.path.join(out_dir, "exp1_stat_table.png"), cfg,
+            title="APDDv2 — Friedman + Wilcoxon (CLD)"
+        )
+
+    # ── 5. Score diff bar chart ─────────────────────────────────────────────
+    if df_orig is not None and (df_1b is not None or df_7b is not None):
+        _score_diff_bars(df_orig, df_1b, df_7b, cfg, out_dir,
+                         prefix="exp1", title="APDDv2 — Score Difference (Original − Generated)")
+
+    # ── 6. Cluster chart ────────────────────────────────────────────────────
+    _cluster_chart(df_orig, cfg, out_dir, attrs, total_attr)
+
+    # ── 7. Distribution differences ─────────────────────────────────────────
+    if df_human is not None and df_orig is not None:
+        _dist_diff_exp1(df_human, df_orig, df_1b, df_7b, cfg, out_dir, attrs)
+
+
+def _exp1_category_table(df_orig, cfg, out_dir, attrs, total_attr):
+    cats = df_orig["category"].dropna().unique()
+    rows = []
+    row_labels = []
+    for cat in sorted(cats):
+        sub = df_orig[df_orig["category"] == cat][total_attr].dropna()
+        if len(sub) == 0:
+            continue
+        rows.append([f"{sub.mean():.2f}", f"{sub.std():.2f}", str(len(sub))])
+        row_labels.append(str(cat))
+    if not rows:
+        return
+    fig, ax = plt.subplots(figsize=(8, max(3, 0.4 * len(rows) + 1)))
+    ax.axis("off")
+    tbl = ax.table(cellText=rows, rowLabels=row_labels,
+                   colLabels=["Mean Score", "Std", "N"],
+                   cellLoc="center", rowLoc="right", loc="center")
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1, 1.6)
+    for j in range(3):
+        tbl[(0, j)].set_facecolor("#CCCCCC")
+        tbl[(0, j)].set_text_props(fontweight="bold")
+    ax.set_title("APDDv2 — Score by Category", pad=12, fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp1_by_category_table.png"), cfg)
+
+
+def _score_diff_bars(df_orig, df_1b, df_7b, cfg, out_dir, prefix="exp1", title="Score Difference"):
+    attrs = cfg["score_attributes"]
+    pal = _palette(cfg); ht = _hatches(cfg)
+
+    # Align by stem
+    def align(df_a, df_b, attr):
+        if df_a is None or df_b is None:
+            return None, None
+        a = df_a.copy(); b = df_b.copy()
+        if "stem" not in a.columns: a["stem"] = a["filename"].apply(_stem)
+        if "stem" not in b.columns: b["stem"] = b["filename"].apply(_stem)
+        m = a[["stem", attr]].merge(b[["stem", attr]].rename(columns={attr: attr + "_b"}), on="stem")
+        m = m.dropna()
+        if len(m) == 0:
+            return None, None
+        return m[attr].values, m[attr + "_b"].values
+
+    diffs_1b = []
+    diffs_7b = []
+    attr_labels = []
+    for attr in attrs:
+        a_vals, b1_vals = align(df_orig, df_1b, attr)
+        _, b7_vals = align(df_orig, df_7b, attr)
+        if a_vals is not None and b1_vals is not None:
+            diffs_1b.append(float(np.mean(a_vals - b1_vals)))
+        else:
+            diffs_1b.append(None)
+        if a_vals is not None and b7_vals is not None:
+            diffs_7b.append(float(np.mean(a_vals - b7_vals)))
+        else:
+            diffs_7b.append(None)
+        attr_labels.append(attr_label(cfg, attr))
+
+    # Filter out None
+    valid_idx = [i for i in range(len(attrs))
+                 if diffs_1b[i] is not None or diffs_7b[i] is not None]
+    if not valid_idx:
+        return
+
+    x = np.arange(len(valid_idx))
+    width = 0.35
+    fig, ax = plt.subplots(figsize=(max(10, len(valid_idx) * 0.9), 6))
+    labels_v = [attr_labels[i] for i in valid_idx]
+    d1 = [diffs_1b[i] if diffs_1b[i] is not None else 0 for i in valid_idx]
+    d7 = [diffs_7b[i] if diffs_7b[i] is not None else 0 for i in valid_idx]
+
+    bars1 = ax.bar(x - width/2, d1, width, label="Orig − Janus-1B",
+                   color=pal["janus_1b"], hatch=ht["janus_1b"], edgecolor="black")
+    bars7 = ax.bar(x + width/2, d7, width, label="Orig − Janus-7B",
+                   color=pal["janus_7b"], hatch=ht["janus_7b"], edgecolor="black")
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels_v, rotation=40, ha="right")
+    ax.set_ylabel("Average Score Difference")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(cfg["figures"]["grid"], alpha=0.3, axis="y")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}_score_diff_bars.png"), cfg)
+
+
+def _cluster_chart(df_orig, cfg, out_dir, attrs, total_attr):
+    if df_orig is None:
+        return
+    n_clusters = cfg["clustering"]["n_clusters"]
+    n_top = cfg["clustering"]["n_top"]
+
+    sub = df_orig[attrs].dropna()
+    if len(sub) < n_clusters * 2:
+        return
+
+    scaler = StandardScaler()
+    X = scaler.fit_transform(sub.values)
+    km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    labels = km.fit_predict(X)
+    pca = PCA(n_components=2, random_state=42)
+    X2 = pca.fit_transform(X)
+
+    cluster_colors = ["#448FF2", "#33A650", "#F2A007"][:n_clusters]
+
+    total_scores = df_orig.loc[sub.index, total_attr].values
+    top_idx  = np.argsort(total_scores)[-n_top:]
+    bot_idx  = np.argsort(total_scores)[:n_top]
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    for ax_idx, (title_suffix, highlight_idx) in enumerate([
+        (f"Top-{n_top}", top_idx), (f"Bottom-{n_top}", bot_idx)
+    ]):
+        ax = axes[ax_idx]
+        for c in range(n_clusters):
+            mask = labels == c
+            ax.scatter(X2[mask, 0], X2[mask, 1], alpha=0.3, s=20,
+                       color=cluster_colors[c], label=f"Cluster {c+1}")
+        # Highlight: same cluster color, larger
+        for i in highlight_idx:
+            c = labels[i]
+            ax.scatter(X2[i, 0], X2[i, 1], s=100, color=cluster_colors[c],
+                       edgecolors="black", linewidths=1.5, zorder=5)
+        ax.set_title(f"PCA Clusters — {title_suffix}")
+        ax.set_xlabel("PC1"); ax.set_ylabel("PC2")
+        ax.legend(fontsize=8)
+        ax.grid(cfg["figures"]["grid"], alpha=0.3)
+
+    plt.suptitle("APDDv2 — Cluster Analysis", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp1_clusters.png"), cfg)
+
+    # Atributos médios por cluster (barras)
+    fig, ax = plt.subplots(figsize=(max(10, len(attrs) * 0.9), 6))
+    x = np.arange(len(attrs))
+    width = 0.8 / n_clusters
+    for c in range(n_clusters):
+        mask = labels == c
+        means = [float(sub.iloc[mask][a].mean()) for a in attrs]
+        ax.bar(x + c * width, means, width, label=f"Cluster {c+1}",
+               color=cluster_colors[c], edgecolor="black", alpha=0.85)
+    ax.set_xticks(x + width * (n_clusters - 1) / 2)
+    ax.set_xticklabels([attr_label(cfg, a) for a in attrs], rotation=40, ha="right")
+    ax.set_ylabel(L(cfg, "axes", "score"))
+    ax.set_title("Mean Attributes per Cluster")
+    ax.legend()
+    ax.grid(cfg["figures"]["grid"], alpha=0.3, axis="y")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp1_cluster_attrs.png"), cfg)
+
+
+def _dist_diff_exp1(df_human, df_orig, df_1b, df_7b, cfg, out_dir, attrs):
+    """Tabelas de diferença de distribuição para Exp1."""
+    for attr in [cfg["score_attributes"][0]]:  # Total score apenas
+        pairs = []
+        if df_orig is not None:
+            r, t = apply_nan_mask(df_human, df_orig, attr)
+            pairs.append(distribution_diff(r.dropna(), t.dropna(), "Human GT", "Original"))
+        if df_1b is not None:
+            r, t = apply_nan_mask(df_human, df_1b, attr)
+            pairs.append(distribution_diff(r.dropna(), t.dropna(), "Human GT", "Janus-1B"))
+        if df_7b is not None:
+            r, t = apply_nan_mask(df_human, df_7b, attr)
+            pairs.append(distribution_diff(r.dropna(), t.dropna(), "Human GT", "Janus-7B"))
+        pairs = [p for p in pairs if p is not None]
+        if pairs:
+            render_dist_diff_table(
+                pairs, os.path.join(out_dir, "exp1_dist_diff.png"),
+                cfg, title=f"APDDv2 — Distribution Differences ({attr_label(cfg, attr)})"
+            )
+    # Per-attribute full table
+    all_pairs = []
+    for attr in attrs:
+        for gname, df in [("Janus-1B", df_1b), ("Janus-7B", df_7b)]:
+            if df is None:
+                continue
+            r, t = apply_nan_mask(df_human, df, attr)
+            res = distribution_diff(r.dropna(), t.dropna(),
+                                    f"Human/{attr_label(cfg, attr)}",
+                                    gname)
+            if res:
+                all_pairs.append(res)
+    if all_pairs:
+        render_dist_diff_table(
+            all_pairs, os.path.join(out_dir, "exp1_dist_diff_full.png"),
+            cfg, title="APDDv2 — Distribution Differences (all attributes)"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Exp 2 — Portinari
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyse_exp2(cfg, out_dir: str):
+    pal = _palette(cfg); ht = _hatches(cfg)
+    attrs = cfg["score_attributes"]
+    alpha = cfg["stats"]["alpha"]
+    total_attr = "Total aesthetic score"
+
+    def _load_exp2(name):
+        d = os.path.join(cfg["paths"]["outputs"], name)
+        return load_scores(d, "original"), load_scores(d, "Janus-Pro-1B"), load_scores(d, "Janus-Pro-7B")
+
+    df_2a_o, df_2a_1b, df_2a_7b = _load_exp2("exp2a_portinari")
+    df_2b_o, df_2b_1b, df_2b_7b = _load_exp2("exp2b_portinari_human")
+
+    # ── 1. Boxplot Human vs Gen ─────────────────────────────────────────────
+    # Reúne originais exp2a e exp2b como "Human_description" vs generated
+    def _total(df):
+        return df[total_attr].dropna().values if df is not None and total_attr in df.columns else None
+
+    sources_box = [
+        ("Human_description", df_2b_o, "original"),
+        ("Gen_description",   df_2a_o, "janus_1b"),
+        ("Janus-Pro-1B (2a)", df_2a_1b, "janus_1b"),
+        ("Janus-Pro-7B (2a)", df_2a_7b, "janus_7b"),
+        ("Janus-Pro-1B (2b)", df_2b_1b, "janus_1b"),
+        ("Janus-Pro-7B (2b)", df_2b_7b, "janus_7b"),
+    ]
+    available_box = [(n, d, k) for n, d, k in sources_box if _total(d) is not None]
+    if available_box:
+        fig, ax = plt.subplots(figsize=(max(10, len(available_box) * 1.5), 6))
+        data_list = [_total(d) for _, d, _ in available_box]
+        labels = [n for n, _, _ in available_box]
+        bp = ax.boxplot(data_list, labels=labels, patch_artist=True)
+        _style_median(bp)
+        for patch, (_, _, k) in zip(bp["boxes"], available_box):
+            patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title("Portinari — Score by Source")
+        ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        plt.xticks(rotation=25, ha="right")
+        plt.tight_layout()
+        save(fig, os.path.join(out_dir, "exp2_boxplot.png"), cfg)
+
+    # ── 2. Stat tables ─────────────────────────────────────────────────────
+    for exp_tag, df_o, df_1b, df_7b in [
+        ("2a_gen_captions", df_2a_o, df_2a_1b, df_2a_7b),
+        ("2b_human_captions", df_2b_o, df_2b_1b, df_2b_7b),
+    ]:
+        groups = {}; group_order = []
+        for gname, df in [("original", df_o), ("Janus-Pro-1B", df_1b), ("Janus-Pro-7B", df_7b)]:
+            if df is not None:
+                d = df.copy()
+                if "stem" not in d.columns: d["stem"] = d["filename"].apply(_stem)
+                groups[gname] = d; group_order.append(gname)
+        if len(groups) >= 2:
+            fw = friedman_wilcoxon(groups, attrs, alpha)
+            render_stat_table_png(fw, attrs, group_order,
+                                  os.path.join(out_dir, f"exp2_{exp_tag}_stat_table.png"),
+                                  cfg, title=f"Portinari ({exp_tag}) — Friedman + Wilcoxon")
+
+    # ── 3. Score diff bars ──────────────────────────────────────────────────
+    if df_2a_o is not None:
+        _score_diff_bars(df_2a_o, df_2a_1b, df_2a_7b, cfg, out_dir,
+                         prefix="exp2a", title="Portinari (AI Captions) — Score Difference")
+    if df_2b_o is not None:
+        _score_diff_bars(df_2b_o, df_2b_1b, df_2b_7b, cfg, out_dir,
+                         prefix="exp2b", title="Portinari (Human Captions) — Score Difference")
+
+    # ── 4. Distribution differences ─────────────────────────────────────────
+    df_human = load_human_gt(cfg)
+    all_pairs = []
+    pair_defs = [
+        ("Portinari orig (2a)", df_2a_o), ("Portinari orig (2b)", df_2b_o),
+        ("Janus-1B (2a)", df_2a_1b), ("Janus-7B (2a)", df_2a_7b),
+        ("Janus-1B (2b)", df_2b_1b), ("Janus-7B (2b)", df_2b_7b),
+    ]
+    if df_human is not None:
+        for name, df in pair_defs:
+            if df is None or total_attr not in df.columns:
+                continue
+            res = distribution_diff(
+                df_human[total_attr].dropna() if total_attr in df_human.columns else pd.Series([]),
+                df[total_attr].dropna(),
+                "APDDv2-Human", name
+            )
+            if res:
+                all_pairs.append(res)
+    # Portinari intra-pairs
+    for n1, d1 in pair_defs:
+        for n2, d2 in pair_defs:
+            if n1 >= n2: continue
+            if d1 is None or d2 is None: continue
+            if total_attr not in d1.columns or total_attr not in d2.columns: continue
+            res = distribution_diff(d1[total_attr].dropna(), d2[total_attr].dropna(), n1, n2)
+            if res:
+                all_pairs.append(res)
+    if all_pairs:
+        render_dist_diff_table(
+            all_pairs, os.path.join(out_dir, "exp2_dist_diff.png"),
+            cfg, title="Portinari — Distribution Differences (Total Score)"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Exp 3 — MNIST
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyse_exp3(cfg, out_dir: str):
+    pal = _palette(cfg); ht = _hatches(cfg)
+    total_attr = "Total aesthetic score"
+
+    exp3_dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
+    df_mnist = load_scores(exp3_dir, "original")
+
+    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    df_apdd  = load_scores(exp1_dir, "original")
+
+    exp2a_dir = os.path.join(cfg["paths"]["outputs"], "exp2a_portinari")
+    df_port  = load_scores(exp2a_dir, "original")
+
+    if df_mnist is None or total_attr not in (df_mnist.columns if df_mnist is not None else []):
+        print("[exp3] scores não encontrados, pulando.")
+        return
+
+    # ── Art vs Non-Art boxplot ──────────────────────────────────────────────
+    sources = []
+    if df_apdd is not None and total_attr in df_apdd.columns:
+        sources.append(("APDDv2", df_apdd[total_attr].dropna(), "original"))
+    if df_port is not None and total_attr in df_port.columns:
+        sources.append(("Portinari", df_port[total_attr].dropna(), "original"))
+    if total_attr in df_mnist.columns:
+        sources.append(("MNIST", df_mnist[total_attr].dropna(), "mnist"))
+
+    if len(sources) >= 2:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        bp = ax.boxplot([s[1].values for s in sources],
+                        labels=[s[0] for s in sources], patch_artist=True)
+        _style_median(bp)
+        for patch, (_, _, k) in zip(bp["boxes"], sources):
+            patch.set_facecolor(pal[k]); patch.set_hatch(ht[k])
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title(L(cfg, "titles", "art_vs_noart"))
+        ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        save(fig, os.path.join(out_dir, "exp3_art_vs_noart.png"), cfg)
+
+    # ── Distribution diffs ──────────────────────────────────────────────────
+    pairs = []
+    mnist_s = df_mnist[total_attr].dropna() if total_attr in df_mnist.columns else pd.Series([])
+    if df_apdd is not None and total_attr in df_apdd.columns:
+        pairs.append(distribution_diff(df_apdd[total_attr].dropna(), mnist_s, "APDDv2", "MNIST"))
+    if df_port is not None and total_attr in df_port.columns:
+        pairs.append(distribution_diff(df_port[total_attr].dropna(), mnist_s, "Portinari", "MNIST"))
+    pairs = [p for p in pairs if p is not None]
+    if pairs:
+        render_dist_diff_table(
+            pairs, os.path.join(out_dir, "exp3_dist_diff.png"),
+            cfg, title="Art vs Non-Art — Distribution Differences"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Comparison figures (Fig 4.9 e Fig 4.10)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyse_comparisons(cfg, out_dir: str):
+    pal = _palette(cfg); ht = _hatches(cfg); mk = _markers(cfg); ls = _linestyles(cfg)
+    attrs = cfg["score_attributes"]
+    total_attr = "Total aesthetic score"
+
+    def _load(exp, source):
+        d = os.path.join(cfg["paths"]["outputs"], exp)
+        return load_scores(d, source)
+
+    df_apdd = _load("exp1_apdd", "original")
+    df_port = _load("exp2a_portinari", "original")
+    df_mnist = _load("exp3_mnist", "original")
+
+    # ── Fig 4.9: APDDv2 vs Portinari por atributo ──────────────────────────
+    if df_apdd is not None and df_port is not None:
+        valid_attrs = [a for a in attrs if a in df_apdd.columns and a in df_port.columns]
+        if valid_attrs:
+            apdd_means = [df_apdd[a].dropna().mean() for a in valid_attrs]
+            port_means = [df_port[a].dropna().mean() for a in valid_attrs]
+            x = np.arange(len(valid_attrs))
+            width = 0.35
+            fig, ax = plt.subplots(figsize=(max(10, len(valid_attrs) * 0.9), 6))
+            ax.bar(x - width/2, apdd_means, width, label="APDDv2", color=pal["original"],
+                   hatch=ht["original"], edgecolor="black")
+            ax.bar(x + width/2, port_means, width, label="Portinari", color=pal["janus_1b"],
+                   hatch=ht["janus_1b"], edgecolor="black")
+            ax.set_xticks(x)
+            ax.set_xticklabels([attr_label(cfg, a) for a in valid_attrs], rotation=40, ha="right")
+            ax.set_ylabel(L(cfg, "axes", "score"))
+            ax.set_title("Fig 4.9 — APDDv2 vs Portinari: Mean Scores per Attribute")
+            ax.legend(); ax.grid(cfg["figures"]["grid"], alpha=0.3, axis="y")
+            plt.tight_layout()
+            save(fig, os.path.join(out_dir, "fig49_apddv2_vs_portinari.png"), cfg)
+
+    # ── Fig 4.10: Art vs MNIST por atributo ────────────────────────────────
+    if df_mnist is not None:
+        art_dfs = [(df_apdd, "APDDv2", "original"), (df_port, "Portinari", "original")]
+        art_dfs = [(d, n, k) for d, n, k in art_dfs if d is not None]
+        valid_attrs = [a for a in attrs if all(a in d.columns for d, _, _ in art_dfs)
+                       and a in df_mnist.columns]
+        if valid_attrs and art_dfs:
+            x = np.arange(len(valid_attrs))
+            width = 0.8 / (len(art_dfs) + 1)
+            fig, ax = plt.subplots(figsize=(max(10, len(valid_attrs) * 0.9), 6))
+            for i, (d, name, key) in enumerate(art_dfs):
+                means = [d[a].dropna().mean() for a in valid_attrs]
+                ax.bar(x + i * width, means, width, label=name,
+                       color=pal[key], hatch=ht[key], edgecolor="black", alpha=0.85)
+            mnist_means = [df_mnist[a].dropna().mean() for a in valid_attrs]
+            ax.bar(x + len(art_dfs) * width, mnist_means, width, label="MNIST",
+                   color=pal["mnist"], hatch=ht["mnist"], edgecolor="black", alpha=0.85)
+            ax.set_xticks(x + width * len(art_dfs) / 2)
+            ax.set_xticklabels([attr_label(cfg, a) for a in valid_attrs], rotation=40, ha="right")
+            ax.set_ylabel(L(cfg, "axes", "score"))
+            ax.set_title("Fig 4.10 — Art vs Non-Art: Mean Scores per Attribute")
+            ax.legend(); ax.grid(cfg["figures"]["grid"], alpha=0.3, axis="y")
+            plt.tight_layout()
+            save(fig, os.path.join(out_dir, "fig410_art_vs_noart.png"), cfg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Exp 4 — Noise
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def analyse_exp4(cfg, out_dir: str):
+    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp4_noise")
     df = load_scores(exp_dir, "original")
     if df is None:
-        print("[exp1] scores_original.csv não encontrado — pulando.")
+        print("[exp4] scores não encontrados, pulando.")
+        return
+    if "noise_type" not in df.columns:
+        print("[exp4] coluna noise_type ausente no CSV — reprocesse o scoring.")
         return
 
-    attrs  = [a for a in cfg["score_attributes"] if a in df.columns]
-    total  = "Total aesthetic score"
+    pal = _palette(cfg)
+    total_attr = "Total aesthetic score"
+    alpha = cfg["stats"]["alpha"]
 
-    report.append("\n" + "═"*60)
-    report.append("EXP 1 — APDDv2 Baseline")
-    report.append("═"*60)
-    report.append(f"  N = {len(df)}")
-    if total in df.columns:
-        report.append(f"  {attr_label(cfg, total)}: mean={df[total].mean():.3f}, std={df[total].std():.3f}")
+    noise_types = df["noise_type"].dropna().unique()
+    noise_colors = {"gaussian": "#448FF2", "blur": "#33A650", "shapes": "#F2A007"}
+    noise_hatches = {"gaussian": "///", "blur": "xxx", "shapes": "..."}
+    noise_ls = {"gaussian": "solid", "blur": "dashed", "shapes": "dotted"}
+    noise_mk = {"gaussian": "o", "blur": "s", "shapes": "^"}
 
-    # ── 1a. Distribuição de scores (KDE + histograma) ─────────────────────────
-    fig, ax = fig_base(cfg)
-    for attr in attrs[:6]:  # máximo 6 para não poluir a legenda
-        key = style_key(attr)
-        df[attr].plot.kde(ax=ax, label=attr_label(cfg, attr),
-                          color=get_color(cfg, "original"), alpha=0.7)
-    ax.set_xlabel(L(cfg, "axes", "score"))
-    ax.set_title(L(cfg, "titles", "dist_scores"))
-    if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-
-    # Histograma do score total com hachura
-    fig2, ax2 = fig_base(cfg)
-    ax2.hist(df[total].dropna(), bins=30,
-             color=get_color(cfg, "original"),
-             hatch=get_hatch(cfg, "original"),
-             edgecolor="black", alpha=0.7,
-             label=ds_label(cfg, "original"))
-    ax2.set_xlabel(L(cfg, "axes", "score"))
-    ax2.set_ylabel("Count")
-    ax2.set_title(L(cfg, "titles", "dist_scores"))
-    if cfg["figures"]["grid"]: ax2.grid(True, alpha=0.3)
-    ax2.legend()
-    save(fig2, os.path.join(out_dir, "exp1_dist_scores.png"), cfg)
-    plt.close(fig)
-
-    # ── 1b. Score por categoria artística ────────────────────────────────────
-    meta_csv = cfg["paths"]["apddv2_csv"]
-    if os.path.exists(meta_csv) and total in df.columns:
-        meta = pd.read_csv(meta_csv, encoding="ISO-8859-1")
-        cat_col = next((c for c in ["Artistic Categories", "category"] if c in meta.columns), None)
-        if cat_col:
-            merged = df.merge(meta[["filename", cat_col]], on="filename", how="left")
-            cats = merged[cat_col].dropna().unique()
-            fig, ax = fig_base(cfg)
-            data_by_cat = [merged.loc[merged[cat_col] == c, total].dropna() for c in cats]
-            bp = ax.boxplot(data_by_cat, patch_artist=True, labels=cats)
-            colors = list(cfg["palette"].values())
-            for patch, color in zip(bp["boxes"], colors * len(cats)):
-                patch.set_facecolor(color)
-                patch.set_alpha(0.7)
-            ax.set_xlabel(L(cfg, "axes", "category"))
-            ax.set_ylabel(L(cfg, "axes", "score"))
-            ax.set_title(L(cfg, "titles", "by_category"))
-            plt.xticks(rotation=30, ha="right")
-            if cfg["figures"]["grid"]: ax.grid(True, axis="y", alpha=0.3)
-            save(fig, os.path.join(out_dir, "exp1_by_category.png"), cfg)
-
-            # Stats por categoria
-            report.append("\n  Score por categoria:")
-            for c, d in zip(cats, data_by_cat):
-                report.append(f"    {c}: n={len(d)}, mean={d.mean():.3f}, std={d.std():.3f}")
-            if len(data_by_cat) >= 3:
-                _, p = f_oneway(*[d for d in data_by_cat if len(d) > 1])
-                report.append(f"  ANOVA entre categorias: p={p:.4f} {sig_marker(p)}")
-
-    # ── 1c. Radar — médias por atributo ───────────────────────────────────────
-    radar_attrs = [a for a in cfg["radar_attributes"] if a in df.columns]
-    if len(radar_attrs) >= 3:
-        means = [df[a].mean() for a in radar_attrs]
-        labels_r = [attr_label(cfg, a) for a in radar_attrs]
-        N = len(radar_attrs)
-        angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
-        means_plot = means + means[:1]
-        angles += angles[:1]
-
-        fig, ax = plt.subplots(figsize=cfg["figures"]["figsize_sq"],
-                               subplot_kw=dict(polar=True))
-        ax.fill(angles, means_plot, color=get_color(cfg, "original"), alpha=0.3,
-                hatch=get_hatch(cfg, "original"))
-        ax.plot(angles, means_plot, color=get_color(cfg, "original"),
-                linewidth=2, marker=get_marker(cfg, "original"),
-                label=ds_label(cfg, "original"))
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels([textwrap.fill(l, 10) for l in labels_r], fontsize=9)
-        ax.set_title(L(cfg, "titles", "radar"))
-        ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
-        save(fig, os.path.join(out_dir, "exp1_radar.png"), cfg)
-
-    # ── 1d. Clustering — melhores e piores imagens ────────────────────────────
-    feat_cols = [a for a in cfg["radar_attributes"] if a in df.columns]
-    if len(feat_cols) >= 2 and len(df) >= cfg["clustering"]["n_clusters"]:
-        X = df[feat_cols].dropna()
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-        pca = PCA(n_components=2)
-        X_pca = pca.fit_transform(X_scaled)
-
-        km = KMeans(n_clusters=cfg["clustering"]["n_clusters"],
-                    random_state=42, n_init=10)
-        labels_k = km.fit_predict(X_scaled)
-
-        fig, ax = fig_base(cfg, square=True)
-        palette_list = list(cfg["palette"].values())
-        hatches_list = list(cfg["hatches"].values())
-        for k in range(cfg["clustering"]["n_clusters"]):
-            mask = labels_k == k
-            ax.scatter(X_pca[mask, 0], X_pca[mask, 1],
-                       color=palette_list[k % len(palette_list)],
-                       marker=list(cfg["markers"].values())[k % 5],
-                       label=f"Cluster {k+1}", alpha=0.6, s=30)
-
-        # Destaca top-N e bottom-N
-        n_top = cfg["clustering"]["n_top"]
-        if total in df.columns:
-            scores_aligned = df.loc[X.index, total]
-            top_idx  = scores_aligned.nlargest(n_top).index
-            bot_idx  = scores_aligned.nsmallest(n_top).index
-            top_mask = np.isin(X.index, top_idx)
-            bot_mask = np.isin(X.index, bot_idx)
-            ax.scatter(X_pca[top_mask, 0], X_pca[top_mask, 1],
-                       color=get_color(cfg, "highlight"), marker="*",
-                       s=120, label=f"Top-{n_top}", zorder=5)
-            ax.scatter(X_pca[bot_mask, 0], X_pca[bot_mask, 1],
-                       color=get_color(cfg, "mnist"), marker="v",
-                       s=80, label=f"Bottom-{n_top}", zorder=5)
-
-        ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)")
-        ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)")
-        ax.set_title(f"Cluster Analysis — {L(cfg, 'titles', 'dist_scores')}")
-        ax.legend()
-        if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-        save(fig, os.path.join(out_dir, "exp1_cluster.png"), cfg)
-
-        report.append(f"\n  PCA variance explained: PC1={pca.explained_variance_ratio_[0]*100:.1f}%, "
-                      f"PC2={pca.explained_variance_ratio_[1]*100:.1f}%")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXP 2 — Portinari (original vs geradas, 2a vs 2b)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def exp2_analysis(cfg, out_dir: str, report: list):
-    total = "Total aesthetic score"
-    dfs   = {}
-
-    for exp_name, label_key in [("exp2a_portinari", "exp2a"),
-                                  ("exp2b_portinari_human", "exp2b")]:
-        exp_dir = os.path.join(cfg["paths"]["outputs"], exp_name)
-        for src in available_sources(exp_dir):
-            df = load_scores(exp_dir, src)
-            if df is not None and total in df.columns:
-                key = f"{label_key}_{src}"
-                dfs[key] = df
-
-    if not dfs:
-        print("[exp2] Nenhum CSV de scores encontrado — pulando.")
-        return
-
-    report.append("\n" + "═"*60)
-    report.append("EXP 2 — Portinari: Original vs. Geradas")
-    report.append("═"*60)
-
-    # ── 2a. Boxplot comparativo ────────────────────────────────────────────────
-    fig, ax = fig_base(cfg)
-    positions  = range(len(dfs))
-    labels_box = []
-    for pos, (key, df) in zip(positions, dfs.items()):
-        sk = style_key(key)
-        data = df[total].dropna()
-        bp = ax.boxplot(data, positions=[pos], patch_artist=True, widths=0.6)
-        bp["boxes"][0].set_facecolor(get_color(cfg, sk))
-        bp["boxes"][0].set_hatch(get_hatch(cfg, sk))
-        bp["boxes"][0].set_alpha(0.7)
-        bp["boxes"][0].set_edgecolor("black")
-        short = key.replace("exp2a_", "2a/").replace("exp2b_", "2b/")
-        labels_box.append(short)
-        report.append(f"  {key}: n={len(data)}, mean={data.mean():.3f}, std={data.std():.3f}")
-
-    ax.set_xticks(list(positions))
-    ax.set_xticklabels(labels_box, rotation=20, ha="right")
-    ax.set_ylabel(L(cfg, "axes", "score"))
-    ax.set_title(L(cfg, "titles", "portinari_compare"))
-    if cfg["figures"]["grid"]: ax.grid(True, axis="y", alpha=0.3)
-    save(fig, os.path.join(out_dir, "exp2_boxplot.png"), cfg)
-
-    # ── 2b. Linha: original vs 1B vs 7B (ordenado pelo original) ─────────────
-    df_orig = dfs.get("exp2a_original") if dfs.get("exp2a_original") is not None else dfs.get("exp2b_original")
-    df_1b   = dfs.get("exp2a_Janus-Pro-1B") if dfs.get("exp2a_Janus-Pro-1B") is not None else dfs.get("exp2b_Janus-Pro-1B")
-    df_7b   = dfs.get("exp2a_Janus-Pro-7B") if dfs.get("exp2a_Janus-Pro-7B") is not None else dfs.get("exp2b_Janus-Pro-7B")
-
-    if df_orig is not None and total in df_orig.columns:
-        orig_sorted = df_orig[total].dropna().sort_values().reset_index(drop=True)
-        fig, ax = fig_base(cfg)
-        x = range(len(orig_sorted))
-        ax.plot(x, orig_sorted.values,
-                color=get_color(cfg, "original"),
-                linestyle=get_ls(cfg, "original"),
-                label=ds_label(cfg, "original"), linewidth=1.5)
-
-        for df_gen, sk, lbl_key in [(df_1b, "janus_1b", "janus_1b"),
-                                     (df_7b, "janus_7b", "janus_7b")]:
-            if df_gen is not None and total in df_gen.columns:
-                gen_vals = df_gen[total].dropna().reset_index(drop=True)
-                n = min(len(gen_vals), len(orig_sorted))
-                ax.plot(range(n), gen_vals.values[:n],
-                        color=get_color(cfg, sk),
-                        linestyle=get_ls(cfg, sk),
-                        label=ds_label(cfg, lbl_key), linewidth=1.5, alpha=0.85)
-
-        ax.set_xlabel(L(cfg, "axes", "sample_rank"))
-        ax.set_ylabel(L(cfg, "axes", "score"))
-        ax.set_title(L(cfg, "titles", "original_vs_janus"))
-        ax.legend()
-        if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-        save(fig, os.path.join(out_dir, "exp2_lines_original_vs_janus.png"), cfg)
-
-    # ── 2c. Diferença: original − 1B e original − 7B por atributo ────────────
-    radar_attrs = [a for a in cfg["radar_attributes"] if
-                   df_orig is not None and a in (df_orig.columns if df_orig is not None else [])]
-    if df_orig is not None and radar_attrs:
-        fig, ax = fig_base(cfg)
-        x_pos  = np.arange(len(radar_attrs))
-        width  = 0.35
-        labels_r = [attr_label(cfg, a) for a in radar_attrs]
-
-        for i, (df_gen, sk, lbl_key) in enumerate([(df_1b, "janus_1b", "janus_1b"),
-                                                     (df_7b, "janus_7b", "janus_7b")]):
-            if df_gen is not None:
-                diffs = [df_orig[a].mean() - df_gen[a].mean()
-                         for a in radar_attrs if a in df_gen.columns]
-                offset = (i - 0.5) * width
-                ax.bar(x_pos + offset, diffs, width,
-                       label=ds_label(cfg, lbl_key),
-                       color=get_color(cfg, sk),
-                       hatch=get_hatch(cfg, sk),
-                       edgecolor="black", alpha=0.8)
-
-        ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels(labels_r, rotation=35, ha="right")
-        ax.set_ylabel("Score Difference")
-        ax.set_title(L(cfg, "titles", "score_diff"))
-        ax.legend()
-        if cfg["figures"]["grid"]: ax.grid(True, axis="y", alpha=0.3)
-        save(fig, os.path.join(out_dir, "exp2_score_diff.png"), cfg)
-
-    # ── 2d. Impacto da fonte de caption (2a vs 2b) ────────────────────────────
-    for model_suffix, sk, lbl_key in [("Janus-Pro-1B", "janus_1b", "janus_1b"),
-                                       ("Janus-Pro-7B", "janus_7b", "janus_7b")]:
-        d2a = dfs.get(f"exp2a_{model_suffix}")
-        d2b = dfs.get(f"exp2b_{model_suffix}")
-        if d2a is not None and d2b is not None and total in d2a.columns:
-            fig, ax = fig_base(cfg)
-            for df_c, cap_key, offset in [(d2a, "exp2a", -0.2), (d2b, "exp2b", 0.2)]:
-                data = df_c[total].dropna()
-                bp = ax.boxplot(data, positions=[offset], widths=0.3, patch_artist=True)
-                bp["boxes"][0].set_facecolor(get_color(cfg, sk))
-                bp["boxes"][0].set_hatch(get_hatch(cfg, sk))
-                bp["boxes"][0].set_alpha(0.7)
-                bp["boxes"][0].set_edgecolor("black")
-
-            ax.set_xticks([-0.2, 0.2])
-            ax.set_xticklabels([ds_label(cfg, "exp2a"), ds_label(cfg, "exp2b")])
-            ax.set_ylabel(L(cfg, "axes", "score"))
-            ax.set_title(f"{L(cfg, 'titles', 'caption_source')} — {model_suffix}")
-            if cfg["figures"]["grid"]: ax.grid(True, axis="y", alpha=0.3)
-            save(fig, os.path.join(out_dir,
-                 f"exp2_caption_source_{model_suffix.replace('-','_')}.png"), cfg)
-
-            # Stat
-            report.append(f"\n  Caption source ({model_suffix}):")
-            run_stats(cfg,
-                      {ds_label(cfg, "exp2a"): d2a[total],
-                       ds_label(cfg, "exp2b"): d2b[total]},
-                      total, report)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXP 3 — Arte vs. Não-arte
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def exp3_analysis(cfg, out_dir: str, report: list):
-    total   = "Total aesthetic score"
-    exp1dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
-    exp3dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
-
-    df_art    = load_scores(exp1dir, "original")
-    df_noart  = load_scores(exp3dir, "original")
-
-    if df_art is None or df_noart is None:
-        print("[exp3] Dados insuficientes — pulando.")
-        return
-
-    report.append("\n" + "═"*60)
-    report.append("EXP 3 — Arte vs. Não-Arte (APDDv2 vs. MNIST)")
-    report.append("═"*60)
-
-    fig, ax = fig_base(cfg)
-    for df_s, sk, lbl_key in [(df_art, "original", "original"),
-                               (df_noart, "mnist",   "mnist")]:
-        if total in df_s.columns:
-            data = df_s[total].dropna()
-            data.plot.kde(ax=ax,
-                          color=get_color(cfg, sk),
-                          linestyle=get_ls(cfg, sk),
-                          label=ds_label(cfg, lbl_key),
-                          linewidth=2)
-            ax.fill_between(
-                np.linspace(data.min(), data.max(), 200),
-                0,
-                [ax.lines[-1].get_ydata()[
-                    np.argmin(np.abs(ax.lines[-1].get_xdata() - xi))]
-                 for xi in np.linspace(data.min(), data.max(), 200)],
-                alpha=0.15,
-                hatch=get_hatch(cfg, sk),
-                color=get_color(cfg, sk),
-            )
-            report.append(f"  {ds_label(cfg, lbl_key)}: n={len(data)}, "
-                          f"mean={data.mean():.3f}, std={data.std():.3f}")
-
-    ax.set_xlabel(L(cfg, "axes", "score"))
-    ax.set_ylabel("Density")
-    ax.set_title(L(cfg, "titles", "art_vs_noart"))
-    ax.legend()
-    if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-    save(fig, os.path.join(out_dir, "exp3_art_vs_noart.png"), cfg)
-
-    run_stats(cfg,
-              {ds_label(cfg, "original"): df_art[total],
-               ds_label(cfg, "mnist"):    df_noart[total]},
-              total, report)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXP 4 — Robustez a ruído
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def exp4_analysis(cfg, out_dir: str, report: list):
-    total   = "Total aesthetic score"
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp4_noise")
-    df      = load_scores(exp_dir, "original")
-    meta    = load_pipeline_data(exp_dir)
-
-    if df is None or not meta:
-        print("[exp4] Dados insuficientes — pulando.")
-        return
-
-    meta_df = pd.DataFrame(meta)
-    if "filename" not in meta_df.columns:
-        print("[exp4] pipeline_data.json sem coluna 'filename' — pulando.")
-        return
-
-    # Junta scores com metadados (noise_type, noise_level)
-    meta_df["filename"] = meta_df["filename"].apply(os.path.basename)
-    df["filename"]      = df["filename"].apply(os.path.basename)
-    merged = df.merge(meta_df[["filename", "noise_type", "noise_level"]], on="filename", how="left")
-
-    report.append("\n" + "═"*60)
-    report.append("EXP 4 — Impacto do Ruído")
-    report.append("═"*60)
-
-    if "noise_type" not in merged.columns or total not in merged.columns:
-        print("[exp4] Colunas noise_type ou score ausentes.")
-        return
-
-    noise_types = merged["noise_type"].dropna().unique()
-    lang_noise  = cfg["labels"][cfg["lang"]]["noise_types"]
-
-    fig, ax = fig_base(cfg)
-    style_keys_noise = ["janus_1b", "janus_7b", "mnist"]
-
-    for i, nt in enumerate(noise_types):
-        sk   = style_keys_noise[i % len(style_keys_noise)]
-        sub  = merged[merged["noise_type"] == nt]
-        mean = sub.groupby("noise_level")[total].mean()
-        sem  = sub.groupby("noise_level")[total].sem().fillna(0).astype(float)
-        lbl  = lang_noise.get(nt, nt)
-
-        ax.plot(mean.index, mean.values.astype(float),
-                color=get_color(cfg, sk),
-                linestyle=get_ls(cfg, sk),
-                marker=get_marker(cfg, sk),
-                label=lbl, linewidth=2)
-        ax.fill_between(mean.index.astype(float),
-                        (mean.values - sem.values).astype(float),
-                        (mean.values + sem.values).astype(float),
-                        color=get_color(cfg, sk), alpha=0.15,
-                        hatch=get_hatch(cfg, sk))
-
-        report.append(f"\n  {lbl}:")
-        for lvl, grp in sub.groupby("noise_level"):
-            report.append(f"    level={lvl}: mean={grp[total].mean():.3f}, "
-                          f"std={grp[total].std():.3f}, n={len(grp)}")
-
+    # ── Score vs noise level ────────────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+    for nt in sorted(noise_types):
+        sub = df[df["noise_type"] == nt]
+        if "noise_level" not in sub.columns or total_attr not in sub.columns:
+            continue
+        grp = sub.groupby("noise_level")[total_attr]
+        levels = sorted(grp.groups.keys())
+        means = [grp.get_group(l).mean() for l in levels]
+        sems  = [grp.get_group(l).sem() for l in levels]
+        color = noise_colors.get(nt, "#888888")
+        hatch = noise_hatches.get(nt, "")
+        linestyle = noise_ls.get(nt, "solid")
+        marker = noise_mk.get(nt, "o")
+        label = L(cfg, "noise_types", nt) if nt in cfg["labels"][cfg["lang"]].get("noise_types", {}) else nt
+        sems_arr = np.array(sems, dtype=float)
+        sems_arr = np.nan_to_num(sems_arr, 0)
+        means_arr = np.array(means, dtype=float)
+        ax.plot(levels, means_arr, color=color, linestyle=linestyle,
+                marker=marker, label=label)
+        ax.fill_between(levels, means_arr - sems_arr, means_arr + sems_arr,
+                         alpha=0.15, color=color)
     ax.set_xlabel(L(cfg, "axes", "noise_level"))
     ax.set_ylabel(L(cfg, "axes", "score"))
     ax.set_title(L(cfg, "titles", "noise_impact"))
-    ax.legend()
-    if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
+    ax.legend(); ax.grid(cfg["figures"]["grid"], alpha=0.3)
     save(fig, os.path.join(out_dir, "exp4_noise_impact.png"), cfg)
 
+    # ── Boxplot per noise type ──────────────────────────────────────────────
+    if total_attr in df.columns:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        box_data = [df[df["noise_type"] == nt][total_attr].dropna().values
+                    for nt in sorted(noise_types) if nt in df["noise_type"].values]
+        box_labels = [L(cfg, "noise_types", nt) if nt in cfg["labels"][cfg["lang"]].get("noise_types", {}) else nt
+                      for nt in sorted(noise_types) if nt in df["noise_type"].values]
+        if box_data:
+            bp = ax.boxplot(box_data, labels=box_labels, patch_artist=True)
+            _style_median(bp)
+            for patch, nt in zip(bp["boxes"], sorted(noise_types)):
+                patch.set_facecolor(noise_colors.get(nt, "#888888"))
+                patch.set_hatch(noise_hatches.get(nt, ""))
+            ax.set_ylabel(L(cfg, "axes", "score"))
+            ax.set_title("Noise Types — Score Distribution")
+            ax.grid(cfg["figures"]["grid"], alpha=0.3)
+            save(fig, os.path.join(out_dir, "exp4_noise_boxplot.png"), cfg)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXP 5a — Consistência temporal
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def exp5a_analysis(cfg, out_dir: str, report: list):
-    total   = "Total aesthetic score"
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
-    df      = load_scores(exp_dir, "original")
-    meta    = load_pipeline_data(exp_dir)
-
-    if df is None or not meta:
-        print("[exp5a] Dados insuficientes — pulando.")
-        return
-
-    meta_df = pd.DataFrame(meta)
-    meta_df["filename"] = meta_df["filename"].apply(os.path.basename)
-    df["filename"]      = df["filename"].apply(os.path.basename)
-    merged = df.merge(meta_df[["filename", "video_id", "frame_idx"]], on="filename", how="left")
-
-    report.append("\n" + "═"*60)
-    report.append("EXP 5a — Consistência Temporal")
-    report.append("═"*60)
-
-    if "video_id" not in merged.columns:
-        print("[exp5a] Coluna video_id ausente.")
-        return
-
-    # ── Linha: N vídeos selecionados aleatoriamente ───────────────────────────
-    n_videos = cfg["temporal"]["n_videos_to_plot"]
-    video_ids = sorted(merged["video_id"].dropna().unique())
-    selected  = video_ids[:n_videos]
-
-    fig, ax = fig_base(cfg)
-    palette_list = list(cfg["palette"].values())
-    ls_list      = list(cfg["linestyles"].values())
-
-    for i, vid in enumerate(selected):
-        sub = merged[merged["video_id"] == vid].sort_values("frame_idx")
-        ax.plot(sub["frame_idx"], sub[total],
-                color=palette_list[i % len(palette_list)],
-                linestyle=ls_list[i % len(ls_list)],
-                marker="o", markersize=4,
-                label=f"Video {vid}", linewidth=1.5, alpha=0.85)
-
-    # Média global por frame_idx
-    mean_per_frame = merged.groupby("frame_idx")[total].mean()
-    ax.plot(mean_per_frame.index, mean_per_frame.values,
-            color="black", linestyle="solid", linewidth=2.5,
-            marker="D", markersize=5, label="Mean (all videos)", zorder=10)
-
-    ax.set_xlabel(L(cfg, "axes", "frame_idx"))
-    ax.set_ylabel(L(cfg, "axes", "score"))
-    ax.set_title(L(cfg, "titles", "temporal_consist"))
-    ax.legend(fontsize=9)
-    if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-    save(fig, os.path.join(out_dir, "exp5a_temporal.png"), cfg)
-
-    # Variância intra vs inter-vídeo
-    intra = merged.groupby("video_id")[total].std().mean()
-    inter = merged.groupby("video_id")[total].mean().std()
-    report.append(f"  Intra-video std (mean): {intra:.4f}")
-    report.append(f"  Inter-video std:        {inter:.4f}")
+    # ── Distribution diffs vs baseline ─────────────────────────────────────
+    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    df_base = load_scores(exp1_dir, "original")
+    if df_base is not None and total_attr in df_base.columns:
+        pairs = []
+        for nt in sorted(noise_types):
+            sub = df[df["noise_type"] == nt][total_attr].dropna()
+            if len(sub) < 2:
+                continue
+            label_nt = L(cfg, "noise_types", nt) if nt in cfg["labels"][cfg["lang"]].get("noise_types", {}) else nt
+            res = distribution_diff(df_base[total_attr].dropna(), sub,
+                                    "APDDv2 Original", label_nt)
+            if res:
+                pairs.append(res)
+        if pairs:
+            render_dist_diff_table(
+                pairs, os.path.join(out_dir, "exp4_dist_diff.png"),
+                cfg, title="Noise — Distribution Differences vs APDDv2 Baseline"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# EXP 5b — Detecção de degradação progressiva
+# Exp 5 — Temporal
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def exp5b_analysis(cfg, out_dir: str, report: list, baseline_dir: str = None):
-    total   = "Total aesthetic score"
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5b_temporal_error")
-    df      = load_scores(exp_dir, "original")
-    meta    = load_pipeline_data(exp_dir)
+def analyse_exp5(cfg, out_dir: str):
+    pal = _palette(cfg)
+    total_attr = "Total aesthetic score"
+    alpha = cfg["stats"]["alpha"]
 
-    if df is None or not meta:
-        print("[exp5b] Dados insuficientes — pulando.")
-        return
+    exp5a_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
+    exp5b_dir = os.path.join(cfg["paths"]["outputs"], "exp5b_temporal_error")
+    df5a = load_scores(exp5a_dir, "original")
+    df5b = load_scores(exp5b_dir, "original")
 
-    meta_df = pd.DataFrame(meta)
-    meta_df["filename"] = meta_df["filename"].apply(os.path.basename)
-    df["filename"]      = df["filename"].apply(os.path.basename)
+    # ── Exp5a: temporal consistency ────────────────────────────────────────
+    if df5a is not None and "frame_idx" in df5a.columns and total_attr in df5a.columns:
+        fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+        grp = df5a.groupby("frame_idx")[total_attr]
+        frames = sorted(grp.groups.keys())
+        means = [grp.get_group(f).mean() for f in frames]
+        sems  = np.nan_to_num([grp.get_group(f).sem() for f in frames], 0)
+        ax.plot(frames, means, color=pal["original"], linewidth=2, marker="o",
+                markersize=4, label="Mean score")
+        ax.fill_between(frames, np.array(means) - sems, np.array(means) + sems,
+                        alpha=0.2, color=pal["original"])
+        ax.set_xlabel(L(cfg, "axes", "frame_idx"))
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title(L(cfg, "titles", "temporal_consist"))
+        ax.legend(); ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        save(fig, os.path.join(out_dir, "exp5a_temporal_consistency.png"), cfg)
 
-    merge_cols = ["filename"] + [c for c in ["noise_type", "degradation_pct", "frame_idx"]
-                                  if c in meta_df.columns]
-    merged = df.merge(meta_df[merge_cols], on="filename", how="left")
+    # ── Exp5b: degradation impact ───────────────────────────────────────────
+    if df5b is not None and total_attr in df5b.columns:
+        _exp5b_degradation(df5b, cfg, out_dir, total_attr, alpha, pal)
 
-    report.append("\n" + "═"*60)
-    report.append("EXP 5b — Detecção de Degradação Progressiva")
-    report.append("═"*60)
 
-    if "degradation_pct" not in merged.columns or "noise_type" not in merged.columns:
-        print("[exp5b] Colunas degradation_pct ou noise_type ausentes.")
-        return
+def _exp5b_degradation(df5b, cfg, out_dir, total_attr, alpha, pal):
+    """Alarm visualization: score vs degradation %, threshold detection."""
 
-    lang_noise   = cfg["labels"][cfg["lang"]]["noise_types"]
-    noise_types  = merged["noise_type"].dropna().unique()
-    style_keys_noise = ["janus_1b", "janus_7b", "mnist"]
+    # Cenário 1: score por frame_idx (erro no frame 12)
+    if "frame_idx" in df5b.columns:
+        fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+        grp = df5b.groupby("frame_idx")[total_attr]
+        frames = sorted(grp.groups.keys())
+        means = [float(grp.get_group(f).mean()) for f in frames]
+        sems  = np.nan_to_num([grp.get_group(f).sem() for f in frames], 0)
+        colors = ["#F23838" if f >= 12 else pal["original"] for f in frames]
+        ax.plot(frames, means, color=pal["original"], linewidth=1.5, zorder=1)
+        ax.scatter(frames, means, c=colors, s=40, zorder=2)
+        ax.fill_between(frames, np.array(means) - sems, np.array(means) + sems,
+                        alpha=0.15, color=pal["original"])
+        ax.axvline(12, color="#F23838", linestyle="--", linewidth=1.5, label="Error starts (frame 12)")
+        ax.set_xlabel(L(cfg, "axes", "frame_idx"))
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title("Exp5b — Score Drop at Error Frame")
+        ax.legend(); ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        save(fig, os.path.join(out_dir, "exp5b_frame_score.png"), cfg)
 
-    # Baseline exp5a — média global por frame_idx
-    baseline_mean = None
-    if baseline_dir and os.path.exists(baseline_dir):
-        df_b   = load_scores(baseline_dir, "original")
-        meta_b = load_pipeline_data(baseline_dir)
-        if df_b is not None and meta_b:
-            meta_b_df = pd.DataFrame(meta_b)
-            meta_b_df["filename"] = meta_b_df["filename"].apply(os.path.basename)
-            df_b["filename"]      = df_b["filename"].apply(os.path.basename)
-            merged_b = df_b.merge(meta_b_df[["filename", "frame_idx"]], on="filename", how="left")
-            if "frame_idx" in merged_b.columns:
-                baseline_mean = merged_b.groupby("frame_idx")[total].mean()
+    # Cenário 3: threshold por degradação progressiva
+    if "degradation_pct" in df5b.columns:
+        grp_deg = df5b.groupby("degradation_pct")[total_attr]
+        levels = sorted(grp_deg.groups.keys())
+        if len(levels) < 2:
+            return
 
-    fig, ax = fig_base(cfg)
+        base_scores = grp_deg.get_group(levels[0]).dropna().values
+        means = []; pvals = []; sig_bonf = []
+        n_tests = len(levels) - 1
+        for lvl in levels:
+            sub = grp_deg.get_group(lvl).dropna().values
+            means.append(float(np.mean(sub)))
+            if lvl == levels[0] or len(sub) < 2 or len(base_scores) < 2:
+                pvals.append(1.0)
+            else:
+                try:
+                    # Wilcoxon only valid for paired; use Mann-Whitney as fallback
+                    from scipy.stats import mannwhitneyu
+                    _, p = mannwhitneyu(base_scores, sub, alternative="two-sided")
+                    pvals.append(float(p))
+                except Exception:
+                    pvals.append(1.0)
 
-    # Baseline
-    if baseline_mean is not None:
-        # Mapeia frame_idx → degradation_pct (0 a 100)
-        max_fi = baseline_mean.index.max()
-        x_base = baseline_mean.index / max(max_fi, 1) * 100
-        ax.plot(x_base, baseline_mean.values,
-                color=get_color(cfg, "original"),
-                linestyle=get_ls(cfg, "original"),
-                marker=get_marker(cfg, "original"),
-                markersize=3, linewidth=2,
-                label=ds_label(cfg, "original") + " (baseline)")
+        threshold_lvl = None
+        for lvl, p in zip(levels[1:], pvals[1:]):
+            if p < (alpha / n_tests):  # Bonferroni
+                threshold_lvl = lvl
+                break
 
-    for i, nt in enumerate(noise_types):
-        sk  = style_keys_noise[i % len(style_keys_noise)]
-        sub = merged[merged["noise_type"] == nt]
-        mean = sub.groupby("degradation_pct")[total].mean()
-        sem  = sub.groupby("degradation_pct")[total].sem().fillna(0).astype(float)
-        lbl  = lang_noise.get(nt, nt)
-
-        ax.plot(mean.index.astype(float), mean.values.astype(float),
-                color=get_color(cfg, sk),
-                linestyle=get_ls(cfg, sk),
-                marker=get_marker(cfg, sk),
-                markersize=3, linewidth=2, label=lbl)
-        ax.fill_between(mean.index.astype(float),
-                        (mean.values - sem.values).astype(float),
-                        (mean.values + sem.values).astype(float),
-                        color=get_color(cfg, sk), alpha=0.12,
-                        hatch=get_hatch(cfg, sk))
-
-        report.append(f"\n  {lbl}: mean@0%={sub[sub['degradation_pct']<=1][total].mean():.3f}, "
-                      f"mean@100%={sub[sub['degradation_pct']>=99][total].mean():.3f}")
-
-    ax.set_xlabel(L(cfg, "axes", "degradation"))
-    ax.set_ylabel(L(cfg, "axes", "score"))
-    ax.set_title(L(cfg, "titles", "degradation_detect"))
-    ax.legend()
-    if cfg["figures"]["grid"]: ax.grid(True, alpha=0.3)
-    save(fig, os.path.join(out_dir, "exp5b_degradation.png"), cfg)
+        fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+        ax.plot(levels, means, color=pal["original"], linewidth=2, marker="o")
+        if threshold_lvl is not None:
+            ax.axvline(threshold_lvl, color=pal["highlight"], linestyle="--", linewidth=2,
+                       label=f"Significance threshold ({threshold_lvl}%)")
+            ax.legend()
+        ax.set_xlabel(L(cfg, "axes", "degradation"))
+        ax.set_ylabel(L(cfg, "axes", "score"))
+        ax.set_title(L(cfg, "titles", "degradation_detect"))
+        ax.grid(cfg["figures"]["grid"], alpha=0.3)
+        save(fig, os.path.join(out_dir, "exp5b_degradation.png"), cfg)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Amostras visuais — helpers
+# Sample panels — helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _show_image(ax, path, title=None):
-    if path and os.path.exists(path):
-        ax.imshow(Image.open(path).convert("RGB"))
-    else:
-        ax.set_facecolor("#CCCCCC")
-        ax.text(0.5, 0.5, "N/A", ha="center", va="center",
-                transform=ax.transAxes, fontsize=10, color="#666666")
+def _open_img(path, size=(224, 224)):
+    try:
+        img = Image.open(path).convert("RGB")
+        img.thumbnail(size, Image.LANCZOS)
+        out = Image.new("RGB", size, (230, 230, 230))
+        ox = (size[0] - img.width) // 2
+        oy = (size[1] - img.height) // 2
+        out.paste(img, (ox, oy))
+        return out
+    except Exception:
+        img = Image.new("RGB", size, (180, 180, 180))
+        draw = ImageDraw.Draw(img)
+        draw.text((10, 100), "N/A", fill=(100, 100, 100))
+        return img
+
+
+def _img_to_ax(ax, img):
+    ax.imshow(np.array(img))
     ax.axis("off")
-    if title:
-        ax.set_title(title, fontsize=9, pad=3)
 
 
-def _show_text(ax, text, title=None, fontsize=8):
-    ax.axis("off")
-    if title:
-        ax.set_title(title, fontsize=9, pad=3)
-    wrapped = textwrap.fill(str(text) if text else "(sem texto)", width=38)
-    ax.text(0.05, 0.95, wrapped, ha="left", va="top",
-            transform=ax.transAxes, fontsize=fontsize, family="monospace",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="#F5F5F5",
-                      edgecolor="#CCCCCC", alpha=0.8))
-
-
-def _pick_samples(data, n=3, seed=42):
-    rng  = random.Random(seed)
-    pool = [s for s in data if s.get("path") and os.path.exists(s["path"])]
-    return rng.sample(pool, min(n, len(pool)))
-
-
-def _gen_path(exp_dir, model_name, filename):
-    base = os.path.splitext(os.path.basename(filename))[0]
-    return os.path.join(exp_dir, "generated", model_name, base + ".png")
-
-
-def _frames_for_video(data, video_id, max_frames=None):
-    frames = sorted(
-        [s for s in data if s.get("video_id") == video_id],
-        key=lambda s: s.get("frame_idx") or 0,
-    )
-    return frames[:max_frames] if max_frames else frames
+def _add_shapes_image_colors(img: Image.Image, level: float, n_colors=5) -> Image.Image:
+    """Versão de add_shapes que usa cores dominantes da própria imagem."""
+    arr = np.array(img.resize((64, 64))).reshape(-1, 3).astype(float)
+    try:
+        km = KMeans(n_clusters=n_colors, n_init=5, random_state=42)
+        km.fit(arr)
+        colors = [tuple(int(c) for c in center) for center in km.cluster_centers_]
+    except Exception:
+        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
+    result = img.copy()
+    draw = ImageDraw.Draw(result)
+    w, h = result.size
+    rng = random.Random(42)
+    n_shapes = max(1, int(level * 10))
+    for _ in range(n_shapes):
+        color = colors[rng.randint(0, n_colors - 1)]
+        x1 = rng.randint(0, w - 1)
+        y1 = rng.randint(0, h - 1)
+        size = max(5, int(min(w, h) * 0.05 * (level + 0.5)))
+        x2 = min(w - 1, x1 + size)
+        y2 = min(h - 1, y1 + size)
+        draw.ellipse([x1, y1, x2, y2], fill=color, outline=None)
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Amostras visuais — por experimento
+# Sample panels — Exp 1 (APDDv2)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def samples_exp1(cfg, samples_dir):
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
-    data    = load_pipeline_data(exp_dir)
-    if not data:
-        print("[samples/exp1] pipeline_data.json não encontrado — pulando.")
+def samples_exp1(cfg, out_dir: str, n=5):
+    exp_dir  = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    data     = load_pipeline_data(exp_dir)
+    img_root = cfg["paths"].get("apddv2_images", "")
+
+    chosen = [s for s in data if s.get("filename")][:n]
+    if not chosen:
+        print("[samples exp1] sem dados de pipeline, pulando.")
         return
 
-    items   = _pick_samples(data, n=3)
-    n_rows  = len(items)
-    fig     = plt.figure(figsize=(16, 5 * n_rows))
-    fig.suptitle("EXP 1 — APDDv2: Original → Caption → Generated", fontsize=13, y=1.01)
-    gs = gridspec.GridSpec(n_rows, 4, figure=fig, hspace=0.4, wspace=0.15)
+    size = (224, 224)
+    IMG_H = 2.4  # inches per image
+    LABEL_H = 0.5
 
-    for row, s in enumerate(items):
-        _show_image(_ax(fig, gs, row, 0), s.get("path"),           title="Original (APDDv2)")
-        _show_text (_ax(fig, gs, row, 1), s.get("caption", ""),    title="Caption (Janus-7B)")
-        _show_image(_ax(fig, gs, row, 2), _gen_path(exp_dir, "Janus-Pro-1B", s["filename"]),
-                    title="Generated — Janus-Pro-1B")
-        _show_image(_ax(fig, gs, row, 3), _gen_path(exp_dir, "Janus-Pro-7B", s["filename"]),
-                    title="Generated — Janus-Pro-7B")
+    # ── Panel A: só a imagem original ─────────────────────────────────────
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.5, IMG_H + LABEL_H))
+    for i, s in enumerate(chosen):
+        fn = s.get("filename", "")
+        path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
+        img = _open_img(path, size)
+        _img_to_ax(axes[i], img)
+        axes[i].set_title(os.path.basename(fn)[:20], fontsize=7)
+    fig.suptitle("Exp 1 — Panel A: APDDv2 Samples", fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp1_panel_a.png"), cfg)
 
-    save(fig, os.path.join(samples_dir, "exp1_samples.png"), cfg)
+    # ── Panel B: original | Janus-1B | Janus-7B | caption ─────────────────
+    rows = 3  # orig / 1B / 7B
+    fig = plt.figure(figsize=(n * 2.5, rows * (IMG_H + LABEL_H) + 0.5))
+    gs = gridspec.GridSpec(rows, n, figure=fig, hspace=0.4, wspace=0.1)
+    row_titles = ["Original", "Janus-Pro-1B", "Janus-Pro-7B"]
+    for row_idx, gen_key in enumerate(["path", "generated_Janus-Pro-1B", "generated_Janus-Pro-7B"]):
+        for col_idx, s in enumerate(chosen):
+            ax = fig.add_subplot(gs[row_idx, col_idx])
+            if gen_key == "path":
+                fn = s.get("filename", "")
+                path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
+            else:
+                gen = s.get(gen_key, [])
+                path = gen[0] if gen else ""
+            img = _open_img(path, size)
+            _img_to_ax(ax, img)
+            if row_idx == 0:
+                cap = s.get("caption", "")[:60]
+                ax.set_title(f'"{cap}…"' if len(cap) >= 60 else f'"{cap}"', fontsize=6)
+            if col_idx == 0:
+                ax.set_ylabel(row_titles[row_idx], fontsize=8, rotation=0,
+                              ha="right", va="center", labelpad=60)
+    fig.suptitle("Exp 1 — Panel B: APDDv2 + Generated", fontsize=11, fontweight="bold")
+    save(fig, os.path.join(out_dir, "exp1_panel_b.png"), cfg)
 
 
-def samples_exp2(cfg, samples_dir):
-    for exp_name, cap_title in [("exp2a_portinari", "Caption (Janus-7B)"),
-                                  ("exp2b_portinari_human", "Caption (humana/EN)")]:
-        exp_dir = os.path.join(cfg["paths"]["outputs"], exp_name)
-        data    = load_pipeline_data(exp_dir)
-        if not data:
-            print(f"[samples/{exp_name}] pipeline_data.json não encontrado — pulando.")
-            continue
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sample panels — Exp 2 (Portinari)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-        items  = _pick_samples(data, n=3)
-        n_rows = len(items)
-        fig    = plt.figure(figsize=(20, 5 * n_rows))
-        fig.suptitle(f"EXP 2 — Portinari ({exp_name})", fontsize=13, y=1.01)
-        gs = gridspec.GridSpec(n_rows, 4, figure=fig, hspace=0.4, wspace=0.15)
+def samples_exp2(cfg, out_dir: str, n=5):
+    exp2a_dir = os.path.join(cfg["paths"]["outputs"], "exp2a_portinari")
+    exp2b_dir = os.path.join(cfg["paths"]["outputs"], "exp2b_portinari_human")
+    data_2a   = load_pipeline_data(exp2a_dir)
+    data_2b   = load_pipeline_data(exp2b_dir)
 
-        for row, s in enumerate(items):
-            _show_text (_ax(fig, gs, row, 0), s.get("caption", ""),  title=cap_title)
-            _show_image(_ax(fig, gs, row, 1), s.get("path"),          title="Original (Portinari)")
-            _show_image(_ax(fig, gs, row, 2), _gen_path(exp_dir, "Janus-Pro-1B", s["filename"]),
-                        title="Generated — Janus-Pro-1B")
-            _show_image(_ax(fig, gs, row, 3), _gen_path(exp_dir, "Janus-Pro-7B", s["filename"]),
-                        title="Generated — Janus-Pro-7B")
+    chosen_2a = [s for s in data_2a if s.get("path")][:n]
+    if not chosen_2a:
+        print("[samples exp2] sem dados de pipeline, pulando.")
+        return
 
-        save(fig, os.path.join(samples_dir, f"{exp_name}_samples.png"), cfg)
+    size = (224, 224)
+
+    # Tenta encontrar o mesmo item em 2b pelo stem
+    stem_to_2b = {}
+    for s in data_2b:
+        st = _stem(s.get("filename", ""))
+        stem_to_2b[st] = s
+
+    # ── Panel A: imagem Portinari + descrição PT ───────────────────────────
+    fig, axes = plt.subplots(2, n, figsize=(n * 2.5, 6.5),
+                              gridspec_kw={"height_ratios": [3, 1]})
+    for i, s in enumerate(chosen_2a):
+        img = _open_img(s.get("path", ""), size)
+        _img_to_ax(axes[0][i], img)
+        cap = s.get("caption", "")[:80]
+        axes[1][i].axis("off")
+        axes[1][i].text(0.5, 0.5, cap, fontsize=6, ha="center", va="center",
+                        wrap=True, transform=axes[1][i].transAxes)
+    fig.suptitle("Exp 2 — Panel A: Portinari + Description (PT)", fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp2_panel_a.png"), cfg)
+
+    # ── Panel B: Portinari | Janus-1B | Janus-7B + EN caption ────────────
+    rows = 3
+    fig = plt.figure(figsize=(n * 2.5, rows * 2.8 + 0.5))
+    gs = gridspec.GridSpec(rows, n, figure=fig, hspace=0.4, wspace=0.1)
+    row_titles = ["Portinari", "Janus-Pro-1B (2b)", "Janus-Pro-7B (2b)"]
+    for col_idx, s in enumerate(chosen_2a):
+        st = _stem(s.get("filename", ""))
+        s2b = stem_to_2b.get(st, {})
+
+        for row_idx, (src_s, gen_key) in enumerate([
+            (s, "path"),
+            (s2b, "generated_Janus-Pro-1B"),
+            (s2b, "generated_Janus-Pro-7B"),
+        ]):
+            ax = fig.add_subplot(gs[row_idx, col_idx])
+            if gen_key == "path":
+                path = src_s.get("path", "")
+            else:
+                gen = src_s.get(gen_key, [])
+                path = gen[0] if gen else ""
+            img = _open_img(path, size)
+            _img_to_ax(ax, img)
+            if row_idx == 0:
+                # EN caption (from 2b)
+                cap = s2b.get("caption", s.get("caption", ""))[:60]
+                ax.set_title(f'"{cap}…"' if len(cap) >= 60 else f'"{cap}"', fontsize=6)
+            if col_idx == 0:
+                ax.set_ylabel(row_titles[row_idx], fontsize=8, rotation=0,
+                              ha="right", va="center", labelpad=70)
+    fig.suptitle("Exp 2 — Panel B: Portinari + Generated", fontsize=11, fontweight="bold")
+    save(fig, os.path.join(out_dir, "exp2_panel_b.png"), cfg)
 
 
-def samples_exp3(cfg, samples_dir):
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sample panels — Exp 3 (MNIST)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def samples_exp3(cfg, out_dir: str, n=10):
     exp_dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
     data    = load_pipeline_data(exp_dir)
     if not data:
-        print("[samples/exp3] pipeline_data.json não encontrado — pulando.")
+        print("[samples exp3] sem dados de pipeline, pulando.")
+        return
+    chosen = data[:n]
+    size = (112, 112)
+    ncols = min(n, 10)
+    fig, axes = plt.subplots(1, ncols, figsize=(ncols * 1.3, 1.8))
+    if ncols == 1:
+        axes = [axes]
+    for i, s in enumerate(chosen):
+        path = s.get("path") or s.get("filename", "")
+        img = _open_img(path, size)
+        _img_to_ax(axes[i], img)
+        label = s.get("label", s.get("class", "?"))
+        axes[i].set_title(str(label), fontsize=9)
+    fig.suptitle("Exp 3 — MNIST Digit Samples", fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "exp3_mnist_samples.png"), cfg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sample panels — Exp 4 (Noise)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def samples_exp4(cfg, out_dir: str, n=3):
+    """
+    Usa as MESMAS imagens base do Exp1.
+    Aplica os 3 tipos de ruído em 3 níveis representativos.
+    Para 'shapes', amostra cores da imagem original.
+    """
+    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    data1    = load_pipeline_data(exp1_dir)
+    img_root = cfg["paths"].get("apddv2_images", "")
+
+    base_samples = [s for s in data1 if s.get("filename")][:n]
+    if not base_samples:
+        print("[samples exp4] sem dados Exp1, pulando.")
         return
 
-    pool    = [s for s in data if s.get("path") and os.path.exists(s["path"])]
-    items   = random.Random(42).sample(pool, min(20, len(pool)))
-    cols    = 5
-    rows    = (len(items) + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
-    fig.suptitle("EXP 3 — MNIST: Amostras", fontsize=13)
-    axes = np.array(axes).flatten()
-
-    for ax, s in zip(axes, items):
-        _show_image(ax, s.get("path"), title=f"label={s.get('label','?')}")
-    for ax in axes[len(items):]:
-        ax.axis("off")
-
-    plt.tight_layout()
-    save(fig, os.path.join(samples_dir, "exp3_mnist_samples.png"), cfg)
-
-
-def samples_exp4(cfg, samples_dir):
-    from datasets.image import NOISE_FNS
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp4_noise")
-    data    = load_pipeline_data(exp_dir)
-    if not data:
-        print("[samples/exp4] pipeline_data.json não encontrado — pulando.")
+    try:
+        from datasets.image import add_gaussian_noise, add_blur, add_shapes
+    except ImportError:
+        print("[samples exp4] datasets.image não disponível, pulando.")
         return
 
-    seen, base_items = set(), []
-    for s in data:
-        fn = s.get("filename")
-        if fn not in seen and s.get("path") and os.path.exists(s["path"]):
-            base_items.append(s)
-            seen.add(fn)
-        if len(base_items) == 3:
-            break
+    noise_fns = {
+        "gaussian": add_gaussian_noise,
+        "blur":     add_blur,
+        "shapes":   None,  # custom
+    }
+    levels = [0.1, 0.5, 0.9]
+    noise_names = list(noise_fns.keys())
 
-    noise_types = ["gaussian", "blur", "shapes"]
-    lang_noise  = cfg["labels"][cfg["lang"]]["noise_types"]
-    n_cols      = 1 + len(noise_types)
+    n_imgs = n
+    n_noise = len(noise_names)
+    n_levels = len(levels)
+    # Grid: rows = noise_type × level, cols = images
+    n_rows = n_noise * n_levels
+    n_cols = n_imgs
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.3, n_rows * 2.3))
+    if n_rows == 1:
+        axes = [axes]
+    if n_cols == 1:
+        axes = [[ax] for ax in axes]
 
-    fig, axes = plt.subplots(len(base_items), n_cols,
-                             figsize=(n_cols * 3.5, len(base_items) * 3.5))
-    fig.suptitle("EXP 4 — Ruído: Original vs. Tipos de Ruído (nível 50)", fontsize=13)
-
-    for row, s in enumerate(base_items):
-        img = Image.open(s["path"]).convert("RGB")
-        _show_image(axes[row, 0], s["path"], title="Original" if row == 0 else "")
-        for col, nt in enumerate(noise_types, start=1):
-            ax = axes[row, col]
-            ax.imshow(NOISE_FNS[nt](img, 50))
-            ax.axis("off")
-            if row == 0:
-                ax.set_title(lang_noise.get(nt, nt), fontsize=9)
-
+    size = (224, 224)
+    for noise_idx, noise_type in enumerate(noise_names):
+        for lvl_idx, level in enumerate(levels):
+            row = noise_idx * n_levels + lvl_idx
+            for col_idx, s in enumerate(base_samples):
+                fn = s.get("filename", "")
+                path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
+                img = _open_img(path, size)
+                try:
+                    import torch
+                    from torchvision import transforms
+                    t = transforms.ToTensor()(img)
+                    if noise_type == "shapes":
+                        noisy_img = _add_shapes_image_colors(img, level)
+                    else:
+                        noisy_t = noise_fns[noise_type](t, level)
+                        noisy_img = transforms.ToPILImage()(noisy_t.clamp(0, 1))
+                except Exception:
+                    noisy_img = img
+                _img_to_ax(axes[row][col_idx], noisy_img)
+                if col_idx == 0:
+                    label_nt = L(cfg, "noise_types", noise_type) if noise_type in cfg["labels"][cfg["lang"]].get("noise_types", {}) else noise_type
+                    axes[row][col_idx].set_ylabel(f"{label_nt}\n{int(level*100)}%",
+                                                   fontsize=7, rotation=0, ha="right",
+                                                   va="center", labelpad=60)
+    fig.suptitle("Exp 4 — Noise Samples (APDDv2 base images)", fontsize=11, fontweight="bold")
     plt.tight_layout()
-    save(fig, os.path.join(samples_dir, "exp4_noise_samples.png"), cfg)
+    save(fig, os.path.join(out_dir, "exp4_noise_samples.png"), cfg)
 
 
-def samples_exp5_grid(cfg, samples_dir):
-    """Primeiros 5 frames de 3 vídeos diferentes."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sample panels — Exp 5 (Temporal)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _frames_for_video(data, video_id, max_frames=8):
+    frames = [s for s in data if s.get("video_id") == video_id]
+    frames = sorted(frames, key=lambda s: s.get("frame_idx") or 0)
+    return frames[:max_frames]
+
+
+def samples_exp5a(cfg, out_dir: str):
     exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
-    data    = load_pipeline_data(exp_dir)
+    data = load_pipeline_data(exp_dir)
     if not data:
-        print("[samples/exp5a] pipeline_data.json não encontrado — pulando.")
+        print("[samples exp5a] sem dados de pipeline, pulando.")
         return
 
-    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})[:3]
-    n_frames  = 5
-    fig, axes = plt.subplots(len(video_ids), n_frames,
-                             figsize=(n_frames * 3, len(video_ids) * 3))
-    fig.suptitle("EXP 5a — Primeiros 5 frames de 3 vídeos", fontsize=13)
+    video_ids = list(dict.fromkeys(s.get("video_id") for s in data if s.get("video_id")))
+    video_id = video_ids[0] if video_ids else None
+    if not video_id:
+        return
 
-    for row, vid in enumerate(video_ids):
-        frames = _frames_for_video(data, vid, max_frames=n_frames)
-        for col in range(n_frames):
-            ax = axes[row, col]
-            if col < len(frames):
-                _show_image(ax, frames[col].get("frame_path"),
-                            title=f"f{frames[col].get('frame_idx',col)}" if row == 0 else "")
-            else:
-                ax.axis("off")
-        axes[row, 0].set_ylabel(f"Video {vid}", fontsize=9, rotation=90, labelpad=4)
+    frames = _frames_for_video(data, video_id)
+    n = len(frames)
+    if n == 0:
+        return
 
+    size = (224, 224)
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.3, 2.8))
+    if n == 1:
+        axes = [axes]
+    for i, s in enumerate(frames):
+        path = s.get("path") or s.get("frame_path", "")
+        img = _open_img(path, size)
+        _img_to_ax(axes[i], img)
+        axes[i].set_title(f"Frame {s.get('frame_idx', i)}", fontsize=7)
+    fig.suptitle(f"Exp 5a — Temporal Sample (video: {video_id})", fontsize=11, fontweight="bold")
     plt.tight_layout()
-    save(fig, os.path.join(samples_dir, "exp5a_frame_grid.png"), cfg)
+    save(fig, os.path.join(out_dir, "exp5a_frame_grid.png"), cfg)
 
 
-def samples_exp5_degradation(cfg, samples_dir):
-    """Sequência de frames com degradação crescente (exp5b)."""
-    from datasets.image import NOISE_FNS
+def samples_exp5b(cfg, out_dir: str):
     exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5b_temporal_error")
-    data    = load_pipeline_data(exp_dir)
+    data = load_pipeline_data(exp_dir)
     if not data:
-        print("[samples/exp5b] pipeline_data.json não encontrado — pulando.")
+        print("[samples exp5b] sem dados de pipeline, pulando.")
         return
 
-    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})
+    video_ids = list(dict.fromkeys(s.get("video_id") for s in data if s.get("video_id")))
     if not video_ids:
         return
-    vid = video_ids[0]
+    video_id = video_ids[0]
 
-    frames_all = sorted(
-        [s for s in data if s.get("video_id") == vid and s.get("noise_type") == "gaussian"],
-        key=lambda s: s.get("frame_idx") or 0,
-    )
-    step   = max(1, len(frames_all) // 8)
-    frames = frames_all[::step][:8]
+    frames = _frames_for_video(data, video_id, max_frames=24)
+    n = min(len(frames), 8)
+    if n == 0:
+        return
 
-    fig, axes = plt.subplots(1, len(frames), figsize=(len(frames) * 3, 3.5))
-    fig.suptitle(f"EXP 5b — Degradação progressiva (Video {vid}, Gaussian)", fontsize=12)
-
-    for ax, s in zip(axes, frames):
-        path = s.get("frame_path")
-        if path and os.path.exists(path):
-            img = Image.open(path).convert("RGB")
-            lvl = int(s.get("noise_level", 0))
-            if lvl > 0:
-                img = NOISE_FNS["gaussian"](img, lvl)
-            ax.imshow(img)
-        else:
-            ax.set_facecolor("#CCCCCC")
-        ax.axis("off")
-        ax.set_title(f"{float(s.get('degradation_pct') or 0):.0f}%", fontsize=9)
-
+    chosen = frames[:n]
+    size = (224, 224)
+    fig, axes = plt.subplots(1, n, figsize=(n * 2.3, 2.8))
+    if n == 1:
+        axes = [axes]
+    for i, s in enumerate(chosen):
+        path = s.get("path") or s.get("frame_path", "")
+        img = _open_img(path, size)
+        _img_to_ax(axes[i], img)
+        fidx = s.get("frame_idx", i)
+        deg = s.get("degradation_pct")
+        title = f"Frame {fidx}"
+        if deg is not None:
+            title += f"\n{float(deg):.0f}%"
+        axes[i].set_title(title, fontsize=7)
+    fig.suptitle(f"Exp 5b — Degradation Sample (video: {video_id})", fontsize=11, fontweight="bold")
     plt.tight_layout()
-    save(fig, os.path.join(samples_dir, "exp5b_degradation_sequence.png"), cfg)
+    save(fig, os.path.join(out_dir, "exp5b_degradation_sequence.png"), cfg)
+
+    # GIF de degradação progressiva
+    _make_gif_exp5b(data, video_id, cfg, out_dir)
 
 
-def samples_exp5_noise_types(cfg, samples_dir):
-    """Mesmo frame com os 3 tipos de ruído."""
-    from datasets.image import NOISE_FNS
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
-    data    = load_pipeline_data(exp_dir)
-    if not data:
-        return
+def _make_gif_exp5b(data, video_id, cfg, out_dir):
+    """GIF com a progressão de degradação de um vídeo."""
+    frames = _frames_for_video(data, video_id, max_frames=24)
+    size = (224, 224)
+    gif_frames = []
+    for s in frames:
+        path = s.get("path") or s.get("frame_path", "")
+        try:
+            img = _open_img(path, size)
+            draw = ImageDraw.Draw(img)
+            fidx = s.get("frame_idx", "?")
+            deg = s.get("degradation_pct")
+            text = f"Frame {fidx}"
+            if deg is not None:
+                text += f" | Deg: {float(deg):.0f}%"
+            draw.text((4, 4), text, fill=(255, 255, 0))
+            gif_frames.append(np.array(img))
+        except Exception:
+            pass
 
-    sample = next((s for s in data if s.get("frame_path") and
-                   os.path.exists(s["frame_path"])), None)
-    if not sample:
-        print("[samples/exp5] Nenhum frame encontrado — pulando noise_types panel.")
-        return
-
-    noise_types = ["gaussian", "blur", "shapes"]
-    lang_noise  = cfg["labels"][cfg["lang"]]["noise_types"]
-    img_orig    = Image.open(sample["frame_path"]).convert("RGB")
-
-    fig, axes = plt.subplots(1, 4, figsize=(14, 3.5))
-    fig.suptitle("EXP 5 — Frame com diferentes tipos de ruído (nível 50)", fontsize=12)
-    axes[0].imshow(img_orig); axes[0].axis("off"); axes[0].set_title("Original", fontsize=9)
-
-    for ax, nt in zip(axes[1:], noise_types):
-        ax.imshow(NOISE_FNS[nt](img_orig, 50))
-        ax.axis("off")
-        ax.set_title(lang_noise.get(nt, nt), fontsize=9)
-
-    plt.tight_layout()
-    save(fig, os.path.join(samples_dir, "exp5_noise_types.png"), cfg)
-
-
-def samples_exp5_gif(cfg, samples_dir):
-    """GIF animado com frames sequenciais de 3 vídeos."""
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp5a_temporal")
-    data    = load_pipeline_data(exp_dir)
-    if not data:
-        return
-
-    video_ids = sorted({s["video_id"] for s in data if "video_id" in s})[:3]
-    for vid in video_ids:
-        paths = [s.get("frame_path") for s in _frames_for_video(data, vid)
-                 if s.get("frame_path") and os.path.exists(s["frame_path"])]
-        if not paths:
-            continue
-        imgs     = [np.array(Image.open(p).convert("RGB").resize((256, 256))) for p in paths]
-        gif_path = os.path.join(samples_dir, f"exp5a_video_{vid}.gif")
-        imageio.mimsave(gif_path, imgs, fps=4, loop=0)
-        print(f"  → {gif_path}")
-
-
-# ── Tiny helper used only by samples functions ────────────────────────────────
-
-def _ax(fig, gs, row, col):
-    return fig.add_subplot(gs[row, col])
+    if gif_frames:
+        gif_path = os.path.join(out_dir, "exp5b_degradation.gif")
+        os.makedirs(os.path.dirname(gif_path), exist_ok=True)
+        imageio.mimsave(gif_path, gif_frames, fps=3)
+        print(f"  ✓ GIF salvo: {gif_path}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1057,70 +1550,50 @@ def _ax(fig, gs, row, col):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/analysis.yaml")
-    parser.add_argument("--skip-analysis", action="store_true",
-                        help="Pula gráficos de análise; gera só amostras")
-    parser.add_argument("--skip-samples", action="store_true",
-                        help="Pula painéis de amostras; gera só análise")
+    parser.add_argument("--skip-analysis", action="store_true")
+    parser.add_argument("--skip-samples",  action="store_true")
     args = parser.parse_args()
 
-    cfg      = load_cfg(args.config)
-    fig_dir  = os.path.join(cfg["paths"]["reports"], "figures")
-    samp_dir = os.path.join(cfg["paths"]["reports"], "samples")
-    os.makedirs(fig_dir,  exist_ok=True)
-    os.makedirs(samp_dir, exist_ok=True)
+    cfg = load_cfg(args.config)
 
-    # ── Análise ────────────────────────────────────────────────────────────────
+    fig_dir = os.path.join(cfg["paths"]["reports"], "figures")
+    smp_dir = os.path.join(cfg["paths"]["reports"], "samples")
+    os.makedirs(fig_dir, exist_ok=True)
+    os.makedirs(smp_dir, exist_ok=True)
+
+    rng_seed = 42
+    random.seed(rng_seed)
+    np.random.seed(rng_seed)
+
     if not args.skip_analysis:
-        report = ["RELATÓRIO DE ANÁLISE", "=" * 60]
+        print("── Exp 1 (APDDv2) ─────────────────────────────────")
+        analyse_exp1(cfg, fig_dir)
+        print("── Exp 2 (Portinari) ───────────────────────────────")
+        analyse_exp2(cfg, fig_dir)
+        print("── Exp 3 (MNIST) ───────────────────────────────────")
+        analyse_exp3(cfg, fig_dir)
+        print("── Exp 4 (Noise) ───────────────────────────────────")
+        analyse_exp4(cfg, fig_dir)
+        print("── Exp 5 (Temporal) ────────────────────────────────")
+        analyse_exp5(cfg, fig_dir)
+        print("── Comparações (Fig 4.9, 4.10) ─────────────────────")
+        analyse_comparisons(cfg, fig_dir)
 
-        print("=== EXP 1 — APDDv2 Baseline ===")
-        exp1_analysis(cfg, fig_dir, report)
-
-        print("=== EXP 2 — Portinari ===")
-        exp2_analysis(cfg, fig_dir, report)
-
-        print("=== EXP 3 — Arte vs. Não-Arte ===")
-        exp3_analysis(cfg, fig_dir, report)
-
-        print("=== EXP 4 — Ruído ===")
-        exp4_analysis(cfg, fig_dir, report)
-
-        print("=== EXP 5a — Consistência Temporal ===")
-        exp5a_analysis(cfg, fig_dir, report)
-
-        print("=== EXP 5b — Degradação Progressiva ===")
-        exp5b_analysis(
-            cfg, fig_dir, report,
-            baseline_dir=os.path.join(cfg["paths"]["outputs"], "exp5a_temporal"),
-        )
-
-        report_path = os.path.join(cfg["paths"]["reports"], "stats_report.txt")
-        with open(report_path, "w") as f:
-            f.write("\n".join(report))
-        print(f"\nRelatório salvo em: {report_path}")
-        print(f"Figuras salvas em:  {fig_dir}/")
-
-    # ── Amostras visuais ───────────────────────────────────────────────────────
     if not args.skip_samples:
-        print("\n=== EXP 1 — Amostras ===")
-        samples_exp1(cfg, samp_dir)
+        print("── Amostras Exp 1 ──────────────────────────────────")
+        samples_exp1(cfg, smp_dir)
+        print("── Amostras Exp 2 ──────────────────────────────────")
+        samples_exp2(cfg, smp_dir)
+        print("── Amostras Exp 3 ──────────────────────────────────")
+        samples_exp3(cfg, smp_dir)
+        print("── Amostras Exp 4 ──────────────────────────────────")
+        samples_exp4(cfg, smp_dir)
+        print("── Amostras Exp 5a ─────────────────────────────────")
+        samples_exp5a(cfg, smp_dir)
+        print("── Amostras Exp 5b ─────────────────────────────────")
+        samples_exp5b(cfg, smp_dir)
 
-        print("=== EXP 2 — Amostras ===")
-        samples_exp2(cfg, samp_dir)
-
-        print("=== EXP 3 — Amostras ===")
-        samples_exp3(cfg, samp_dir)
-
-        print("=== EXP 4 — Amostras ===")
-        samples_exp4(cfg, samp_dir)
-
-        print("=== EXP 5 — Amostras (frames, degradação, GIF) ===")
-        samples_exp5_grid(cfg, samp_dir)
-        samples_exp5_degradation(cfg, samp_dir)
-        samples_exp5_noise_types(cfg, samp_dir)
-        samples_exp5_gif(cfg, samp_dir)
-
-        print(f"Amostras salvas em: {samp_dir}/")
+    print("\nConcluído.")
 
 
 if __name__ == "__main__":

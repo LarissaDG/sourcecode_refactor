@@ -8,8 +8,10 @@ os.environ.setdefault("CLIP_CACHE",         "/snfs1/speed/larissa.gomide/hf_cach
 os.environ.setdefault("XDG_CACHE_HOME",     "/sonic_home/larissa.gomide/casa/.cache")
 os.environ.setdefault("MPLCONFIGDIR",       "/sonic_home/larissa.gomide/casa/.matplotlib")
 
+import glob
 import json
 import argparse
+import pandas as pd
 from utils.logging import setup_logger
 from utils.config import load_config
 from pipeline.sampling import run_sampling, loader_to_list
@@ -54,12 +56,71 @@ def _load_data(cfg):
     return None
 
 
+def _reload_human_captions(cfg, data):
+    """
+    Substitui o campo 'caption' de cada item em `data` com a descrição humana
+    (Description_en) do CSV do Portinari.  Itens sem correspondência mantêm
+    o caption vazio.  Usado pelo Exp2b para reutilizar as imagens do Exp2a.
+    """
+    root = cfg["dataset"]["path"]
+    csvs = sorted(glob.glob(os.path.join(root, "*.csv")))
+    if not csvs:
+        raise FileNotFoundError(f"Nenhum CSV encontrado em {root}")
+    df = pd.read_csv(csvs[0])
+
+    fn_candidates = ["Numero da Obra"]
+    cap_candidates = ["Description_en", "Descrição", "Description", "caption"]
+
+    fn_col = next((c for c in fn_candidates if c in df.columns), None)
+    cap_col = next((c for c in cap_candidates if c in df.columns), None)
+
+    if fn_col is None or cap_col is None:
+        print("[!] _reload_human_captions: coluna de filename ou description não encontrada no CSV.")
+        return data
+
+    stem_to_caption = {
+        os.path.splitext(str(row[fn_col]).strip())[0]: str(row[cap_col])
+        for _, row in df.iterrows()
+        if pd.notna(row.get(cap_col))
+    }
+
+    updated = 0
+    for item in data:
+        fn = item.get("filename", "")
+        stem = os.path.splitext(os.path.basename(str(fn)))[0]
+        if stem in stem_to_caption:
+            item["caption"] = stem_to_caption[stem]
+            updated += 1
+        else:
+            item["caption"] = ""
+
+    print(f"[reuse_from] {updated}/{len(data)} itens com captions humanas carregadas.")
+    return data
+
+
 def run_pipeline(cfg):
     steps = cfg["pipeline"]["steps"]
     data = None
 
     if steps.get("sampling"):
-        data = run_sampling(cfg)
+        reuse_from = cfg.get("sampling", {}).get("reuse_from")
+        if reuse_from:
+            reuse_path = os.path.join(
+                cfg["experiment"]["output_dir"], reuse_from, "pipeline_data.json"
+            )
+            print(f"[sampling] reuse_from='{reuse_from}' → carregando {reuse_path}")
+            with open(reuse_path) as f:
+                data = json.load(f)
+            if cfg.get("dataset", {}).get("use_human_captions"):
+                data = _reload_human_captions(cfg, data)
+            # Remove caminhos de imagens geradas para forçar nova geração com as novas captions
+            for item in data:
+                for k in list(item.keys()):
+                    if k.startswith("generated_"):
+                        del item[k]
+            _save_data(cfg, data)
+        else:
+            data = run_sampling(cfg)
 
     if steps.get("captioning"):
         data = run_captioning(cfg, data)
