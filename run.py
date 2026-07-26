@@ -128,7 +128,9 @@ def run_pipeline(cfg):
     elif steps.get("sampling"):
         # Sem captioning, achata o DataLoader em lista de dicts para as
         # próximas caixinhas (ex: Exp 3b, com captions humanas no CSV).
-        data = loader_to_list(data)
+        # Se reuse_from foi usado, data já é uma lista — não precisa achatar.
+        if not isinstance(data, list):
+            data = loader_to_list(data)
         _save_data(cfg, data)
 
     if steps.get("generation"):
