@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────
+# EXP LEGACY VALIDATION
+# Reproduz o experimento ICCC com os mesmos 502 imagens e captions.
+# Pula sampling e captioning — usa pipeline_data.json pré-construído
+# pelo script scripts/run_legacy_validation.py
+# ─────────────────────────────────────────────────────────
+experiment:
+  name: "exp_legacy_validation"
+
+dataset:
+  name: apdd
+  path: "/snfs1/speed/larissa.gomide/data/apddv2/"
+
+pipeline:
+  steps:
+    sampling:   false
+    captioning: false
+    generation: true
+    scoring:    true
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
