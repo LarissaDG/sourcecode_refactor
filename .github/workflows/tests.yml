@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install pandas numpy pillow pyyaml ftfy regex tqdm timm pytest
+
+      - name: Run tests
+        run: pytest tests/ -v --ignore=tests/test_e2e.py -k "not apdd and not portinari and not mnist and not gif and not video"
