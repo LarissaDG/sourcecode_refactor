@@ -16,3 +16,10 @@ requests
 transformers
 sentencepiece
 sacremoses
+deep-translator
+# analysis / visualizations
+matplotlib
+seaborn
+scipy
+scikit-learn
+imageio
