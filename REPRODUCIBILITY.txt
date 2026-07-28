@@ -98,6 +98,10 @@ Analysis scripts:
      distribution (most images in the middle range). Uniform sampling forces
      inclusion of low-scoring images, pulling the Human GT mean down.
 
+     Note on bins=30 in ICCC notebook: the value 30 appears only in histogram
+     visualizations (sns.histplot(..., bins=30)) for display purposes. The actual
+     sampling uses num_bins=10. These are unrelated parameters.
+
      Consequence: the two samples draw from different regions of the APDDv2
      score distribution. Because ArtCLIP scores generated images at ~5.8
      regardless of which original was used, the sign of
