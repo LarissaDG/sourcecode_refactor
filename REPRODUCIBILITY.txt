@@ -79,15 +79,24 @@ Analysis scripts:
      (exp1_apdd) use uniform bin sampling based on mean aesthetic score.
      However, the bins are computed differently:
 
-     ICCC (amostra.py):
+     ICCC (amostra.py / ICCC.ipynb):
        - Computes Avg Score = Total Score / n_non_nan_attrs for each image
+       - Divides into 10 bins (num_bins=10)
+       - Samples PROPORTIONALLY to bin population: frac = n_samples / len(df)
+         → bins with more images get more samples (mirrors original distribution)
        - Avg Score scale in the published sample: min=1.46, max=7.67, mean=4.61
        - Human GT mean (Creativity) in the 502 sampled images: ~5.91
 
      Refactored pipeline (exp1_apdd, uniform_bins):
        - Computes mean of 9 aesthetic attribute columns directly
-       - Divides into 30 equal-width bins over the APDDv2 score range
+       - Divides into 30 bins (n_bins=30)
+       - Samples UNIFORMLY: same number of images per bin (per_bin = n // n_bins)
+         → forces equal representation across all score ranges, including extremes
        - Human GT mean (Creativity) in the 448 sampled images: ~4.91
+
+     Key difference: ICCC proportional sampling preserves the natural score
+     distribution (most images in the middle range). Uniform sampling forces
+     inclusion of low-scoring images, pulling the Human GT mean down.
 
      Consequence: the two samples draw from different regions of the APDDv2
      score distribution. Because ArtCLIP scores generated images at ~5.8
