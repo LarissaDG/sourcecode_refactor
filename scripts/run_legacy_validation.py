@@ -28,9 +28,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -191,6 +188,9 @@ def compare_scores(df_legacy, df_new, label, attrs):
 # ── Step 4: gerar gráfico e relatório ─────────────────────────────────────────
 
 def plot_comparison(results_1b, results_2b, out_path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
     attrs = [a for a in SCORE_ATTRS if a in results_1b or a in results_2b]
     x = np.arange(len(attrs))
     width = 0.35
@@ -224,6 +224,9 @@ def plot_comparison(results_1b, results_2b, out_path):
 
 
 def plot_diff(results_1b, results_2b, out_path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
     """Gráfico das diferenças: novo − legacy por atributo."""
     attrs = [a for a in SCORE_ATTRS if a in results_1b or a in results_2b]
     x = np.arange(len(attrs))

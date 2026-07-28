@@ -65,9 +65,9 @@ python3 run.py --config configs/exp_legacy_validation.yaml --steps scoring \
     || { echo "ERRO fase scoring"; exit 1; }
 deactivate
 
-# ── Fase 3: comparação e geração de gráficos ──────────────────────────────
+# ── Fase 3: comparação e geração de gráficos (usa venv_apddv2 que tem matplotlib) ──
 echo "--- Fase 3: comparação legacy vs novo pipeline ---"
-source "$VENV/bin/activate"
+source "$VENV_APDDV2/bin/activate"
 python3 scripts/run_legacy_validation.py \
     --config       configs/exp_legacy_validation.yaml \
     --legacy-small "$LEGACY_SMALL" \
