@@ -27,10 +27,12 @@ warnings.filterwarnings("ignore")
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import yaml
-from scipy.stats import pearsonr, spearmanr, ttest_ind, mannwhitneyu, f_oneway
+from scipy.stats import pearsonr, spearmanr, ttest_ind, mannwhitneyu, f_oneway, norm as scipy_norm
+from sklearn.preprocessing import MinMaxScaler
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -326,22 +328,511 @@ def summary_table(df_human, df_1b, df_7b, out_dir, report_lines):
         save(fig, os.path.join(out_dir, "iccc_summary_table.png"))
 
 
+# ── Extended visualizations (from ICCC.ipynb) ─────────────────────────────────
+
+def plot_artistic_categories(df, out_dir, prefix=""):
+    """
+    Artistic subcategory proportions + missing values heatmap by category
+    (EDA notebook cells 24-29).
+    """
+    col = "Artistic Categories"
+    if col not in df.columns:
+        return
+
+    # ── subcategory one-hot ──────────────────────────────────────────────────
+    dummies = df[col].dropna().str.replace("*", ", ", regex=False).str.get_dummies(sep=", ")
+    if not dummies.empty:
+        prop = dummies.sum().sort_values(ascending=False) / len(df) * 100
+        fig, ax = plt.subplots(figsize=(max(8, len(prop) * 0.8), 5))
+        prop.plot(kind="bar", ax=ax, color="#448FF2", alpha=0.85, edgecolor="black")
+        ax.set_title("Artistic Subcategory Proportions (%)")
+        ax.set_xlabel("Subcategory"); ax.set_ylabel("% of dataset")
+        ax.tick_params(axis="x", rotation=45)
+        plt.tight_layout()
+        save(fig, os.path.join(out_dir, f"{prefix}subcategory_proportions.png"))
+
+    # ── high-level category bar ───────────────────────────────────────────────
+    counts = df[col].dropna().value_counts()
+    if not counts.empty:
+        fig, ax = plt.subplots(figsize=(max(8, len(counts) * 0.8), 5))
+        counts.plot(kind="bar", ax=ax, color="#448FF2", alpha=0.85, edgecolor="black")
+        ax.set_title("Artistic Categories Distribution")
+        ax.set_xlabel("Category"); ax.set_ylabel("Count")
+        ax.tick_params(axis="x", rotation=45)
+        plt.tight_layout()
+        save(fig, os.path.join(out_dir, f"{prefix}categories.png"))
+
+    # ── missing values heatmap by category ───────────────────────────────────
+    score_cols = [c for c in RADAR_COLS if c in df.columns]
+    if score_cols and col in df.columns:
+        try:
+            missing = df.groupby(col)[score_cols].apply(lambda x: x.isna().sum())
+            if not missing.empty and missing.values.max() > 0:
+                fig, ax = plt.subplots(figsize=(max(10, len(score_cols) * 1.2),
+                                                max(4, len(missing) * 0.5)))
+                import seaborn as sns
+                sns.heatmap(missing, cmap="Reds", annot=True, fmt="d",
+                            linewidths=0.5, ax=ax)
+                ax.set_title("Missing Values by Artistic Category")
+                ax.set_xlabel("Score Column"); ax.set_ylabel("Category")
+                plt.tight_layout()
+                save(fig, os.path.join(out_dir, f"{prefix}missing_by_category.png"))
+        except Exception:
+            pass
+
+
+def plot_boxplot_all_attrs(df_dict, out_dir, prefix=""):
+    """
+    Side-by-side boxplot of all attributes for multiple datasets
+    (EDA notebook cells 26-27).
+    df_dict: {label: dataframe}
+    """
+    cols = [c for c in RADAR_COLS if any(c in df.columns for df in df_dict.values())]
+    if not cols:
+        return
+    records = []
+    for label, df in df_dict.items():
+        for col in cols:
+            if col in df.columns:
+                for v in df[col].dropna():
+                    records.append({"Attribute": col, "Score": v, "Source": label})
+    if not records:
+        return
+    import seaborn as sns
+    long = pd.DataFrame(records)
+    fig, ax = plt.subplots(figsize=(max(12, len(cols) * 1.4), 6))
+    palette = {"Original": "#448FF2", "Human GT": "#448FF2",
+               "Janus-1B": "#33A650", "Janus-7B": "#F2A007"}
+    sns.boxplot(data=long, x="Attribute", y="Score", hue="Source",
+                palette=palette, ax=ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right", fontsize=8)
+    ax.set_title("Score Distributions by Attribute")
+    ax.legend(loc="upper right")
+    ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}boxplot_all_attrs.png"))
+
+
+def plot_attribute_histograms_grid(df, title, out_dir, prefix=""):
+    """3×3 grid of per-attribute histograms (notebook cells 16-19)."""
+    cols = [c for c in RADAR_COLS if c in df.columns]
+    if not cols:
+        return
+    ncols = 3
+    nrows = (len(cols) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 4.5, nrows * 3.5))
+    axes = np.array(axes).flatten()
+    for i, col in enumerate(cols):
+        vals = df[col].dropna().values
+        axes[i].hist(vals, bins=20, color="#448FF2", alpha=0.75, edgecolor="white")
+        axes[i].set_title(col, fontsize=9)
+        axes[i].set_xlabel("Score", fontsize=8)
+        axes[i].set_ylabel("Count", fontsize=8)
+        axes[i].tick_params(labelsize=7)
+    for j in range(len(cols), len(axes)):
+        axes[j].set_visible(False)
+    fig.suptitle(title, fontsize=12, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}attr_hist_grid.png"))
+
+
+def plot_normalized_distributions(df_dict, out_dir, prefix=""):
+    """
+    All attributes overlaid after MinMaxScaler normalization (notebook cell 18).
+    df_dict: {label: dataframe}
+    """
+    cols = RADAR_COLS
+    scaler = MinMaxScaler()
+    fig, ax = plt.subplots(figsize=(10, 5))
+    colors = ["#448FF2", "#33A650", "#F2A007", "#E84393", "#a29bfe",
+              "#fd79a8", "#00b894", "#e17055", "#74b9ff", "#fdcb6e"]
+    for i, col in enumerate(cols):
+        all_vals = []
+        for df in df_dict.values():
+            if col in df.columns:
+                all_vals.extend(df[col].dropna().tolist())
+        if not all_vals:
+            continue
+        vals_norm = scaler.fit_transform(np.array(all_vals).reshape(-1, 1)).flatten()
+        ax.hist(vals_norm, bins=30, alpha=0.4, color=colors[i % len(colors)],
+                label=col, density=True)
+    ax.set_xlabel("Normalized Score (0-1)")
+    ax.set_ylabel("Density")
+    ax.set_title("Normalized Score Distributions — All Attributes")
+    ax.legend(fontsize=7, ncol=3)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}normalized_distributions.png"))
+
+
+def plot_correlation_heatmap(df, title, out_dir, prefix=""):
+    """Upper-triangle correlation heatmap (notebook cell 20)."""
+    cols = [c for c in RADAR_COLS if c in df.columns]
+    if len(cols) < 2:
+        return
+    corr = df[cols].corr()
+    mask = np.tril(np.ones_like(corr, dtype=bool), k=-1)
+    corr_upper = corr.where(~mask)
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+    cmap = plt.cm.coolwarm
+    im = ax.imshow(corr_upper.values, cmap=cmap, vmin=-1, vmax=1, aspect="auto")
+    ax.set_xticks(range(len(cols))); ax.set_xticklabels(cols, rotation=45, ha="right", fontsize=8)
+    ax.set_yticks(range(len(cols))); ax.set_yticklabels(cols, fontsize=8)
+    for i in range(len(cols)):
+        for j in range(len(cols)):
+            val = corr_upper.iloc[i, j]
+            if not np.isnan(val):
+                ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                        fontsize=7, color="black" if abs(val) < 0.7 else "white")
+    plt.colorbar(im, ax=ax, shrink=0.8)
+    ax.set_title(title)
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}correlation_heatmap.png"))
+
+
+def plot_avg_score_gaussian(df, title, out_dir, prefix=""):
+    """Avg Score histogram with gaussian overlay + skewness/kurtosis (notebook cells 22-26)."""
+    cols = [c for c in RADAR_COLS if c in df.columns]
+    if not cols:
+        return
+    avg_scores = df[cols].mean(axis=1).dropna()
+    if len(avg_scores) < 5:
+        return
+
+    from scipy.stats import skew, kurtosis
+    sk = skew(avg_scores)
+    kurt = kurtosis(avg_scores)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.hist(avg_scores, bins=20, density=True, color="#448FF2", alpha=0.7,
+            edgecolor="white", label="Avg Score")
+    x = np.linspace(avg_scores.min(), avg_scores.max(), 200)
+    mu, std = avg_scores.mean(), avg_scores.std()
+    ax.plot(x, scipy_norm.pdf(x, mu, std), color="#d63031", linewidth=2, label="Normal fit")
+    ax.axvline(mu, color="black", linestyle="--", linewidth=1, label=f"μ={mu:.2f}")
+    ax.set_xlabel("Average Score")
+    ax.set_ylabel("Density")
+    ax.set_title(f"{title}\nSkewness={sk:.3f}  Kurtosis={kurt:.3f}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}avg_score_gaussian.png"))
+
+
+def plot_scatter_with_regression(df, label, out_dir, prefix=""):
+    """Scatter of 'The overall' vs 'Mood' with OLS regression line (notebook cell 54)."""
+    if "The overall" not in df.columns or "Mood" not in df.columns:
+        return
+    sub = df.dropna(subset=["The overall", "Mood"])
+    if len(sub) < 3:
+        return
+    x = sub["The overall"].values
+    y = sub["Mood"].values
+    m, b = np.polyfit(x, y, 1)
+    xline = np.linspace(x.min(), x.max(), 100)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(x, y, alpha=0.35, color="#448FF2", s=20, label=label)
+    ax.plot(xline, m * xline + b, color="#d63031", linewidth=2,
+            label=f"y={m:.2f}x+{b:.2f}")
+    r, p = pearsonr(x, y)
+    ax.set_xlabel("The overall")
+    ax.set_ylabel("Mood")
+    ax.set_title(f"Correlation: 'The overall' vs 'Mood'\nPearson r={r:.3f} (p={p:.4f})")
+    ax.legend(); ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}scatter_regression.png"))
+
+
+def plot_three_way_histograms(df_orig, df_1b, df_7b, out_dir, prefix=""):
+    """3-way per-attribute histograms: original vs Janus-1B vs Janus-7B (notebook cell 78)."""
+    cols = [c for c in RADAR_COLS
+            if (df_orig is not None and c in df_orig.columns) or
+               (df_1b is not None and c in df_1b.columns)]
+    if not cols:
+        return
+    ncols = 3
+    nrows = (len(cols) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 4.5, nrows * 3.5))
+    axes = np.array(axes).flatten()
+    for i, col in enumerate(cols):
+        ax = axes[i]
+        if df_orig is not None and col in df_orig.columns:
+            ax.hist(df_orig[col].dropna(), bins=20, alpha=0.5, color="#448FF2",
+                    label="Original", density=True)
+        if df_1b is not None and col in df_1b.columns:
+            ax.hist(df_1b[col].dropna(), bins=20, alpha=0.5, color="#33A650",
+                    label="Janus-1B", density=True)
+        if df_7b is not None and col in df_7b.columns:
+            ax.hist(df_7b[col].dropna(), bins=20, alpha=0.5, color="#F2A007",
+                    label="Janus-7B", density=True)
+        ax.set_title(col, fontsize=9)
+        ax.set_xlabel("Score", fontsize=8); ax.set_ylabel("Density", fontsize=8)
+        ax.tick_params(labelsize=7)
+        if i == 0:
+            ax.legend(fontsize=7)
+    for j in range(len(cols), len(axes)):
+        axes[j].set_visible(False)
+    fig.suptitle("Score Distributions: Original vs Generated", fontsize=12, fontweight="bold")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}three_way_histograms.png"))
+
+
+def plot_radar_three_way(df_orig, df_1b, df_7b, out_dir, prefix=""):
+    """Radar chart comparing mean attribute scores for original, 1B, and 7B."""
+    cols = [c for c in RADAR_COLS
+            if (df_orig is not None and c in df_orig.columns)]
+    if len(cols) < 3:
+        return
+    orig_means = [df_orig[c].dropna().mean() for c in cols]
+    means_1b = [df_1b[c].dropna().mean() for c in cols] if df_1b is not None else None
+    means_7b = [df_7b[c].dropna().mean() for c in cols] if df_7b is not None else None
+
+    angles = np.linspace(0, 2 * np.pi, len(cols), endpoint=False).tolist()
+    angles_c = angles + [angles[0]]
+
+    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+    for means, color, label in [
+        (orig_means, "#448FF2", "Original"),
+        (means_1b,  "#33A650", "Janus-1B"),
+        (means_7b,  "#F2A007", "Janus-7B"),
+    ]:
+        if means is None:
+            continue
+        vals = means + [means[0]]
+        ax.plot(angles_c, vals, color=color, linewidth=2)
+        ax.fill(angles_c, vals, color=color, alpha=0.15)
+    ax.set_xticks(angles); ax.set_xticklabels(cols, fontsize=9)
+    ax.set_title("Mean Attribute Scores — Original vs Generated", pad=20)
+    ax.legend(["Original", "Janus-1B", "Janus-7B"],
+              loc="upper right", bbox_to_anchor=(1.35, 1.1))
+    save(fig, os.path.join(out_dir, f"{prefix}radar_three_way.png"))
+
+
+def plot_mean_bars_three_way(df_orig, df_1b, df_7b, out_dir, prefix="",
+                              title="Score Difference (Original − Generated)"):
+    """Grouped bar chart: original − 1B and original − 7B per attribute."""
+    cols = [c for c in RADAR_COLS if df_orig is not None and c in df_orig.columns]
+    if not cols:
+        return
+    diffs_1b, diffs_7b = [], []
+    for col in cols:
+        for df_gen, out in [(df_1b, diffs_1b), (df_7b, diffs_7b)]:
+            if df_gen is not None and col in df_gen.columns:
+                orig_mean = df_orig[col].dropna().mean()
+                gen_mean = df_gen[col].dropna().mean()
+                out.append(orig_mean - gen_mean)
+            else:
+                out.append(np.nan)
+
+    x = np.arange(len(cols))
+    width = 0.35
+    fig, ax = plt.subplots(figsize=(max(10, len(cols) * 1.1), 6))
+    ax.bar(x - width/2, diffs_1b, width, label="Orig − Janus-1B",
+           color="#33A650", hatch="///", edgecolor="black", alpha=0.85)
+    ax.bar(x + width/2, diffs_7b, width, label="Orig − Janus-7B",
+           color="#F2A007", hatch="xxx", edgecolor="black", alpha=0.85)
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.set_xticks(x); ax.set_xticklabels(cols, rotation=40, ha="right")
+    ax.set_ylabel("Average Score Difference")
+    ax.set_title(title)
+    ax.legend(); ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, f"{prefix}score_diff_bars.png"))
+
+
+def run_full_analysis(df_human, df_orig, df_1b, df_7b, out_dir, exp_label, has_human=True):
+    """Runs all extended visualizations for one experiment."""
+    prefix = exp_label.replace(" ", "_") + "_" if exp_label else ""
+
+    if has_human and df_human is not None:
+        plot_artistic_categories(df_human, out_dir)
+        plot_attribute_histograms_grid(df_human, "Human GT — Per-Attribute Histograms",
+                                       out_dir, f"{prefix}human_")
+        plot_normalized_distributions({"Human GT": df_human}, out_dir, f"{prefix}human_")
+        plot_correlation_heatmap(df_human, "Human GT — Correlation Matrix",
+                                 out_dir, f"{prefix}human_")
+        plot_avg_score_gaussian(df_human, "Human GT — Avg Score Distribution",
+                                out_dir, f"{prefix}human_")
+        plot_scatter_with_regression(df_human, "Human GT", out_dir, f"{prefix}human_")
+
+    if df_orig is not None:
+        plot_attribute_histograms_grid(df_orig, f"{exp_label} — Original (ArtCLIP) Histograms",
+                                       out_dir, f"{prefix}orig_")
+        plot_correlation_heatmap(df_orig, f"{exp_label} — Original Correlation Matrix",
+                                 out_dir, f"{prefix}orig_")
+        plot_avg_score_gaussian(df_orig, f"{exp_label} — Original Avg Score",
+                                out_dir, f"{prefix}orig_")
+        plot_scatter_with_regression(df_orig, f"{exp_label} — Original", out_dir, f"{prefix}orig_")
+
+    plot_three_way_histograms(df_orig, df_1b, df_7b, out_dir, prefix)
+    plot_radar_three_way(df_orig, df_1b, df_7b, out_dir, prefix)
+    plot_mean_bars_three_way(df_orig, df_1b, df_7b, out_dir, prefix)
+
+    # side-by-side boxplot
+    box_dict = {}
+    if df_orig is not None: box_dict["Original"] = df_orig
+    if df_1b   is not None: box_dict["Janus-1B"] = df_1b
+    if df_7b   is not None: box_dict["Janus-7B"] = df_7b
+    if box_dict:
+        plot_boxplot_all_attrs(box_dict, out_dir, prefix)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
+
+# ── Legacy ICCC data (sampled_SMALL / sampled_BIG CSVs) ───────────────────────
+
+def load_legacy_csv(path):
+    """Carrega sampled_SMALL_with_gen_scored.csv ou sampled_BIG_with_gen_scored.csv."""
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        df = pd.read_csv(path, encoding="latin1")
+    except Exception:
+        df = pd.read_csv(path)
+    if "stem" not in df.columns:
+        df["stem"] = df["filename"].apply(_stem)
+    return df
+
+
+def plot_comparison_bars(df_human, df_1b_gen, df_7b_gen,
+                         df_orig_artclip,
+                         out_path, title_suffix=""):
+    """
+    Gera DOIS painéis lado a lado:
+      Painel A: Human annotation (APDDv2-10023) − ArtCLIP(gerado)  [ICCC metricas.py]
+      Painel B: ArtCLIP(original) − ArtCLIP(gerado)                [Tabela 4.2 do artigo]
+    """
+    available = [c for c in RADAR_COLS if c in (df_human.columns if df_human is not None else [])]
+
+    def _diffs(df_ref, df_gen):
+        d1, d7 = [], []
+        for col in available:
+            for d_gen, out in [(df_1b_gen, d1), (df_7b_gen, d7)]:
+                if df_ref is not None and d_gen is not None and col in df_ref.columns and col in d_gen.columns:
+                    h, g = apply_nan_mask(df_ref, d_gen, col)
+                    diff = (h - g).dropna()
+                    out.append(float(diff.mean()) if len(diff) > 0 else np.nan)
+                else:
+                    out.append(np.nan)
+        return d1, d7
+
+    x = np.arange(len(available))
+    width = 0.35
+
+    has_human = df_human is not None
+    has_orig  = df_orig_artclip is not None
+    n_panels  = int(has_human) + int(has_orig)
+    if n_panels == 0:
+        return
+
+    fig, axes = plt.subplots(1, n_panels, figsize=(max(10, len(available)) * n_panels, 6),
+                             squeeze=False)
+    panel = 0
+
+    if has_human:
+        d1, d7 = _diffs(df_human, df_1b_gen)
+        ax = axes[0][panel]
+        ax.bar(x - width/2, d1, width, label="Human − Janus-1B",
+               color="#33A650", hatch="///", edgecolor="black", alpha=0.85)
+        ax.bar(x + width/2, d7, width, label="Human − Janus-7B",
+               color="#F2A007", hatch="xxx", edgecolor="black", alpha=0.85)
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_xticks(x); ax.set_xticklabels(available, rotation=40, ha="right")
+        ax.set_ylabel("Avg Score Difference")
+        ax.set_title(f"Panel A — Human annotation − ArtCLIP(generated)\n{title_suffix}")
+        ax.legend(); ax.grid(True, alpha=0.3, axis="y")
+        panel += 1
+
+    if has_orig:
+        d1, d7 = _diffs(df_orig_artclip, df_1b_gen)
+        ax = axes[0][panel]
+        ax.bar(x - width/2, d1, width, label="ArtCLIP orig − Janus-1B",
+               color="#448FF2", hatch="", edgecolor="black", alpha=0.85)
+        ax.bar(x + width/2, d7, width, label="ArtCLIP orig − Janus-7B",
+               color="#448FF2", hatch="xxx", edgecolor="black", alpha=0.85)
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_xticks(x); ax.set_xticklabels(available, rotation=40, ha="right")
+        ax.set_ylabel("Avg Score Difference")
+        ax.set_title(f"Panel B — ArtCLIP(original) − ArtCLIP(generated)\n{title_suffix}")
+        ax.legend(); ax.grid(True, alpha=0.3, axis="y")
+
+    plt.suptitle("Comparison of Aesthetic Scores Across Categories", fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    save(fig, out_path)
+
+
+def analyse_legacy(cfg, args, out_dir):
+    """Análise usando os CSVs legados do ICCC (sampled_SMALL / sampled_BIG)."""
+    df_small = load_legacy_csv(args.iccc_small)  # Janus-1B
+    df_big   = load_legacy_csv(args.iccc_big)    # Janus-7B
+    df_human = load_human_gt(cfg)
+
+    if df_small is None and df_big is None:
+        return
+
+    # ArtCLIP scores on original paintings (from pipeline)
+    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    df_orig_artclip = load_artclip(exp1_dir, "original")
+
+    print("── Legacy ICCC data ────────────────────────────────────")
+
+    # Gráfico comparativo (dois painéis)
+    plot_comparison_bars(
+        df_human, df_small, df_big, df_orig_artclip,
+        out_path=os.path.join(out_dir, "iccc_legacy_comparison_bars.png"),
+        title_suffix="(Legacy ICCC data: sampled_SMALL=1B, sampled_BIG=7B)"
+    )
+    print("  ✓ iccc_legacy_comparison_bars.png")
+
+    # Tabela sumária com os dados legados
+    if df_human is not None:
+        report_lines = ["Legacy ICCC Data — Summary Table", "=" * 60]
+        summary_table(df_human, df_small, df_big, out_dir, report_lines)
+        # Renomeia para não sobrescrever a tabela do pipeline
+        src = os.path.join(out_dir, "iccc_summary_table.png")
+        dst = os.path.join(out_dir, "iccc_legacy_summary_table.png")
+        if os.path.exists(src):
+            os.replace(src, dst)
+        print("  ✓ iccc_legacy_summary_table.png")
+
+        # Stat tests
+        for label, df_gen in [("Janus-1B (legacy)", df_small), ("Janus-7B (legacy)", df_big)]:
+            if df_gen is not None:
+                run_hypothesis_tests(df_human, df_gen, label, out_dir, report_lines)
+        rpath = os.path.join(cfg["paths"]["reports"], "iccc_legacy_stats_report.txt")
+        with open(rpath, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_lines))
+        print(f"  ✓ {rpath}")
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/analysis.yaml")
+    parser.add_argument("--iccc-small", default=None,
+                        help="Caminho para sampled_SMALL_with_gen_scored.csv (Janus-1B)")
+    parser.add_argument("--iccc-big", default=None,
+                        help="Caminho para sampled_BIG_with_gen_scored.csv (Janus-7B)")
+    parser.add_argument("--exp-dir", default=None,
+                        help="Pasta de experimento do pipeline (ex: outputs/exp1_apdd). "
+                             "Gera o gráfico de comparação usando scores_original/1B/7B.csv")
+    parser.add_argument("--all-viz", action="store_true",
+                        help="Gera todas as visualizações do notebook ICCC.ipynb")
     args = parser.parse_args()
 
     cfg = load_cfg(args.config)
     out_dir = os.path.join(cfg["paths"]["reports"], "figures_iccc")
     os.makedirs(out_dir, exist_ok=True)
 
-    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    exp1_dir  = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    exp2a_dir = os.path.join(cfg["paths"]["outputs"], "exp2a_portinari")
+    exp2b_dir = os.path.join(cfg["paths"]["outputs"], "exp2b_portinari_human")
 
     df_human = load_human_gt(cfg)
     df_1b    = load_artclip(exp1_dir, "Janus-Pro-1B")
     df_7b    = load_artclip(exp1_dir, "Janus-Pro-7B")
+    df_orig  = load_artclip(exp1_dir, "original")
 
     if df_human is None:
         print("[iccc] APDDv2-10023.csv não encontrado — análise com human GT pulada.")
@@ -377,6 +868,42 @@ def main():
         f.write("\n".join(report_lines))
     print(f"\n✓ Relatório salvo: {report_path}")
     print(f"✓ Figuras salvas: {out_dir}")
+
+    # Extended visualizations (all notebook viz)
+    if args.all_viz:
+        print("\n── Extended visualizations (ICCC.ipynb) ────────────")
+        run_full_analysis(df_human, df_orig, df_1b, df_7b, out_dir,
+                          "exp1_apdd", has_human=(df_human is not None))
+        print("  ✓ exp1_apdd extended visualizations")
+
+        for exp_label, exp_dir_path in [("exp2a", exp2a_dir), ("exp2b", exp2b_dir)]:
+            if not os.path.isdir(exp_dir_path):
+                continue
+            p_orig = load_artclip(exp_dir_path, "original")
+            p_1b   = load_artclip(exp_dir_path, "Janus-Pro-1B")
+            p_7b   = load_artclip(exp_dir_path, "Janus-Pro-7B")
+            if p_orig is None and p_1b is None:
+                continue
+            run_full_analysis(None, p_orig, p_1b, p_7b, out_dir, exp_label, has_human=False)
+            print(f"  ✓ {exp_label} extended visualizations")
+
+    # Dados legados do ICCC (sampled_SMALL / sampled_BIG)
+    if args.iccc_small or args.iccc_big:
+        analyse_legacy(cfg, args, out_dir)
+
+    # Gráfico de comparação direto de uma pasta de experimento do pipeline
+    if args.exp_dir:
+        exp_name = os.path.basename(args.exp_dir.rstrip("/\\"))
+        df_orig_e  = load_artclip(args.exp_dir, "original")
+        df_1b_e  = load_artclip(args.exp_dir, "Janus-Pro-1B")
+        df_7b_e  = load_artclip(args.exp_dir, "Janus-Pro-7B")
+        out_path = os.path.join(out_dir, f"pipeline_comparison_{exp_name}.png")
+        plot_comparison_bars(
+            df_human, df_1b_e, df_7b_e, df_orig_e,
+            out_path=out_path,
+            title_suffix=f"(Pipeline: {exp_name})"
+        )
+        print(f"  ✓ pipeline_comparison_{exp_name}.png")
 
 
 if __name__ == "__main__":

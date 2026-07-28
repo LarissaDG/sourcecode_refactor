@@ -6,4 +6,9 @@ src/pipelines
 # Logs e arquivos compilados (em qualquer pasta)
 *.log
 *.pyc
-**/__pycache__/
+**/__pycache__
+
+# Ambientes virtuais
+venv_local/
+venv/
+.venv/
