@@ -75,21 +75,28 @@ Analysis scripts:
 
   a) Sampling strategy — KEY DIFFERENCE:
 
-     The original ICCC pipeline used STRATIFIED sampling by Artistic Category
-     (amostra.py: 20% per category). This tends to select higher-quality images
-     because well-represented categories (oil painting, landscapes) have higher
-     average human scores.
+     Both the original ICCC pipeline (amostra.py) and the refactored pipeline
+     (exp1_apdd) use uniform bin sampling based on mean aesthetic score.
+     However, the bins are computed differently:
 
-     The refactored pipeline (exp1_apdd) uses UNIFORM_BINS sampling: it computes
-     the mean of 9 aesthetic attributes per image, divides the range into 30
-     equal-width bins, and samples uniformly across bins. This deliberately
-     includes low-scoring images to achieve better score-range coverage.
+     ICCC (amostra.py):
+       - Computes Avg Score = Total Score / n_non_nan_attrs for each image
+       - Avg Score scale in the published sample: min=1.46, max=7.67, mean=4.61
+       - Human GT mean (Creativity) in the 502 sampled images: ~5.91
 
-     Consequence: the 448 images sampled by uniform_bins have a lower average
-     human GT score (~4.9 for Creativity) than the 502 images sampled by
-     stratified (~6.0). Because ArtCLIP scores generated images at ~5.8
-     regardless, the sign of (Human − ArtCLIP_generated) flips between the
-     two runs — not a bug, but a sampling effect.
+     Refactored pipeline (exp1_apdd, uniform_bins):
+       - Computes mean of 9 aesthetic attribute columns directly
+       - Divides into 30 equal-width bins over the APDDv2 score range
+       - Human GT mean (Creativity) in the 448 sampled images: ~4.91
+
+     Consequence: the two samples draw from different regions of the APDDv2
+     score distribution. Because ArtCLIP scores generated images at ~5.8
+     regardless of which original was used, the sign of
+     (Human_GT − ArtCLIP_generated) flips between the two runs:
+       ICCC:  5.91 − 5.77 = +0.14  (human scores higher than generated)
+       New:   4.91 − 5.78 = −0.87  (generated scores higher than human GT)
+     This is not a bug — it reflects that different subsets of APDDv2 were
+     sampled, and human annotations are sparse and heterogeneous across images.
 
      To reproduce the paper's direction of results, use the same 502 images
      from the original ICCC run (see Section 5b below).
