@@ -297,6 +297,8 @@ def main():
                         help="Pasta de saída (padrão: lida do config)")
     parser.add_argument("--skip-run",     action="store_true",
                         help="Pula a execução do pipeline (usa scores já gerados)")
+    parser.add_argument("--build-only",   action="store_true",
+                        help="Apenas constrói pipeline_data.json e encerra (sem rodar nem comparar)")
     args = parser.parse_args()
 
     cfg = load_cfg(args.config)
@@ -319,6 +321,10 @@ def main():
     # ── 2. Constrói pipeline_data.json ────────────────────────────────────
     print("\n[validate] Construindo pipeline_data.json...")
     build_pipeline_data(df_small, args.apddv2_dir, out_dir)
+
+    if args.build_only:
+        print("[validate] --build-only: pipeline_data.json criado. Encerrando.")
+        return
 
     # ── 3. Roda pipeline (generation + scoring) ───────────────────────────
     if not args.skip_run:

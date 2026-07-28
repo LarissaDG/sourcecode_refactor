@@ -51,7 +51,7 @@ python3 scripts/run_legacy_validation.py \
     --legacy-big   "$LEGACY_BIG" \
     --apddv2-dir   "$APDDV2_DIR" \
     --out-dir      "$OUT_DIR" \
-    --skip-run \
+    --build-only \
     || { echo "ERRO build pipeline_data"; exit 1; }
 
 python3 run.py --config configs/exp_legacy_validation.yaml --steps generation \
