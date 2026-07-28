@@ -73,9 +73,26 @@ Analysis scripts:
 4. WHY RESULTS MAY DIFFER FROM THE PAPER
 ================================================================================
 
-  a) Sample size: The original pipeline sampled ~500 images from APDDv2 using
-     stratified sampling (20% per Artistic Category). If APDDv2 now has all
-     10,023 images available, the sample composition may differ slightly.
+  a) Sampling strategy — KEY DIFFERENCE:
+
+     The original ICCC pipeline used STRATIFIED sampling by Artistic Category
+     (amostra.py: 20% per category). This tends to select higher-quality images
+     because well-represented categories (oil painting, landscapes) have higher
+     average human scores.
+
+     The refactored pipeline (exp1_apdd) uses UNIFORM_BINS sampling: it computes
+     the mean of 9 aesthetic attributes per image, divides the range into 30
+     equal-width bins, and samples uniformly across bins. This deliberately
+     includes low-scoring images to achieve better score-range coverage.
+
+     Consequence: the 448 images sampled by uniform_bins have a lower average
+     human GT score (~4.9 for Creativity) than the 502 images sampled by
+     stratified (~6.0). Because ArtCLIP scores generated images at ~5.8
+     regardless, the sign of (Human − ArtCLIP_generated) flips between the
+     two runs — not a bug, but a sampling effect.
+
+     To reproduce the paper's direction of results, use the same 502 images
+     from the original ICCC run (see Section 5b below).
 
   b) NaN alignment: The original uses positional alignment. This refactored
      version uses filename stem matching. If row ordering differs between
@@ -100,6 +117,8 @@ Analysis scripts:
 5. HOW TO REPRODUCE THE PAPER'S TABLE 4.2
 ================================================================================
 
+5a. Using the refactored pipeline (exp1_apdd — uniform_bins sample)
+--------------------------------------------------------------------
 Requirements:
   - APDDv2-10023.csv (human ground truth, sparse annotations)
   - Completed Exp1 run: outputs/exp1_apdd/scores/scores_Janus-Pro-*.csv
@@ -115,6 +134,41 @@ Steps:
   To run both analyses at once:
 
          python scripts/analyze_all.py --config configs/analysis.yaml --skip-samples
+
+  Note: scores may differ in direction from the paper due to sampling strategy
+  difference (uniform_bins vs stratified). See Section 4a above.
+
+
+5b. Exact reproduction using the original ICCC sample (502 images)
+-------------------------------------------------------------------
+This is the most faithful reproduction path. It re-runs generation and scoring
+on exactly the same 502 images and captions used in the published paper.
+
+Requirements (files from the original ICCC repository):
+  - sampled_dataset.csv            — the 502 sampled images with human GT
+  - sampled_SMALL_with_gen_scored.csv — Janus-Pro-1B legacy scores
+  - sampled_BIG_with_gen_scored.csv   — Janus-Pro-7B legacy scores
+  - APDDv2 images on the cluster: /snfs1/speed/larissa.gomide/data/apddv2/APDDv2images/
+
+Steps on the cluster:
+  1. Upload the three CSVs to /snfs1/speed/larissa.gomide/data/legacy_iccc/
+  2. Submit the validation job:
+
+         sbatch slurm/completo/slurm_exp_legacy_validation.sh
+
+  This script:
+    - Reads the 502 image stems and captions (Description column) from the
+      legacy CSVs — no resampling, same images as the paper
+    - Runs generation (Janus-Pro-1B and Janus-Pro-7B) with the same captions
+    - Runs ArtCLIP scoring
+    - Compares new scores with legacy scores attribute by attribute
+    - Outputs to outputs/exp_legacy_validation/figures_validation/:
+        validation_means.png  — side-by-side score comparison
+        validation_diff.png   — difference (new − legacy) per attribute
+        validation_report.txt — numerical table with Pearson correlation
+
+  If scores are close to zero in validation_diff.png and correlations are
+  high (>0.8), the pipeline reproduces the original results faithfully.
 
 
 6. OUTPUT DIRECTORIES
