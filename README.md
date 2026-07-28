@@ -1,10 +1,14 @@
 # Avaliação Estética Automática de Imagens Artísticas
 
+[![Tests](https://github.com/LarissaDG/sourcecode_refactor/actions/workflows/tests.yml/badge.svg)](https://github.com/LarissaDG/sourcecode_refactor/actions/workflows/tests.yml)
+
 > **Dissertação de Mestrado** — Larissa Dolabella Gomide  
 > Orientadores: Lucas Nascimento Ferreira · Wagner Meira Jr. · UFMG  
 > Publicado no **ICCC 2025** (Campinas, Brasil) · Early Career Symposium **ICCC 2026** (Coimbra, Portugal)
 
-Este repositório contém o código dos experimentos de *Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models*. O pipeline avalia a qualidade estética de pinturas geradas por IA usando o modelo **ArtCLIP** (CLIP treinado com anotações de especialistas em arte), cobrindo cinco experimentos em quatro datasets.
+Este repositório contém o código dos experimentos de *Avaliação Estética Automática de Imagens Artísticas: Uma abordagem heurística para apoiar processos criativos em artes visuais*. O pipeline avalia a qualidade estética de pinturas geradas por IA usando o modelo **ArtCLIP** (CLIP treinado com anotações de especialistas em arte), cobrindo cinco experimentos em quatro datasets. 
+
+O [artigo](https://arxiv.org/pdf/2411.08545) que propôs o conjunto de dados APDDv2 e o modelo ArtClip, foi a principal fonte e referência desse trabalho. Seu respectivo [repositório](https://github.com/BestiVictory/APDDv2).
 
 ---
 
@@ -169,7 +173,8 @@ Pesos do ArtCLIP:
 gdown --folder "1AOVKmSqZCW09J_Ypr7KzSYfRxQre-w_m" -O model_weights/
 ```
 
-> Também disponível no [Baidu Pan](https://pan.baidu.com/s/1HA8c9nnCRdBOR_zHNC781A?pwd=miwi). O modelo 6 (*The sense of order*) tem bug conhecido e é excluído da avaliação.
+> Também disponível no [Baidu Pan](https://pan.baidu.com/s/1HA8c9nnCRdBOR_zHNC781A?pwd=miwi). 
+> O modelo 6 (*The sense of order*) tem bug conhecido e é excluído da avaliação. Os dados do Baidu se encontram atualizados e com o modelo 6 funcionando, pelo que os autores informam, mas baixar esses dados se mostrou mais desafiados que se pensava.
 
 Estrutura esperada:
 ```
