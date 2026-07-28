@@ -1,6 +1,7 @@
 # Avaliação Estética Automática de Imagens Artísticas
 
 [![Tests](https://github.com/LarissaDG/sourcecode_refactor/actions/workflows/tests.yml/badge.svg)](https://github.com/LarissaDG/sourcecode_refactor/actions/workflows/tests.yml)
+[![GitHub Pages](https://github.com/LarissaDG/sourcecode_refactor/actions/workflows/pages/pages-build-deployment/badge.svg)](https://larissadg.github.io/sourcecode_refactor)
 
 > **Dissertação de Mestrado** — Larissa Dolabella Gomide  
 > Orientadores: Lucas Nascimento Ferreira · Wagner Meira Jr. · UFMG  
