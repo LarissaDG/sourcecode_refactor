@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise Estética — ICCC 2025</title>
+<style>
+:root { --accent: #2d3436; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa;
+       color: #2d3436; line-height: 1.6; }
+header { background: #2d3436; color: white; padding: 1.5rem 2rem; }
+header h1 { font-size: 1.4rem; }
+header p  { font-size: 0.85rem; opacity: 0.75; margin-top: 0.3rem; }
+nav { background: #636e72; padding: 0.4rem 2rem; display: flex; gap: 0.6rem;
+      flex-wrap: wrap; }
+nav a { color: #dfe6e9; text-decoration: none; padding: 0.25rem 0.7rem;
+        border-radius: 4px; font-size: 0.82rem; }
+nav a:hover, nav a.active { background: #2d3436; }
+.container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+section { margin-bottom: 3rem; }
+h2 { font-size: 1.2rem; color: #2d3436; border-left: 4px solid var(--accent,#0984e3);
+     padding-left: 0.8rem; margin-bottom: 1rem; margin-top: 2rem; }
+h3 { font-size: 1rem; color: #636e72; margin: 1.2rem 0 0.5rem; }
+.grid   { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+          gap: 1.2rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+          gap: 1rem; }
+figure { background: white; border-radius: 8px; padding: 1rem;
+         box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+figure img { width: 100%; height: auto; border-radius: 4px; }
+figcaption { font-size: 0.8rem; color: #636e72; margin-top: 0.5rem; text-align: center; }
+.full { grid-column: 1 / -1; }
+.info { background: #dfe6e9; border-radius: 6px; padding: 0.8rem 1rem;
+        font-size: 0.88rem; margin-bottom: 1rem; }
+.info strong { color: var(--accent,#0984e3); }
+.missing { color: #d63031; font-style: italic; padding: 0.4rem; font-size: 0.85rem; }
+.badge { display: inline-block; background: var(--accent,#0984e3); color: white;
+         font-size: 0.72rem; padding: 0.1rem 0.45rem; border-radius: 10px;
+         margin-left: 0.4rem; vertical-align: middle; }
+footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem;
+         border-top: 1px solid #dfe6e9; margin-top: 2rem; }
+
+</style>
+</head>
+<body>
+<header style="border-bottom: 4px solid #2d3436;">
+  <h1>Avaliação Estética Automática de Imagens Artísticas: Uma abordagem heurística para apoiar processos criativos em artes visuais</h1>
+  <p>Dissertação de Mestrado</p>
+</header>
+<nav><a href="index.html" class="active">Início</a><a href="Paper_iccc.html">Paper ICCC</a><a href="exp1_apdd.html">Exp 1 APDDv2</a><a href="exp2a_portinari.html">Exp 2a Portinari (AI)</a><a href="exp2b_portinari_human.html">Exp 2b Portinari (Human)</a><a href="exp3_mnist.html">Exp 3 MNIST</a><a href="exp4_noise.html">Exp 4 Ruído</a><a href="exp5_temporal.html">Exp 5 Temporal</a></nav>
+<div class="container">
+
+<section style="max-width:1200px;margin:2rem auto;">
+  <h2 style="border:none;font-size:1.6rem;margin-bottom:0.5rem;">Resultados da Dissertação</h2>
+  <p style="color:#636e72;margin-bottom:1.5rem;font-size:.9rem;">
+    <b>Aluna:</b> Larissa Dolabella Gomide  <br>
+    <b>Professores:</b> Lucas Nascimento Ferreira · Wagner Meira Jr.
+    <br>
+    <b>Resumo do trabalho:</b> Este trabalho investiga a avaliação estética objetiva de pinturas geradas por inteligência artificial no âmbito da criatividade computacional, propondo o modelo ArtCLIP, treinado com anotações de especialistas em arte, como uma heurística formal para medir o valor estético. Por meio de cinco núcleos experimentais que testaram desde a comparação entre obras humanas e
+    sintéticas até análises de riqueza semântica, discriminação artística e estabilidade a ruídos e modificações locais, os autores demonstraram que o ArtCLIP alinha-se de forma consistente ao julgamento humano especializado. Com isso, o estudo conclui que heurísticas computacionais baseadas no conhecimento de especialistas oferecem uma alternativa escalável e robusta para superar a
+    subjetividade na avaliação de arte gerada por IA. Esse trabalho gerou como resultado um paper que foi apresentado no 16th International Conference on Computational Creativity, ICCC'25, em Campinas - Brasil. Além de ter participado, também do Early Career Symposium da 17th International Conference on Computational Creativity, ICCC'26, em Coimbra - Portugal.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
+    
+    <a href="Paper_iccc.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #6c5ce7;height:100%;">
+        <h3 style="color:#6c5ce7;margin-bottom:.4rem;">Paper ICCC</h3>
+        <p style="color:#636e72;font-size:.87rem;">Metodologia original ICCC 2025.<br>APDDv2-10023 vs sampled_SMALL/BIG.<br>t-test · Mann-Whitney · ANOVA · Radar</p>
+      </div>
+    </a>
+    <a href="exp1_apdd.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #0984e3;height:100%;">
+        <h3 style="color:#0984e3;margin-bottom:.4rem;">Exp 1 — APDDv2</h3>
+        <p style="color:#636e72;font-size:.87rem;">Baseline APDDv2 — 448 imagens amostradas.<br>Friedman · Wilcoxon · CLD · Radar · Clusters</p>
+      </div>
+    </a>
+    <a href="exp2a_portinari.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #00b894;height:100%;">
+        <h3 style="color:#00b894;margin-bottom:.4rem;">Exp 2a — Portinari (AI Captions)</h3>
+        <p style="color:#636e72;font-size:.87rem;">500 imagens de Portinari.<br>Captions geradas pelo Janus-Pro-7B.</p>
+      </div>
+    </a>
+    <a href="exp2b_portinari_human.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #e17055;height:100%;">
+        <h3 style="color:#e17055;margin-bottom:.4rem;">Exp 2b — Portinari (Human Captions)</h3>
+        <p style="color:#636e72;font-size:.87rem;">498 imagens de Portinari.<br>Captions escritas por humanos.</p>
+      </div>
+    </a>
+    <a href="exp3_mnist.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #a29bfe;height:100%;">
+        <h3 style="color:#a29bfe;margin-bottom:.4rem;">Exp 3 — MNIST</h3>
+        <p style="color:#636e72;font-size:.87rem;">Arte vs. Não-Arte.<br>Discriminação ArtCLIP em dígitos manuscritos.</p>
+      </div>
+    </a>
+    <a href="exp4_noise.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #fd79a8;height:100%;">
+        <h3 style="color:#fd79a8;margin-bottom:.4rem;">Exp 4 — Ruído</h3>
+        <p style="color:#636e72;font-size:.87rem;">Impacto de ruído visual no score estético.<br>Gaussiano · Blur · Formas geométricas.</p>
+      </div>
+    </a>
+    <a href="exp5_temporal.html" style="text-decoration:none;">
+      <div style="background:white;border-radius:12px;padding:1.2rem;
+                  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+                  border-top:4px solid #fdcb6e;height:100%;">
+        <h3 style="color:#fdcb6e;margin-bottom:.4rem;">Exp 5 — Temporal</h3>
+        <p style="color:#636e72;font-size:.87rem;">Consistência temporal em GIFs.<br>Detecção de degradação progressiva.</p>
+      </div>
+    </a>
+  </div>
+  <div style="margin-top:1.5rem;background:#dfe6e9;border-radius:8px;
+              padding:0.8rem 1rem;font-size:.84rem;color:#636e72;">
+    <strong>Reprodutibilidade:</strong>
+    Consulte <code>REPRODUCIBILITY.txt</code> no repositório para detalhes metodológicos.
+  </div>
+</section>
+</div>
+<footer>
+  Gerado automaticamente · Larissa Gomide, Lucas Nascimento Ferreira, Wagner Meira Jr. · ICCC 2025
+</footer>
+</body>
+</html>
