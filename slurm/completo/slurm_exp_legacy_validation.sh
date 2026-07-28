@@ -23,7 +23,7 @@ export MPLCONFIGDIR="/sonic_home/larissa.gomide/casa/.matplotlib"
 
 LEGACY_SMALL="$DATA/legacy_iccc/sampled_SMALL_with_gen_scored.csv"
 LEGACY_BIG="$DATA/legacy_iccc/sampled_BIG_with_gen_scored.csv"
-APDDV2_DIR="$DATA/apddv2/"
+APDDV2_DIR="$DATA/apddv2/APDDv2images/"
 OUT_DIR="/snfs1/speed/larissa.gomide/outputs/exp_legacy_validation"
 
 notify() {
