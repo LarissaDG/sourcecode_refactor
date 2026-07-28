@@ -10,6 +10,7 @@ Uso:
 import argparse
 import json
 import os
+import re
 import random
 import sys
 import warnings
@@ -1090,7 +1091,7 @@ def analyse_exp5(cfg, out_dir: str):
         grp = df5a.groupby("frame_idx")[total_attr]
         frames = sorted(grp.groups.keys())
         means = [grp.get_group(f).mean() for f in frames]
-        sems  = np.nan_to_num([grp.get_group(f).sem() for f in frames], 0)
+        sems  = np.nan_to_num(np.array([grp.get_group(f).sem() for f in frames], dtype=float), 0)
         ax.plot(frames, means, color=pal["original"], linewidth=2, marker="o",
                 markersize=4, label="Mean score")
         ax.fill_between(frames, np.array(means) - sems, np.array(means) + sems,
@@ -1115,7 +1116,7 @@ def _exp5b_degradation(df5b, cfg, out_dir, total_attr, alpha, pal):
         grp = df5b.groupby("frame_idx")[total_attr]
         frames = sorted(grp.groups.keys())
         means = [float(grp.get_group(f).mean()) for f in frames]
-        sems  = np.nan_to_num([grp.get_group(f).sem() for f in frames], 0)
+        sems  = np.nan_to_num(np.array([grp.get_group(f).sem() for f in frames], dtype=float), 0)
         colors = ["#F23838" if f >= 12 else pal["original"] for f in frames]
         ax.plot(frames, means, color=pal["original"], linewidth=1.5, zorder=1)
         ax.scatter(frames, means, c=colors, s=40, zorder=2)
@@ -1217,7 +1218,7 @@ def _add_shapes_image_colors(img: Image.Image, level: float, n_colors=5) -> Imag
         size = max(5, int(min(w, h) * 0.05 * (level + 0.5)))
         x2 = min(w - 1, x1 + size)
         y2 = min(h - 1, y1 + size)
-        draw.ellipse([x1, y1, x2, y2], fill=color, outline=None)
+        draw.rectangle([x1, y1, x2, y2], fill=color, outline=None)
     return result
 
 
@@ -1236,23 +1237,9 @@ def samples_exp1(cfg, out_dir: str, n=5):
         return
 
     size = (224, 224)
-    IMG_H = 2.4  # inches per image
+    IMG_H = 2.4
     LABEL_H = 0.5
-
-    # ── Panel A: só a imagem original ─────────────────────────────────────
-    fig, axes = plt.subplots(1, n, figsize=(n * 2.5, IMG_H + LABEL_H))
-    for i, s in enumerate(chosen):
-        fn = s.get("filename", "")
-        path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
-        img = _open_img(path, size)
-        _img_to_ax(axes[i], img)
-        axes[i].set_title(os.path.basename(fn)[:20], fontsize=7)
-    fig.suptitle("Exp 1 — Panel A: APDDv2 Samples", fontsize=11, fontweight="bold")
-    plt.tight_layout()
-    save(fig, os.path.join(out_dir, "exp1_panel_a.png"), cfg)
-
-    # ── Panel B: original | Janus-1B | Janus-7B | caption ─────────────────
-    rows = 3  # orig / 1B / 7B
+    rows = 3  # Original / Janus-1B / Janus-7B
     fig = plt.figure(figsize=(n * 2.5, rows * (IMG_H + LABEL_H) + 0.5))
     gs = gridspec.GridSpec(rows, n, figure=fig, hspace=0.4, wspace=0.1)
     row_titles = ["Original", "Janus-Pro-1B", "Janus-Pro-7B"]
@@ -1273,8 +1260,8 @@ def samples_exp1(cfg, out_dir: str, n=5):
             if col_idx == 0:
                 ax.set_ylabel(row_titles[row_idx], fontsize=8, rotation=0,
                               ha="right", va="center", labelpad=60)
-    fig.suptitle("Exp 1 — Panel B: APDDv2 + Generated", fontsize=11, fontweight="bold")
-    save(fig, os.path.join(out_dir, "exp1_panel_b.png"), cfg)
+    fig.suptitle("Exp 1 — APDDv2: Original vs. Generated", fontsize=11, fontweight="bold")
+    save(fig, os.path.join(out_dir, "exp1_samples.png"), cfg)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1294,64 +1281,98 @@ def samples_exp2(cfg, out_dir: str, n=5):
 
     size = (224, 224)
 
-    # Tenta encontrar o mesmo item em 2b pelo stem
+    # ── Exp 2a: Portinari + AI caption + Janus gerados ──────────────────
+    rows_2a = 3  # Portinari / Janus-1B (2a) / Janus-7B (2a)
+    fig = plt.figure(figsize=(n * 2.5, rows_2a * 2.8 + 0.5))
+    gs = gridspec.GridSpec(rows_2a, n, figure=fig, hspace=0.4, wspace=0.1)
+    row_titles_2a = ["Portinari", "Janus-Pro-1B", "Janus-Pro-7B"]
+    for col_idx, s in enumerate(chosen_2a):
+        for row_idx, gen_key in enumerate(["path", "generated_Janus-Pro-1B", "generated_Janus-Pro-7B"]):
+            ax = fig.add_subplot(gs[row_idx, col_idx])
+            if gen_key == "path":
+                path = s.get("path", "")
+            else:
+                gen = s.get(gen_key, [])
+                path = gen[0] if gen else ""
+            img = _open_img(path, size)
+            _img_to_ax(ax, img)
+            if row_idx == 0:
+                cap = s.get("caption", "")[:60]
+                ax.set_title(f'"{cap}…"' if len(cap) >= 60 else f'"{cap}"', fontsize=6)
+            if col_idx == 0:
+                ax.set_ylabel(row_titles_2a[row_idx], fontsize=8, rotation=0,
+                              ha="right", va="center", labelpad=70)
+    fig.suptitle("Exp 2a — Portinari: AI Captions + Generated", fontsize=11, fontweight="bold")
+    save(fig, os.path.join(out_dir, "exp2a_portinari_samples.png"), cfg)
+
+    # ── Exp 2b: Portinari + Human caption + Janus gerados ───────────────
+    chosen_2b = [s for s in data_2b if s.get("path")][:n]
+    if not chosen_2b:
+        print("[samples exp2b] sem dados de pipeline, pulando.")
+        return
+
     stem_to_2b = {}
     for s in data_2b:
         st = _stem(s.get("filename", ""))
         stem_to_2b[st] = s
 
-    # ── Panel A: imagem Portinari + descrição PT ───────────────────────────
-    fig, axes = plt.subplots(2, n, figsize=(n * 2.5, 6.5),
-                              gridspec_kw={"height_ratios": [3, 1]})
-    for i, s in enumerate(chosen_2a):
-        img = _open_img(s.get("path", ""), size)
-        _img_to_ax(axes[0][i], img)
-        cap = s.get("caption", "")[:80]
-        axes[1][i].axis("off")
-        axes[1][i].text(0.5, 0.5, cap, fontsize=6, ha="center", va="center",
-                        wrap=True, transform=axes[1][i].transAxes)
-    fig.suptitle("Exp 2 — Panel A: Portinari + Description (PT)", fontsize=11, fontweight="bold")
-    plt.tight_layout()
-    save(fig, os.path.join(out_dir, "exp2_panel_a.png"), cfg)
-
-    # ── Panel B: Portinari | Janus-1B | Janus-7B + EN caption ────────────
-    rows = 3
-    fig = plt.figure(figsize=(n * 2.5, rows * 2.8 + 0.5))
-    gs = gridspec.GridSpec(rows, n, figure=fig, hspace=0.4, wspace=0.1)
-    row_titles = ["Portinari", "Janus-Pro-1B (2b)", "Janus-Pro-7B (2b)"]
-    for col_idx, s in enumerate(chosen_2a):
-        st = _stem(s.get("filename", ""))
-        s2b = stem_to_2b.get(st, {})
-
-        for row_idx, (src_s, gen_key) in enumerate([
-            (s, "path"),
-            (s2b, "generated_Janus-Pro-1B"),
-            (s2b, "generated_Janus-Pro-7B"),
-        ]):
+    rows_2b = 3  # Portinari / Janus-1B (2b) / Janus-7B (2b)
+    fig = plt.figure(figsize=(n * 2.5, rows_2b * 2.8 + 0.5))
+    gs = gridspec.GridSpec(rows_2b, n, figure=fig, hspace=0.4, wspace=0.1)
+    row_titles_2b = ["Portinari", "Janus-Pro-1B", "Janus-Pro-7B"]
+    for col_idx, s in enumerate(chosen_2b):
+        for row_idx, gen_key in enumerate(["path", "generated_Janus-Pro-1B", "generated_Janus-Pro-7B"]):
             ax = fig.add_subplot(gs[row_idx, col_idx])
             if gen_key == "path":
-                path = src_s.get("path", "")
+                path = s.get("path", "")
             else:
-                gen = src_s.get(gen_key, [])
+                gen = s.get(gen_key, [])
                 path = gen[0] if gen else ""
             img = _open_img(path, size)
             _img_to_ax(ax, img)
             if row_idx == 0:
-                # EN caption (from 2b)
-                cap = s2b.get("caption", s.get("caption", ""))[:60]
+                cap = s.get("caption", "")[:60]
                 ax.set_title(f'"{cap}…"' if len(cap) >= 60 else f'"{cap}"', fontsize=6)
             if col_idx == 0:
-                ax.set_ylabel(row_titles[row_idx], fontsize=8, rotation=0,
+                ax.set_ylabel(row_titles_2b[row_idx], fontsize=8, rotation=0,
                               ha="right", va="center", labelpad=70)
-    fig.suptitle("Exp 2 — Panel B: Portinari + Generated", fontsize=11, fontweight="bold")
-    save(fig, os.path.join(out_dir, "exp2_panel_b.png"), cfg)
+    fig.suptitle("Exp 2b — Portinari: Human Captions + Generated", fontsize=11, fontweight="bold")
+    save(fig, os.path.join(out_dir, "exp2b_portinari_human_samples.png"), cfg)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Sample panels — Exp 3 (MNIST)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def samples_exp3(cfg, out_dir: str, n=10):
+def _mnist_label(s: dict) -> str:
+    """Extract digit label from pipeline data entry."""
+    for key in ("label", "class", "digit", "class_label", "ground_truth"):
+        val = s.get(key)
+        if val is not None:
+            return str(val)
+    # fallback: extract leading digit from filename
+    fn = os.path.basename(s.get("path", s.get("filename", "")))
+    m = re.match(r"(\d)", fn)
+    return m.group(1) if m else "?"
+
+
+def _open_img_mnist(path, size=(112, 112)):
+    """Open MNIST image with black background."""
+    try:
+        img = Image.open(path).convert("L")  # grayscale
+        img = img.resize(size, Image.LANCZOS)
+        # convert to RGB with black background
+        rgb = Image.new("RGB", size, (0, 0, 0))
+        rgb.paste(Image.merge("RGB", [img, img, img]))
+        return rgb
+    except Exception:
+        img = Image.new("RGB", size, (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.text((10, 45), "N/A", fill=(128, 128, 128))
+        return img
+
+
+def samples_exp3(cfg, out_dir: str, n=20):
     exp_dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
     data    = load_pipeline_data(exp_dir)
     if not data:
@@ -1359,17 +1380,21 @@ def samples_exp3(cfg, out_dir: str, n=10):
         return
     chosen = data[:n]
     size = (112, 112)
-    ncols = min(n, 10)
-    fig, axes = plt.subplots(1, ncols, figsize=(ncols * 1.3, 1.8))
-    if ncols == 1:
-        axes = [axes]
+    ncols = 5
+    nrows = (len(chosen) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 1.6, nrows * 1.9),
+                              facecolor="black")
+    axes_flat = axes.flatten() if nrows > 1 else list(axes)
     for i, s in enumerate(chosen):
         path = s.get("path") or s.get("filename", "")
-        img = _open_img(path, size)
-        _img_to_ax(axes[i], img)
-        label = s.get("label", s.get("class", "?"))
-        axes[i].set_title(str(label), fontsize=9)
-    fig.suptitle("Exp 3 — MNIST Digit Samples", fontsize=11, fontweight="bold")
+        img = _open_img_mnist(path, size)
+        axes_flat[i].imshow(np.array(img))
+        axes_flat[i].axis("off")
+        label = _mnist_label(s)
+        axes_flat[i].set_title(str(label), fontsize=10, color="white")
+    for j in range(len(chosen), len(axes_flat)):
+        axes_flat[j].axis("off")
+    fig.suptitle("EXP 3 — MNIST: Amostras", fontsize=12, fontweight="bold", color="white")
     plt.tight_layout()
     save(fig, os.path.join(out_dir, "exp3_mnist_samples.png"), cfg)
 
@@ -1380,9 +1405,8 @@ def samples_exp3(cfg, out_dir: str, n=10):
 
 def samples_exp4(cfg, out_dir: str, n=3):
     """
-    Usa as MESMAS imagens base do Exp1.
-    Aplica os 3 tipos de ruído em 3 níveis representativos.
-    Para 'shapes', amostra cores da imagem original.
+    Rows = sample images, cols = [Original, Gaussian, Blur, Geometric Shapes].
+    Single representative noise level (50%).
     """
     exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
     data1    = load_pipeline_data(exp1_dir)
@@ -1394,57 +1418,51 @@ def samples_exp4(cfg, out_dir: str, n=3):
         return
 
     try:
-        from datasets.image import add_gaussian_noise, add_blur, add_shapes
+        from datasets.image import add_gaussian_noise, add_blur
     except ImportError:
         print("[samples exp4] datasets.image não disponível, pulando.")
         return
 
-    noise_fns = {
-        "gaussian": add_gaussian_noise,
-        "blur":     add_blur,
-        "shapes":   None,  # custom
-    }
-    levels = [0.1, 0.5, 0.9]
-    noise_names = list(noise_fns.keys())
+    level = 0.5  # fixed representative level
+    col_labels = [
+        L(cfg, "noise_types", "gaussian") if "gaussian" in cfg["labels"][cfg["lang"]].get("noise_types", {}) else "Gaussian Noise",
+        L(cfg, "noise_types", "blur")     if "blur"     in cfg["labels"][cfg["lang"]].get("noise_types", {}) else "Blur",
+        L(cfg, "noise_types", "shapes")   if "shapes"   in cfg["labels"][cfg["lang"]].get("noise_types", {}) else "Geometric Shapes",
+    ]
+    n_cols = 4  # Original + 3 noise types
+    n_rows = n
+    size = (224, 224)
 
-    n_imgs = n
-    n_noise = len(noise_names)
-    n_levels = len(levels)
-    # Grid: rows = noise_type × level, cols = images
-    n_rows = n_noise * n_levels
-    n_cols = n_imgs
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.3, n_rows * 2.3))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 2.8, n_rows * 3.0))
     if n_rows == 1:
         axes = [axes]
-    if n_cols == 1:
-        axes = [[ax] for ax in axes]
 
-    size = (224, 224)
-    for noise_idx, noise_type in enumerate(noise_names):
-        for lvl_idx, level in enumerate(levels):
-            row = noise_idx * n_levels + lvl_idx
-            for col_idx, s in enumerate(base_samples):
-                fn = s.get("filename", "")
-                path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
-                img = _open_img(path, size)
-                try:
-                    import torch
-                    from torchvision import transforms
-                    t = transforms.ToTensor()(img)
-                    if noise_type == "shapes":
-                        noisy_img = _add_shapes_image_colors(img, level)
-                    else:
-                        noisy_t = noise_fns[noise_type](t, level)
-                        noisy_img = transforms.ToPILImage()(noisy_t.clamp(0, 1))
-                except Exception:
-                    noisy_img = img
-                _img_to_ax(axes[row][col_idx], noisy_img)
-                if col_idx == 0:
-                    label_nt = L(cfg, "noise_types", noise_type) if noise_type in cfg["labels"][cfg["lang"]].get("noise_types", {}) else noise_type
-                    axes[row][col_idx].set_ylabel(f"{label_nt}\n{int(level*100)}%",
-                                                   fontsize=7, rotation=0, ha="right",
-                                                   va="center", labelpad=60)
-    fig.suptitle("Exp 4 — Noise Samples (APDDv2 base images)", fontsize=11, fontweight="bold")
+    for row_idx, s in enumerate(base_samples):
+        fn = s.get("filename", "")
+        path = s.get("path") or (os.path.join(img_root, fn) if img_root else "")
+        orig = _open_img(path, size)
+
+        try:
+            import torch
+            from torchvision import transforms
+            t = transforms.ToTensor()(orig)
+            noisy_gaussian = transforms.ToPILImage()(add_gaussian_noise(t, level).clamp(0, 1))
+            noisy_blur     = transforms.ToPILImage()(add_blur(t, level).clamp(0, 1))
+        except Exception:
+            noisy_gaussian = orig
+            noisy_blur     = orig
+
+        noisy_shapes = _add_shapes_image_colors(orig, level)
+
+        for col_idx, img in enumerate([orig, noisy_gaussian, noisy_blur, noisy_shapes]):
+            ax = axes[row_idx][col_idx]
+            _img_to_ax(ax, img)
+            if row_idx == 0:
+                header = "Original" if col_idx == 0 else col_labels[col_idx - 1]
+                ax.set_title(header, fontsize=10, fontweight="bold")
+
+    fig.suptitle(f"EXP 4 — Ruído: Original vs. Tipos de Ruído (nível {int(level*100)})",
+                 fontsize=12, fontweight="bold")
     plt.tight_layout()
     save(fig, os.path.join(out_dir, "exp4_noise_samples.png"), cfg)
 
