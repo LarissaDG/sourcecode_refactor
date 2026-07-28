@@ -522,6 +522,8 @@ def build_exp5(fi_fig, fi_smp):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/analysis_local.yaml")
+    parser.add_argument("--out", default=None,
+                        help="Pasta de saída dos HTMLs (padrão: docs/ no repositório)")
     args = parser.parse_args()
 
     cfg = load_cfg(args.config)
@@ -530,28 +532,30 @@ def main():
     fi_fig  = os.path.join(reports, "figures")
     fi_smp  = os.path.join(reports, "samples")
 
-    os.makedirs(reports, exist_ok=True)
+    # HTMLs sempre vão para docs/ no repositório (GitHub Pages)
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    html_out  = args.out or os.path.join(repo_root, "docs")
+    os.makedirs(html_out, exist_ok=True)
 
     pages = {
-        "index.html":               build_index(reports),
-        "Paper_iccc.html":         build_legacy(fi_iccc),
-        "exp1_apdd.html":           build_exp1(fi_iccc, fi_fig, fi_smp),
-        "exp2a_portinari.html":     build_exp2(fi_iccc, fi_fig, fi_smp, "a"),
+        "index.html":                 build_index(reports),
+        "Paper_iccc.html":            build_legacy(fi_iccc),
+        "exp1_apdd.html":             build_exp1(fi_iccc, fi_fig, fi_smp),
+        "exp2a_portinari.html":       build_exp2(fi_iccc, fi_fig, fi_smp, "a"),
         "exp2b_portinari_human.html": build_exp2(fi_iccc, fi_fig, fi_smp, "b"),
-        "exp3_mnist.html":          build_exp3(fi_fig, fi_smp),
-        "exp4_noise.html":          build_exp4(fi_fig, fi_smp),
-        "exp5_temporal.html":       build_exp5(fi_fig, fi_smp),
+        "exp3_mnist.html":            build_exp3(fi_fig, fi_smp),
+        "exp4_noise.html":            build_exp4(fi_fig, fi_smp),
+        "exp5_temporal.html":         build_exp5(fi_fig, fi_smp),
     }
 
     for fname, html in pages.items():
-        out = os.path.join(reports, fname)
+        out = os.path.join(html_out, fname)
         with open(out, "w", encoding="utf-8") as f:
             f.write(html)
         size_kb = os.path.getsize(out) // 1024
         print(f"[html] OK {fname}  ({size_kb} KB)")
 
-    print(f"\nRelatórios em: {reports}")
-    print("Para GitHub Pages, copie os HTMLs para docs/ ou gh-pages branch.")
+    print(f"\nHTMLs gerados em: {html_out}")
 
 
 if __name__ == "__main__":
