@@ -11,7 +11,7 @@ Estrutura gerada:
   reports/exp3_mnist.html
   reports/exp4_noise.html
   reports/exp5_temporal.html
-  reports/legacy_iccc.html
+  reports/Paper_iccc.html
 """
 
 import argparse
@@ -108,11 +108,12 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
 """
 
 
-def page(title, subtitle, nav_links, body, accent="#0984e3", active_href=""):
+def page(title, subtitle, nav_links, body, accent="#0984e3", active_href="", header_title=None):
     nav_html = ""
     for label, href in nav_links:
         cls = ' class="active"' if href == active_href else ""
         nav_html += f'<a href="{href}"{cls}>{label}</a>'
+    h1 = header_title or title
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -126,7 +127,7 @@ def page(title, subtitle, nav_links, body, accent="#0984e3", active_href=""):
 </head>
 <body>
 <header style="border-bottom: 4px solid {accent};">
-  <h1>{title}</h1>
+  <h1>{h1}</h1>
   <p>{subtitle}</p>
 </header>
 <nav>{nav_html}</nav>
@@ -143,14 +144,14 @@ def page(title, subtitle, nav_links, body, accent="#0984e3", active_href=""):
 # ── Navigation shared across all pages ────────────────────────────────────────
 
 NAV = [
-    ("Início",        "index.html"),
-    ("Legacy ICCC",   "legacy_iccc.html"),
-    ("Exp 1 APDDv2",  "exp1_apdd.html"),
-    ("Exp 2a Portinari (AI)",  "exp2a_portinari.html"),
-    ("Exp 2b Portinari (Human)", "exp2b_portinari_human.html"),
-    ("Exp 3 MNIST",   "exp3_mnist.html"),
-    ("Exp 4 Ruído",   "exp4_noise.html"),
-    ("Exp 5 Temporal","exp5_temporal.html"),
+    ("Início",                    "index.html"),
+    ("Paper ICCC",                "Paper_iccc.html"),
+    ("Exp 1 APDDv2",              "exp1_apdd.html"),
+    ("Exp 2a Portinari (AI)",     "exp2a_portinari.html"),
+    ("Exp 2b Portinari (Human)",  "exp2b_portinari_human.html"),
+    ("Exp 3 MNIST",               "exp3_mnist.html"),
+    ("Exp 4 Ruído",               "exp4_noise.html"),
+    ("Exp 5 Temporal",            "exp5_temporal.html"),
 ]
 
 
@@ -158,7 +159,7 @@ NAV = [
 
 def build_index(reports_dir):
     cards = [
-        ("#6c5ce7", "legacy_iccc.html",           "Legacy ICCC",
+        ("#6c5ce7", "Paper_iccc.html",            "Paper ICCC",
          "Metodologia original ICCC 2025.<br>APDDv2-10023 vs sampled_SMALL/BIG.<br>t-test · Mann-Whitney · ANOVA · Radar"),
         ("#0984e3", "exp1_apdd.html",              "Exp 1 — APDDv2",
          "Baseline APDDv2 — 448 imagens amostradas.<br>Friedman · Wilcoxon · CLD · Radar · Clusters"),
@@ -188,8 +189,12 @@ def build_index(reports_dir):
 <section style="max-width:1200px;margin:2rem auto;">
   <h2 style="border:none;font-size:1.6rem;margin-bottom:0.5rem;">Resultados da Dissertação</h2>
   <p style="color:#636e72;margin-bottom:1.5rem;font-size:.9rem;">
-    Automatic Aesthetic Evaluation and Prompt Controllability in Generative Image Models<br>
-    Larissa Gomide · Lucas Nascimento Ferreira · Wagner Meira Jr. · ICCC 2025
+    <b>Aluna:</b> Larissa Dolabella Gomide  <br>
+    <b>Professores:</b> Lucas Nascimento Ferreira · Wagner Meira Jr.
+    <br>
+    <b>Resumo do trabalho:</b> Este trabalho investiga a avaliação estética objetiva de pinturas geradas por inteligência artificial no âmbito da criatividade computacional, propondo o modelo ArtCLIP, treinado com anotações de especialistas em arte, como uma heurística formal para medir o valor estético. Por meio de cinco núcleos experimentais que testaram desde a comparação entre obras humanas e
+    sintéticas até análises de riqueza semântica, discriminação artística e estabilidade a ruídos e modificações locais, os autores demonstraram que o ArtCLIP alinha-se de forma consistente ao julgamento humano especializado. Com isso, o estudo conclui que heurísticas computacionais baseadas no conhecimento de especialistas oferecem uma alternativa escalável e robusta para superar a
+    subjetividade na avaliação de arte gerada por IA. Esse trabalho gerou como resultado um paper que foi apresentado no 16th International Conference on Computational Creativity, ICCC'25, em Campinas - Brasil. Além de ter participado, também do Early Career Symposium da 17th International Conference on Computational Creativity, ICCC'26, em Coimbra - Portugal.
   </p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
     {grid}
@@ -200,8 +205,10 @@ def build_index(reports_dir):
     Consulte <code>REPRODUCIBILITY.txt</code> no repositório para detalhes metodológicos.
   </div>
 </section>"""
+    header_title = "Avaliação Estética Automática de Imagens Artísticas: Uma abordagem heurística para apoiar processos criativos em artes visuais"
     return page("Análise Estética — ICCC 2025", "Dissertação de Mestrado",
-                NAV, body, accent="#2d3436", active_href="index.html")
+                NAV, body, accent="#2d3436", active_href="index.html",
+                header_title=header_title)
 
 
 def build_legacy(fi):
@@ -258,8 +265,8 @@ def build_legacy(fi):
                 f("iccc_radar_Janus-Pro-7B.png", "Radar: Human GT vs Janus-7B"),
                 full(f("exp1_apdd_radar_three_way.png", "Radar 3-vias: Original vs Janus-1B vs Janus-7B"))))
     )
-    return page("Legacy ICCC", "APDDv2-10023 vs sampled_SMALL/BIG · Metodologia ICCC 2025",
-                NAV, body, accent="#6c5ce7", active_href="legacy_iccc.html")
+    return page("Paper ICCC", "APDDv2-10023 vs sampled_SMALL/BIG · Metodologia ICCC 2025",
+                NAV, body, accent="#6c5ce7", active_href="Paper_iccc.html")
 
 
 def _exp_page(fi_iccc, fi_fig, fi_smp,
@@ -527,7 +534,7 @@ def main():
 
     pages = {
         "index.html":               build_index(reports),
-        "legacy_iccc.html":         build_legacy(fi_iccc),
+        "Paper_iccc.html":         build_legacy(fi_iccc),
         "exp1_apdd.html":           build_exp1(fi_iccc, fi_fig, fi_smp),
         "exp2a_portinari.html":     build_exp2(fi_iccc, fi_fig, fi_smp, "a"),
         "exp2b_portinari_human.html": build_exp2(fi_iccc, fi_fig, fi_smp, "b"),
