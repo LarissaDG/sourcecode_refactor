@@ -299,6 +299,8 @@ def main():
                         help="Pula a execução do pipeline (usa scores já gerados)")
     parser.add_argument("--build-only",   action="store_true",
                         help="Apenas constrói pipeline_data.json e encerra (sem rodar nem comparar)")
+    parser.add_argument("--test",         type=int, default=0,
+                        help="Modo teste: usa apenas N imagens (ex: --test 1)")
     args = parser.parse_args()
 
     cfg = load_cfg(args.config)
@@ -319,6 +321,11 @@ def main():
     print(f"  SMALL: {len(df_small)} rows | BIG: {len(df_big)} rows")
 
     # ── 2. Constrói pipeline_data.json ────────────────────────────────────
+    if args.test > 0:
+        df_small = df_small.head(args.test)
+        df_big   = df_big.head(args.test)
+        print(f"[validate] MODO TESTE: usando {args.test} imagem(ns).")
+
     print("\n[validate] Construindo pipeline_data.json...")
     build_pipeline_data(df_small, args.apddv2_dir, out_dir)
 
