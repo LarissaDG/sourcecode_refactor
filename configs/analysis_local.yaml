@@ -201,8 +201,18 @@ radar_attributes:
   - "The overall"
   - "Mood"
 
+sampling:
+  method:       "gaussian"   # gaussian = proporcional por bins (pd.cut + frac)
+  num_bins:     10
+  n_target:     500
+  random_state: 42
+  # CSV gerado automaticamente pelo analyze_iccc.py quando apddv2_csv estiver disponível:
+  output_csv:   "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\Dados\\gaussian_sample.csv"
+
 paths:
   outputs:       "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\outputs"
   reports:       "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\reports"
   apddv2_csv:    "C:\\Users\\jggom\\Documents\\UFMG\\Mestrado\\Implementação\\Código fonte\\ICCC\\APDDv2\\APDDv2-10023.csv"
   apddv2_images: ""
+  sampled_small: "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\Dados\\Arquivos_legados\\sampled_SMALL_with_gen_scored.csv"
+  sampled_big:   "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\Dados\\Arquivos_legados\\sampled_BIG_with_gen_scored.csv"

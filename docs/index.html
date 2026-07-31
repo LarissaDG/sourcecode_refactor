@@ -62,6 +62,7 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
     sintéticas até análises de riqueza semântica, discriminação artística e estabilidade a ruídos e modificações locais, os autores demonstraram que o ArtCLIP alinha-se de forma consistente ao julgamento humano especializado. Com isso, o estudo conclui que heurísticas computacionais baseadas no conhecimento de especialistas oferecem uma alternativa escalável e robusta para superar a
     subjetividade na avaliação de arte gerada por IA. Esse trabalho gerou como resultado um paper que foi apresentado no 16th International Conference on Computational Creativity, ICCC'25, em Campinas - Brasil. Além de ter participado, também do Early Career Symposium da 17th International Conference on Computational Creativity, ICCC'26, em Coimbra - Portugal.
   </p>
+  <div class="info" style="margin-top:1rem;"><strong>Pergunta Central:</strong> O ArtClip é um avaliador estético robustoe confiável para imagens geradas por inteligência artificial (IA)? </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;">
     
     <a href="Paper_iccc.html" style="text-decoration:none;">
@@ -69,7 +70,7 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
                   border-top:4px solid #6c5ce7;height:100%;">
         <h3 style="color:#6c5ce7;margin-bottom:.4rem;">Paper ICCC</h3>
-        <p style="color:#636e72;font-size:.87rem;">Metodologia original ICCC 2025.<br>APDDv2-10023 vs sampled_SMALL/BIG.<br>t-test · Mann-Whitney · ANOVA · Radar</p>
+        <p style="color:#636e72;font-size:.87rem;">Metodologia original ICCC 2025.<br> Corresponde aos resultados prelminares de exp1_appdv2<br></p>
       </div>
     </a>
     <a href="exp1_apdd.html" style="text-decoration:none;">
@@ -77,7 +78,7 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
                   border-top:4px solid #0984e3;height:100%;">
         <h3 style="color:#0984e3;margin-bottom:.4rem;">Exp 1 — APDDv2</h3>
-        <p style="color:#636e72;font-size:.87rem;">Baseline APDDv2 — 448 imagens amostradas.<br>Friedman · Wilcoxon · CLD · Radar · Clusters</p>
+        <p style="color:#636e72;font-size:.87rem;">APDDv2 e ArtClip: Impacto do tamanho do modelo no score estético de imagens geradas.<br></p>
       </div>
     </a>
     <a href="exp2a_portinari.html" style="text-decoration:none;">
@@ -85,23 +86,23 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
                   border-top:4px solid #00b894;height:100%;">
         <h3 style="color:#00b894;margin-bottom:.4rem;">Exp 2a — Portinari (AI Captions)</h3>
-        <p style="color:#636e72;font-size:.87rem;">500 imagens de Portinari.<br>Captions geradas pelo Janus-Pro-7B.</p>
+        <p style="color:#636e72;font-size:.87rem;">Descrições geradas pelo Janus-Pro-7B.<br></p>
       </div>
     </a>
     <a href="exp2b_portinari_human.html" style="text-decoration:none;">
       <div style="background:white;border-radius:12px;padding:1.2rem;
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
-                  border-top:4px solid #e17055;height:100%;">
-        <h3 style="color:#e17055;margin-bottom:.4rem;">Exp 2b — Portinari (Human Captions)</h3>
-        <p style="color:#636e72;font-size:.87rem;">498 imagens de Portinari.<br>Captions escritas por humanos.</p>
+                  border-top:4px solid #00b894;height:100%;">
+        <h3 style="color:#00b894;margin-bottom:.4rem;">Exp 2b — Portinari (Human Captions)</h3>
+        <p style="color:#636e72;font-size:.87rem;">Descrições escritas por humanos.<br></p>
       </div>
     </a>
     <a href="exp3_mnist.html" style="text-decoration:none;">
       <div style="background:white;border-radius:12px;padding:1.2rem;
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
-                  border-top:4px solid #a29bfe;height:100%;">
-        <h3 style="color:#a29bfe;margin-bottom:.4rem;">Exp 3 — MNIST</h3>
-        <p style="color:#636e72;font-size:.87rem;">Arte vs. Não-Arte.<br>Discriminação ArtCLIP em dígitos manuscritos.</p>
+                  border-top:4px solid #e17055;height:100%;">
+        <h3 style="color:#e17055;margin-bottom:.4rem;">Exp 3 — MNIST</h3>
+        <p style="color:#636e72;font-size:.87rem;">Arte vs. Não-Arte.<br></p>
       </div>
     </a>
     <a href="exp4_noise.html" style="text-decoration:none;">
@@ -109,7 +110,7 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
                   border-top:4px solid #fd79a8;height:100%;">
         <h3 style="color:#fd79a8;margin-bottom:.4rem;">Exp 4 — Ruído</h3>
-        <p style="color:#636e72;font-size:.87rem;">Impacto de ruído visual no score estético.<br>Gaussiano · Blur · Formas geométricas.</p>
+        <p style="color:#636e72;font-size:.87rem;">Impacto de ruído visual no score estético.<br></p>
       </div>
     </a>
     <a href="exp5_temporal.html" style="text-decoration:none;">
@@ -117,19 +118,18 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
                   box-shadow:0 4px 16px rgba(0,0,0,0.1);
                   border-top:4px solid #fdcb6e;height:100%;">
         <h3 style="color:#fdcb6e;margin-bottom:.4rem;">Exp 5 — Temporal</h3>
-        <p style="color:#636e72;font-size:.87rem;">Consistência temporal em GIFs.<br>Detecção de degradação progressiva.</p>
+        <p style="color:#636e72;font-size:.87rem;">Consistência temporal em vídeos e detecção de degradação progressiva.</p>
       </div>
     </a>
   </div>
   <div style="margin-top:1.5rem;background:#dfe6e9;border-radius:8px;
               padding:0.8rem 1rem;font-size:.84rem;color:#636e72;">
-    <strong>Reprodutibilidade:</strong>
-    Consulte <code>REPRODUCIBILITY.txt</code> no repositório para detalhes metodológicos.
+    <p><strong>Reprodutibilidade:</strong> Consulte <a href="https://github.com/LarissaDG/sourcecode_refactor/blob/main/REPRODUCIBILITY.txt">REPRODUCIBILITY.txt</a> no repositório para detalhes metodológicos.</p>
   </div>
 </section>
 </div>
 <footer>
-  Gerado automaticamente · Larissa Gomide, Lucas Nascimento Ferreira, Wagner Meira Jr. · ICCC 2025
+  Gerado automaticamente · Larissa Gomide, Claude IA · 2026
 </footer>
 </body>
 </html>
