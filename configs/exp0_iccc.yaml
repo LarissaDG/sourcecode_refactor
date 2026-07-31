@@ -1,13 +1,12 @@
-﻿# ─────────────────────────────────────────────────────────
-# EXP 1 — APDDv2: pipeline completo
+# ─────────────────────────────────────────────────────────
+# EXP 0 — ICCC: replica a metodologia original do paper ICCC 2025
+# Amostragem estratificada proporcional (proportional_stratified) → 502 imagens
 # Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
-# Roda DUAS amostragens (uniform_bins + proportional_stratified), cada uma
-# em sua própria pasta de output:
-#   outputs/exp1_apdd_uniform_bins/
-#   outputs/exp1_apdd_proportional_stratified/
+# Gera outputs/exp0_iccc/sampling_bin_distribution.txt com a distribuição
+# das imagens amostradas por bin de score estético.
 # ─────────────────────────────────────────────────────────
 experiment:
-  name: "exp1_apdd"
+  name: "exp0_iccc"
 
 dataset:
   name: apdd
@@ -22,10 +21,9 @@ pipeline:
     scoring:    true
 
 sampling:
-  n_samples: 500
+  n_samples: 502
+  strategy: "proportional_stratified"
   n_bins: 30
-  strategies: ["uniform_bins", "proportional_stratified"]
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
-

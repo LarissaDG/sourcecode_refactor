@@ -86,45 +86,11 @@ def mini_portinari_dir(tmp_path_factory):
     return str(root)
 
 
-N_GIFS = 2
-FRAMES_PER_GIF = 5
-
 @pytest.fixture(scope="session")
-def mini_gif_dir(tmp_path_factory):
-    """
-    Cria um mini conjunto de GIFs em disco temporário:
-      <tmp>/mini_gifs/
-          video_00.gif (5 frames)
-          video_01.gif (5 frames)
-    """
-    root = tmp_path_factory.mktemp("mini_gifs")
-
-    for g in range(N_GIFS):
-        frames = []
-        for f in range(FRAMES_PER_GIF):
-            arr = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
-            frames.append(Image.fromarray(arr))
-        frames[0].save(
-            root / f"video_{g:02d}.gif",
-            save_all=True,
-            append_images=frames[1:],
-            duration=100,
-            loop=0,
-        )
-
-    return str(root)
-
-
-@pytest.fixture(scope="session")
-def mini_image_dir(tmp_path_factory):
-    """
-    Cria um diretório com uma única imagem-alvo, para o exp5 (ruído).
-      <tmp>/mini_image/target.png
-    """
-    root = tmp_path_factory.mktemp("mini_image")
+def sample_image():
+    """Imagem sintética 64x64 usada pelos testes de datasets/noise.py."""
     arr = np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8)
-    Image.fromarray(arr).save(root / "target.png")
-    return str(root)
+    return Image.fromarray(arr)
 
 
 @pytest.fixture(scope="session")

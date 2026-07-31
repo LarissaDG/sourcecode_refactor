@@ -246,8 +246,8 @@ def plot_radar(df_human, df_artclip, label, out_dir):
 
 def plot_mean_bars(df_human, df_artclip_1b, df_artclip_7b, out_dir):
     """
-    Reproduz o gráfico de barras do artigo:
-    AVG(Human − Janus-1B) e AVG(Human − Janus-7B) por atributo.
+    Gráfico de barras agrupadas: AVG(Human − Janus-1B) e AVG(Human − Janus-7B) por atributo.
+    Reproduz o gráfico do notebook ICCC (Cell 106/107).
     """
     available = [c for c in RADAR_COLS if c in (df_human.columns if df_human is not None else [])]
     diffs_1b, diffs_7b, labels = [], [], []
@@ -268,17 +268,17 @@ def plot_mean_bars(df_human, df_artclip_1b, df_artclip_7b, out_dir):
 
     x = np.arange(len(labels))
     width = 0.35
-    fig, ax = plt.subplots(figsize=(max(10, len(labels) * 1.1), 6))
-    ax.bar(x - width/2, diffs_1b, width, label="Human − Janus-1B",
-           color="#33A650", hatch="///", edgecolor="black", alpha=0.85)
-    ax.bar(x + width/2, diffs_7b, width, label="Human − Janus-7B",
-           color="#F2A007", hatch="xxx", edgecolor="black", alpha=0.85)
-    ax.axhline(0, color="black", linewidth=0.8)
+    fig, ax = plt.subplots(figsize=(max(12, len(labels) * 1.4), 6))
+    ax.bar(x - width/2, diffs_1b, width, label="Base Human-(Janus-1B)",
+           color="#33A650", hatch="///", edgecolor="white", alpha=0.85)
+    ax.bar(x + width/2, diffs_7b, width, label="Base Human-(Janus-7B)",
+           color="#F2A007", hatch="xxx", edgecolor="white", alpha=0.85)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=40, ha="right")
-    ax.set_ylabel("Average Score Difference")
-    ax.set_title("Comparison of Aesthetic Scores Across Categories\n(Positive = Human scores higher)")
-    ax.legend(); ax.grid(True, alpha=0.3, axis="y")
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=12)
+    ax.set_ylabel("Average Score", fontsize=12)
+    ax.set_title("Comparison of Aesthetic Scores Across Categories", fontsize=13)
+    ax.legend(fontsize=12)
+    ax.grid(False)
     plt.tight_layout()
     save(fig, os.path.join(out_dir, "iccc_score_diff_bars.png"))
 
@@ -363,7 +363,7 @@ def plot_artistic_categories(df, out_dir, prefix=""):
         save(fig, os.path.join(out_dir, f"{prefix}categories.png"))
 
     # ── missing values heatmap by category ───────────────────────────────────
-    score_cols = [c for c in RADAR_COLS if c in df.columns]
+    score_cols = [c for c in COLS[1:] if c in df.columns]  # inclui The sense of order
     if score_cols and col in df.columns:
         try:
             missing = df.groupby(col)[score_cols].apply(lambda x: x.isna().sum())
@@ -642,6 +642,214 @@ def plot_mean_bars_three_way(df_orig, df_1b, df_7b, out_dir, prefix="",
     save(fig, os.path.join(out_dir, f"{prefix}score_diff_bars.png"))
 
 
+def plot_sampling_distribution(df_full, df_sampled, out_dir):
+    """
+    Dois subplots mostrando a distribuição do APDDv2 antes e após amostragem.
+      - Esquerda: APDDv2 completo (10023 imagens), 30 bins
+      - Direita:  subconjunto amostrado (paper ICCC), 10 bins com marcação das fronteiras
+
+    Métrica por imagem = média dos 10 atributos individuais (excluindo "Total aesthetic score").
+    """
+    from scipy.stats import gaussian_kde
+
+    ATTR_COLS = COLS[1:]  # os 10 atributos individuais
+
+    full_avg    = df_full[ATTR_COLS].mean(axis=1, skipna=True).dropna()
+    sampled_avg = df_sampled[ATTR_COLS].mean(axis=1, skipna=True).dropna()
+
+    # escala fixa 0–10 (scores ArtCLIP)
+    x_min, x_max = 0.0, 10.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+
+    # ── Subplot esquerdo: APDDv2 completo ────────────────────────────────────────
+    ax0 = axes[0]
+    n_bins_full = 30
+    counts, edges, patches = ax0.hist(
+        full_avg, bins=n_bins_full,
+        range=(x_min, x_max),
+        color="#448FF2", alpha=0.75, edgecolor="white", linewidth=0.5,
+        label=f"APDDv2 (n={len(full_avg):,})"
+    )
+    ax0.axvline(full_avg.mean(), color="#d63031", ls="--", lw=1.8,
+                label=f"Média = {full_avg.mean():.2f}")
+    ax0.axvline(full_avg.median(), color="#6c5ce7", ls=":", lw=1.8,
+                label=f"Mediana = {full_avg.median():.2f}")
+
+    # KDE no eixo secundário
+    xs = np.linspace(x_min, x_max, 400)
+    kde0 = gaussian_kde(full_avg, bw_method="scott")
+    ax0_twin = ax0.twinx()
+    ax0_twin.plot(xs, kde0(xs), color="#0984e3", lw=2, alpha=0.8)
+    ax0_twin.set_ylabel("Densidade KDE", fontsize=9, color="#0984e3")
+    ax0_twin.tick_params(axis="y", labelcolor="#0984e3", labelsize=8)
+    ax0_twin.set_ylim(0)
+
+    ax0.set_xlim(x_min, x_max)
+    ax0.set_xticks(np.arange(0, 11, 1))
+    ax0.set_xlabel("Score Médio por Imagem", fontsize=11)
+    ax0.set_ylabel("Frequência", fontsize=11)
+    ax0.set_title(f"APDDv2 completo\n(n = {len(full_avg):,}  ·  30 bins)", fontsize=12)
+    ax0.legend(fontsize=9, loc="upper left")
+    ax0.grid(True, alpha=0.25, axis="y")
+
+    # ── Subplot direito: subconjunto amostrado ───────────────────────────────────
+    ax1 = axes[1]
+    n_bins_sampled = 10
+    _, bin_edges, _ = ax1.hist(
+        sampled_avg, bins=n_bins_sampled,
+        range=(x_min, x_max),
+        color="#F2A007", alpha=0.75, edgecolor="white", linewidth=0.5,
+        label=f"Amostra ICCC (n={len(sampled_avg)})"
+    )
+
+    # fronteiras dos bins — mostram a estratégia de amostragem uniforme
+    for edge in bin_edges:
+        ax1.axvline(edge, color="#636e72", ls=":", lw=0.9, alpha=0.65)
+
+    ax1.axvline(sampled_avg.mean(), color="#d63031", ls="--", lw=1.8,
+                label=f"Média = {sampled_avg.mean():.2f}")
+    ax1.axvline(sampled_avg.median(), color="#6c5ce7", ls=":", lw=1.8,
+                label=f"Mediana = {sampled_avg.median():.2f}")
+
+    # KDE
+    xs2 = np.linspace(x_min, x_max, 400)
+    kde1 = gaussian_kde(sampled_avg, bw_method="scott")
+    ax1_twin = ax1.twinx()
+    ax1_twin.plot(xs2, kde1(xs2), color="#e17055", lw=2, alpha=0.8)
+    ax1_twin.set_ylabel("Densidade KDE", fontsize=9, color="#e17055")
+    ax1_twin.tick_params(axis="y", labelcolor="#e17055", labelsize=8)
+    ax1_twin.set_ylim(0)
+
+    ax1.set_xlim(x_min, x_max)
+    ax1.set_xticks(np.arange(0, 11, 1))
+    ax1.set_xlabel("Score Médio por Imagem", fontsize=11)
+    ax1.set_ylabel("Frequência", fontsize=11)
+    ax1.set_title(
+        f"Subconjunto amostrado — Paper ICCC\n(n = {len(sampled_avg)}  ·  10 bins, proporcional)",
+        fontsize=12
+    )
+    ax1.legend(fontsize=9, loc="upper left")
+    ax1.grid(True, alpha=0.25, axis="y")
+
+    fig.suptitle(
+        "Distribuição do Score Médio — APDDv2 Antes e Após Amostragem Proporcional por Bins",
+        fontsize=13, fontweight="bold", y=1.02
+    )
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "iccc_sampling_distribution.png"))
+
+
+def plot_attr_before_after(df_full, df_sampled_filtered, out_dir):
+    """
+    Grade 2 colunas × 10 linhas.
+    df_full             — APDDv2 completo (10023 imagens)
+    df_sampled_filtered — APDDv2 filtrado pelas imagens que entraram na amostra
+                          (obtido via filename-match com sampled_BIG/SMALL)
+    Eixo X padronizado: global min/max sobre TODOS os atributos e ambos conjuntos.
+    Salva: iccc_attr_before_after.png
+    """
+    df_sampled = df_sampled_filtered
+    ATTR_COLS = COLS[1:]  # 10 atributos individuais
+    available  = [c for c in ATTR_COLS
+                  if c in df_full.columns and c in df_sampled.columns]
+    if not available:
+        return
+
+    # ── Eixo X fixo 0–10 (escala ArtCLIP) ──────────────────────────────────────
+    global_min  = 0.0
+    global_max  = 10.0
+    global_bins = np.linspace(global_min, global_max, 26)
+
+    n = len(available)
+    fig, axes = plt.subplots(n, 2, figsize=(13, 3.4 * n),
+                             sharex=False, sharey=False)
+    if n == 1:
+        axes = [axes]
+
+    color_full    = "#448FF2"
+    color_sampled = "#F2A007"
+
+    for i, col in enumerate(available):
+        vals_full    = df_full[col].dropna()
+        vals_sampled = df_sampled[col].dropna()
+
+        if vals_full.empty:
+            for ax in (axes[i][0], axes[i][1]):
+                ax.text(0.5, 0.5, "Sem dados", ha="center", va="center",
+                        transform=ax.transAxes, fontsize=9, color="#636e72")
+                ax.set_axis_off()
+            continue
+
+        x_min = global_min
+        x_max = global_max
+        bins  = global_bins
+
+        mean_full    = vals_full.mean()
+        mean_sampled = vals_sampled.mean() if not vals_sampled.empty else float("nan")
+        delta        = mean_sampled - mean_full if not np.isnan(mean_sampled) else float("nan")
+
+        # ── esquerda: APDDv2 completo ─────────────────────────────────────────
+        ax_l = axes[i][0]
+        ax_l.hist(vals_full, bins=bins, color=color_full, alpha=0.75,
+                  edgecolor="white", linewidth=0.4)
+        ax_l.axvline(mean_full, color="#d63031", ls="--", lw=1.6,
+                     label=f"μ = {mean_full:.2f}")
+        ax_l.set_ylabel("Frequência", fontsize=8)
+        ax_l.set_xlabel(col, fontsize=8)
+        ax_l.set_xlim(x_min, x_max)
+        ax_l.set_xticks(np.arange(0, 11, 1))
+        ax_l.legend(fontsize=8, loc="upper left")
+        ax_l.grid(True, alpha=0.2, axis="y")
+        ax_l.tick_params(labelsize=7)
+        if i == 0:
+            ax_l.set_title("APDDv2 completo\n(n = {:,})".format(len(vals_full)),
+                           fontsize=10, fontweight="bold", color=color_full)
+
+        # ── direita: subconjunto amostrado ────────────────────────────────────
+        ax_r = axes[i][1]
+        if vals_sampled.empty:
+            ax_r.text(0.5, 0.5, f"Sem anotação na amostra\n(NaN em {col})",
+                      ha="center", va="center", transform=ax_r.transAxes,
+                      fontsize=8, color="#636e72", style="italic")
+            ax_r.set_axis_off()
+        else:
+            ax_r.hist(vals_sampled, bins=bins, color=color_sampled, alpha=0.75,
+                      edgecolor="white", linewidth=0.4)
+            ax_r.axvline(mean_sampled, color="#d63031", ls="--", lw=1.6,
+                         label=f"μ = {mean_sampled:.2f}")
+
+            if not np.isnan(delta):
+                sign        = "▲" if delta > 0 else "▼"
+                color_delta = "#00b894" if delta > 0 else "#e17055"
+                ax_r.text(0.97, 0.88, f"{sign} {abs(delta):.2f}",
+                          transform=ax_r.transAxes, ha="right", fontsize=9,
+                          color=color_delta, fontweight="bold")
+
+            ax_r.set_xlabel(col, fontsize=8)
+            ax_r.set_xlim(x_min, x_max)
+            ax_r.set_xticks(np.arange(0, 11, 1))
+            ax_r.legend(fontsize=8, loc="upper left")
+            ax_r.grid(True, alpha=0.2, axis="y")
+            ax_r.tick_params(labelsize=7)
+
+        if i == 0:
+            n_label = len(vals_sampled) if not vals_sampled.empty else 0
+            ax_r.set_title("Subconjunto amostrado — Paper ICCC\n(n = {})".format(n_label),
+                           fontsize=10, fontweight="bold", color=color_sampled)
+
+    fig.suptitle("Distribuição por Atributo Estético — Antes e Após Amostragem",
+                 fontsize=13, fontweight="bold", y=1.005)
+    fig.text(
+        0.5, -0.008,
+        f"Eixo X padronizado: [{global_min:.1f}, {global_max:.1f}] — "
+        f"mínimo e máximo globais sobre todos os atributos e ambos os conjuntos de dados.",
+        ha="center", fontsize=8, color="#636e72", style="italic"
+    )
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "iccc_attr_before_after.png"))
+
+
 def run_full_analysis(df_human, df_orig, df_1b, df_7b, out_dir, exp_label, has_human=True):
     """Runs all extended visualizations for one experiment."""
     prefix = exp_label.replace(" ", "_") + "_" if exp_label else ""
@@ -846,9 +1054,14 @@ def main():
         "",
     ]
 
-    for label, df_artclip in [("Janus-Pro-1B", df_1b), ("Janus-Pro-7B", df_7b)]:
+    # ── Gráficos de resultados do Paper_iccc.html — fontes: legacy CSVs ──────────
+    # sampled_SMALL = Janus-1B, sampled_BIG = Janus-7B
+    df_legacy_1b = load_legacy_csv(cfg["paths"].get("sampled_small", ""))
+    df_legacy_7b = load_legacy_csv(cfg["paths"].get("sampled_big",   ""))
+
+    for label, df_artclip in [("Janus-Pro-1B", df_legacy_1b), ("Janus-Pro-7B", df_legacy_7b)]:
         if df_artclip is None:
-            print(f"[iccc] {label} scores não encontrados, pulando.")
+            print(f"[iccc] {label} (legacy) não encontrado, pulando.")
             continue
         print(f"── {label} ──────────────────────────────────")
         if df_human is not None:
@@ -859,8 +1072,37 @@ def main():
             plot_radar(df_human, df_artclip, label, out_dir)
 
     if df_human is not None:
-        summary_table(df_human, df_1b, df_7b, out_dir, report_lines)
-        plot_mean_bars(df_human, df_1b, df_7b, out_dir)
+        summary_table(df_human, df_legacy_1b, df_legacy_7b, out_dir, report_lines)
+        plot_mean_bars(df_human, df_legacy_1b, df_legacy_7b, out_dir)
+
+    # Gráficos de amostragem: APDDv2 completo vs amostra gerada por sample_apddv2.py
+    if df_human is not None:
+        sample_csv = cfg.get("sampling", {}).get("output_csv", "")
+        sampled_big_path = cfg["paths"].get("sampled_big", "")
+
+        df_sample_ref = None
+        if sample_csv and os.path.exists(sample_csv):
+            df_sample_ref = pd.read_csv(sample_csv, encoding="utf-8")
+            print(f"\n── Gráficos de amostragem (sample_apddv2.py) ───────")
+            print(f"  Usando: {sample_csv} (n={len(df_sample_ref)})")
+        elif sampled_big_path and os.path.exists(sampled_big_path):
+            df_sample_ref = load_legacy_csv(sampled_big_path)
+            print(f"\n── Gráficos de amostragem (legado fallback) ────────")
+            print(f"  Usando: {sampled_big_path}")
+
+        if df_sample_ref is not None:
+            fn_col = next((c for c in df_sample_ref.columns if "filename" in c.lower()), None)
+            if fn_col:
+                stems = set(df_sample_ref[fn_col].apply(
+                    lambda x: os.path.splitext(os.path.basename(str(x)))[0]))
+                df_human_sampled = df_human[df_human["stem"].isin(stems)].copy()
+            else:
+                df_human_sampled = df_sample_ref
+            print(f"  APDDv2 filtrado: {len(df_human_sampled)} imagens")
+            plot_sampling_distribution(df_human, df_human_sampled, out_dir)
+            print("  ✓ iccc_sampling_distribution.png")
+            plot_attr_before_after(df_human, df_human_sampled, out_dir)
+            print("  ✓ iccc_attr_before_after.png")
 
     report_path = os.path.join(cfg["paths"]["reports"], "iccc_stats_report.txt")
     os.makedirs(os.path.dirname(report_path), exist_ok=True)

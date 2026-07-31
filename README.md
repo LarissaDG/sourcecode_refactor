@@ -25,9 +25,10 @@ O [artigo](https://arxiv.org/pdf/2411.08545) que propôs o conjunto de dados APD
   - [Modo teste](#modo-teste)
   - [Execução completa](#execução-completa)
   - [No cluster (SLURM)](#no-cluster-slurm)
+- [Amostras Visuais](#amostras-visuais)
+- [Validação e Depuração](#validação-e-depuração)
 - [Análise e Visualizações](#análise-e-visualizações)
   - [Local (Windows)](#análise-local-windows)
-  - [No cluster (samples)](#samples-no-cluster)
   - [Relatórios HTML](#relatórios-html)
 - [Citação](#citação)
 - [Contato](#contato)
@@ -40,12 +41,13 @@ Pipeline de 4 estágios: **Sampling → Captioning → Generation → Scoring**
 
 | Experimento | Dataset | Objetivo |
 |---|---|---|
-| Exp 1 — APDDv2 | 448 pinturas amostradas | Baseline: Human GT vs Janus-1B/7B |
+| Exp 0 — ICCC | 502 pinturas, amostragem proportional stratified | Replica a metodologia original do paper ICCC 2025 |
+| Exp 1 — APDDv2 | ~500 pinturas, 2 amostragens (uniform_bins + proportional_stratified) | Baseline: Human GT vs Janus-1B/7B |
 | Exp 2a — Portinari | 500 pinturas, captions por IA | Impacto de captions automáticas |
 | Exp 2b — Portinari | 498 pinturas, captions humanas | Impacto de captions humanas |
 | Exp 3 — MNIST | Dígitos manuscritos | Arte vs. Não-Arte |
-| Exp 4 — Ruído | APDDv2 + ruído sintético | Robustez estética |
-| Exp 5 — Temporal | Frames de vídeo | Consistência e degradação temporal |
+| Exp 4 — Ruído | APDDv2 + ruído sintético (gaussian/blur/shapes) | Robustez estética |
+| Exp 5 — Temporal | Frames de vídeo (@ArtsyLolaCo) + ruído sintético | Consistência e degradação temporal |
 
 ---
 
@@ -53,12 +55,14 @@ Pipeline de 4 estágios: **Sampling → Captioning → Generation → Scoring**
 
 ```
 configs/            Configs YAML por experimento + análise
-datasets/           Loaders de dataset (APDDv2, Portinari, MNIST, vídeo, ruído)
-pipeline/           Estágios: sampling, captioning, generation, scoring
+datasets/           Loaders de dataset (APDDv2, Portinari, MNIST, vídeo)
+                    + noise.py (ruído sintético compartilhado: gaussian/blur/shapes)
+pipeline/           Estágios: sampling, captioning, generation, samples, scoring
 scripts/
-  analyze.py        Visualizações e amostras dos experimentos
-  analyze_iccc.py   Análise fiel à metodologia do paper ICCC
-  generate_html_reports.py  Gera relatórios HTML para GitHub Pages
+  analyze.py                Visualizações e amostras dos experimentos
+  analyze_iccc.py            Análise fiel à metodologia do paper ICCC
+  run_legacy_validation.py   Validação de reprodutibilidade vs. resultados legados do ICCC
+  debug_janus.py             Utilitário de debug: testa a geração de imagem do Janus isoladamente
 slurm/              Scripts SLURM para o cluster
 tests/              Testes unitários
 run.py              Entry point principal
@@ -211,6 +215,7 @@ Baixado de `@ArtsyLolaCo` (YouTube Shorts). Até 500 vídeos, 1 frame/segundo.
 ### Modo teste (5 amostras — rápido)
 
 ```bash
+python3 run.py --config configs/exp0_iccc.yaml --test
 python3 run.py --config configs/exp1_apdd.yaml --test
 python3 run.py --config configs/exp2a_portinari.yaml --test
 ```
@@ -218,6 +223,7 @@ python3 run.py --config configs/exp2a_portinari.yaml --test
 ### Execução completa
 
 ```bash
+python3 run.py --config configs/exp0_iccc.yaml
 python3 run.py --config configs/exp1_apdd.yaml
 python3 run.py --config configs/exp2a_portinari.yaml
 python3 run.py --config configs/exp2b_portinari_human.yaml
@@ -229,13 +235,24 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 
 | Config | Estágios executados |
 |---|---|
-| `exp1_apdd.yaml` | sampling → captioning → generation → scoring |
+| `exp0_iccc.yaml` | sampling (proportional_stratified, 502 imgs) → captioning → generation → scoring |
+| `exp1_apdd.yaml` | sampling (uniform_bins **e** proportional_stratified) → captioning → generation → scoring |
 | `exp2a_portinari.yaml` | sampling → captioning → generation → scoring |
 | `exp2b_portinari_human.yaml` | sampling → generation → scoring (pula captioning) |
 | `exp3_mnist.yaml` | scoring apenas |
 | `exp4_noise.yaml` | scoring apenas (ruído aplicado na leitura) |
 | `exp5a_temporal.yaml` | scoring apenas |
 | `exp5b_temporal_error.yaml` | scoring apenas |
+
+> **`exp1_apdd.yaml` roda duas amostragens em uma única chamada** (`sampling.strategies` no
+> YAML): o pipeline completo é executado uma vez por estratégia, cada uma em sua própria
+> pasta — `outputs/exp1_apdd_uniform_bins/` e `outputs/exp1_apdd_proportional_stratified/`.
+>
+> **`exp0_iccc.yaml`** usa a estratégia `proportional_stratified`: os 502 imagens são
+> alocadas entre bins de score estético proporcionalmente ao tamanho de cada bin (preserva
+> a distribuição original do dataset, ao contrário do `uniform_bins`, que amostra igualmente
+> por bin). Ao final, grava `outputs/exp0_iccc/sampling_bin_distribution.txt` com a
+> distribuição das imagens amostradas por bin.
 
 ### No cluster (SLURM)
 
@@ -277,6 +294,79 @@ python3 scripts/clean_outputs.py --dry-run          # prévia sem deletar
 
 ---
 
+## Amostras Visuais
+
+Cada experimento gera automaticamente exemplos reais de entrada/saída (3 instâncias,
+escolhidas de forma determinística — as 3 primeiras após ordenar por `filename`/`video_id`,
+sem sorteio) para permitir inspeção visual sem precisar baixar as bases completas. Isso roda
+dentro do próprio `run.py`, no cluster (`pipeline.steps.samples: true` no YAML, ativado por
+padrão em todos os experimentos), logo após a etapa de generation — não depende de imagens
+locais nem duplica as bases: só salva os painéis/grids/GIFs já compostos, em
+`outputs/<experimento>/samples/`.
+
+Como as instâncias são escolhidas por ordenação (não por sorteio), o Exp2b — que reusa
+exatamente as mesmas 500 imagens do Exp2a via `reuse_from` — mostra automaticamente as
+mesmas 3 imagens do Exp2a, só trocando a coluna de descrição (IA → humana).
+
+| Experimento | Arquivo(s) | Conteúdo |
+|---|---|---|
+| Exp 0 (ICCC) / Exp 1 | `sample_panel.png` | 3 linhas × [Original \| Descrição (Janus-7B) \| Gerada Janus-1B \| Gerada Janus-7B] |
+| Exp 2a | `sample_panel.png` | idem, descrição gerada pelo Janus-7B |
+| Exp 2b | `sample_panel.png` | idem, descrição humana (mesmas 3 imagens do Exp2a) |
+| Exp 3 (MNIST) | `sample_panel.png` | 3 dígitos com o respectivo label |
+| Exp 4 (Ruído) | `noise_grid_01.png` .. `_03.png` | 1 grid por instância: linhas = Blur/Gaussian/Shapes, colunas = 10%-100% |
+| Exp 5a (Temporal) | `sequence_<video_id>.gif` (×3) + `frame_grid_last6.png` | GIF da sequência amostrada sem ruído por vídeo + grid dos últimos 6 frames (3 vídeos), com número do frame |
+| Exp 5b (Temporal) | `degradation_<video_id>.gif` (×3) + `frame_grid_uniform6.png` | GIF da degradação progressiva por vídeo + grid de 6 frames uniformemente distribuídos (3 vídeos), com número do frame e % de degradação |
+
+> **Exp5b usa `gaussian` como tipo de ruído representativo** no GIF e no grid: cada frame do
+> Exp5b tem 3 variantes (gaussian/blur/shapes) no mesmo nível de degradação, mas para manter
+> 1 GIF/1 grid por vídeo (em vez de 3), o tipo gaussian é usado como exemplo — os outros dois
+> seguem a mesma curva de degradação por frame, só muda a textura do ruído.
+
+---
+
+## Validação e Depuração
+
+### Validação de reprodutibilidade (legado ICCC)
+
+`scripts/run_legacy_validation.py` re-roda o pipeline com as mesmas 502 imagens e captions
+do experimento original do ICCC 2025 e compara os scores resultantes com os scores legados
+(`sampled_SMALL`/`sampled_BIG`), atributo a atributo — usado para confirmar que o pipeline
+refatorado reproduz os resultados publicados.
+
+Fluxo do script:
+1. Lê `sampled_dataset.csv` (502 imagens + ground truth humano do APDDv2)
+2. Lê os CSVs legados `sampled_SMALL_with_gen_scored.csv` (Janus-1B) e
+   `sampled_BIG_with_gen_scored.csv` (Janus-7B)
+3. Constrói `pipeline_data.json` com as mesmas imagens e captions (coluna `Description`)
+4. Roda `run.py --steps generation,scoring` sobre `configs/exp_legacy_validation.yaml`
+5. Compara os novos scores com os legados e gera relatório + gráfico de comparação
+
+```bash
+python3 scripts/run_legacy_validation.py \
+    --config configs/exp_legacy_validation.yaml \
+    --legacy-small /path/to/sampled_SMALL_with_gen_scored.csv \
+    --legacy-big   /path/to/sampled_BIG_with_gen_scored.csv \
+    --apddv2-dir   /snfs1/speed/larissa.gomide/data/apddv2/ \
+    --out-dir      /snfs1/speed/larissa.gomide/outputs/exp_legacy_validation
+```
+
+`configs/exp_legacy_validation.yaml` pula sampling e captioning (usa o `pipeline_data.json`
+pré-construído pelo script acima) e roda só generation → scoring.
+
+### Debug do Janus
+
+`scripts/debug_janus.py` é um utilitário isolado (sem depender do pipeline) para testar a
+geração de imagem do Janus-Pro-1B no cluster: carrega o modelo, gera uma imagem a partir de
+uma caption fixa de teste e salva em `debug_janus_output.png`. Útil para isolar problemas de
+geração (ex: versão do Janus, CUDA, prompt/template) sem rodar o pipeline inteiro.
+
+```bash
+python3 scripts/debug_janus.py
+```
+
+---
+
 ## Análise e Visualizações
 
 ### Análise local (Windows)
@@ -295,22 +385,10 @@ Com todas as visualizações estendidas dos notebooks:
 python scripts/analyze_iccc.py --config configs/analysis_local.yaml --all-viz
 ```
 
-#### Gráficos + amostras de todos os experimentos
+#### Gráficos estatísticos (metodologia nova: Friedman + Wilcoxon + CLD)
 
 ```powershell
 python scripts/analyze.py --config configs/analysis_local.yaml
-```
-
-Só gráficos (sem montar painéis de imagens):
-
-```powershell
-python scripts/analyze.py --config configs/analysis_local.yaml --skip-samples
-```
-
-Só amostras (sem gráficos estatísticos):
-
-```powershell
-python scripts/analyze.py --config configs/analysis_local.yaml --skip-analysis
 ```
 
 #### Outputs gerados
@@ -319,34 +397,12 @@ python scripts/analyze.py --config configs/analysis_local.yaml --skip-analysis
 |---|---|
 | `reports/figures_iccc/` | Gráficos da metodologia ICCC (t-test, Mann-Whitney, ANOVA, radar) |
 | `reports/figures/` | Gráficos por experimento (Friedman, Wilcoxon, CLD, clusters, noise, temporal) |
-| `reports/samples/` | Painéis visuais de amostras por experimento + GIFs (exp5) |
 
----
-
-### Samples no cluster
-
-Para gerar os painéis de amostras usando as imagens oficiais do cluster:
-
-```bash
-git pull
-sbatch slurm/completo/slurm_analyze.sh
-```
-
-O job roda `analyze.py --skip-analysis` e compacta o resultado:
-
-```bash
-# Após receber e-mail de conclusão, baixar localmente:
-scp phocus4:/snfs1/speed/larissa.gomide/samples.zip "C:\Users\jggom\Downloads\samples.zip"
-```
-
-```powershell
-# Extrair e substituir pasta local
-Expand-Archive -Path "C:\Users\jggom\Downloads\samples.zip" `
-               -DestinationPath "C:\Users\jggom\Downloads\samples_cluster" -Force
-
-Copy-Item "C:\Users\jggom\Downloads\samples_cluster\reports\samples\*" `
-          "C:\Users\jggom\Downloads\Execucao dia 28\reports\samples\" -Force
-```
+As **amostras visuais** (imagens de exemplo de entrada/saída de cada experimento) não são
+geradas por esses scripts — elas rodam automaticamente dentro do `run.py`, no cluster, junto
+com cada experimento (ver [Amostras visuais](#amostras-visuais) abaixo), e já chegam prontas
+em `outputs/<experimento>/samples/` junto com o resto do download — sem precisar de um job
+separado nem das imagens originais localmente.
 
 ---
 

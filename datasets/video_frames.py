@@ -6,7 +6,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from datasets.image import NOISE_FNS, DEFAULT_NOISE_LEVELS, DEFAULT_NOISE_TYPES
+from datasets.noise import NOISE_FNS, DEFAULT_NOISE_LEVELS, DEFAULT_NOISE_TYPES
 
 
 class VideoFramesDataset(Dataset):
@@ -163,7 +163,7 @@ class VideoFramesDataset(Dataset):
         proporcional ao índice: frame i → noise_level = round(i / (total-1) * 100).
         Expande por noise_types → n_videos × n_frames × n_tipos linhas.
         """
-        from datasets.image import DEFAULT_NOISE_TYPES
+        from datasets.noise import DEFAULT_NOISE_TYPES
         types = list(noise_types) if noise_types is not None else DEFAULT_NOISE_TYPES
 
         rows = []

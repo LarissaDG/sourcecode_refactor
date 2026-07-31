@@ -5,7 +5,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from datasets.image import NOISE_FNS, DEFAULT_NOISE_LEVELS, DEFAULT_NOISE_TYPES
+from datasets.noise import NOISE_FNS, DEFAULT_NOISE_LEVELS, DEFAULT_NOISE_TYPES
 
 
 # Os 10 atributos estéticos do APDDv2 (sem o score total)
@@ -37,6 +37,61 @@ def _first_present(columns, candidates):
         if c in columns:
             return c
     return None
+
+
+def _largest_remainder_allocation(bin_counts: pd.Series, n: int) -> pd.Series:
+    """
+    Aloca `n` unidades entre bins proporcionalmente ao tamanho de cada bin
+    (amostragem estratificada proporcional), usando o método dos maiores
+    restos para fechar exatamente em `n` sem exceder o tamanho de nenhum bin.
+    """
+    proportions = bin_counts / bin_counts.sum()
+    raw = proportions * n
+    alloc = np.minimum(np.floor(raw).astype(int), bin_counts)
+
+    remainder = n - int(alloc.sum())
+    fracs = (raw - alloc).sort_values(ascending=False)
+    for b in fracs.index:
+        if remainder <= 0:
+            break
+        if alloc[b] < bin_counts[b]:
+            alloc[b] += 1
+            remainder -= 1
+
+    # Se algum resto ainda sobrar (bins pequenos já saturados), distribui
+    # nos bins com folga restante, na ordem em que aparecem.
+    if remainder > 0:
+        for b in bin_counts.index:
+            if remainder <= 0:
+                break
+            slack = int(bin_counts[b] - alloc[b])
+            take = min(slack, remainder)
+            alloc[b] += take
+            remainder -= take
+
+    return alloc
+
+
+def _format_bin_report(bin_counts: pd.Series, alloc: pd.Series, bin_cols: list,
+                        bin_edges) -> str:
+    lines = [
+        "Distribuicao da amostragem proporcional estratificada (proportional_stratified)",
+        f"Atributos usados no binning: {', '.join(bin_cols)}",
+        f"Numero de bins: {len(bin_edges)}",
+        f"Total de imagens no dataset: {int(bin_counts.sum())}",
+        f"Total amostrado: {int(alloc.sum())}",
+        "",
+        f"{'Bin':>4} | {'Faixa de score':^20} | {'Total':>7} | {'Amostrado':>10} | {'Proporcao':>10}",
+        "-" * 66,
+    ]
+    for b in bin_counts.index:
+        edge = bin_edges[b] if 0 <= b < len(bin_edges) else None
+        faixa = f"[{edge.left:.2f}, {edge.right:.2f}]" if edge is not None else "?"
+        total = int(bin_counts[b])
+        sampled = int(alloc[b])
+        prop = sampled / total if total else 0.0
+        lines.append(f"{b:>4} | {faixa:^20} | {total:>7} | {sampled:>10} | {prop:>9.1%}")
+    return "\n".join(lines) + "\n"
 
 
 class APDDv2Dataset(Dataset):
@@ -100,6 +155,7 @@ class APDDv2Dataset(Dataset):
             )
 
         self.transform = transform or self._default_transform()
+        self.bin_report = None
 
     # ------------------------------------------------------------------
     # Interface Dataset
@@ -179,7 +235,7 @@ class APDDv2Dataset(Dataset):
             ),
         ])
 
-    def _make_subset(self, sampled_df: pd.DataFrame) -> "APDDv2Dataset":
+    def _make_subset(self, sampled_df: pd.DataFrame, bin_report: str = None) -> "APDDv2Dataset":
         subset = APDDv2Dataset.__new__(APDDv2Dataset)
         subset.root        = self.root
         subset.images_dir  = self.images_dir
@@ -189,6 +245,7 @@ class APDDv2Dataset(Dataset):
         subset.category_col = self.category_col
         subset.comment_col = self.comment_col
         subset.bin_cols    = self.bin_cols
+        subset.bin_report  = bin_report
         return subset
 
     # ------------------------------------------------------------------
@@ -202,15 +259,23 @@ class APDDv2Dataset(Dataset):
 
         Args:
             n:        Número de amostras desejadas.
-            strategy: "random"       — amostragem aleatória simples.
-                      "stratified"   — balanceia por categoria artística.
-                      "uniform_bins" — calcula a média aritmética dos 9 atributos
-                                        estéticos (BIN_ATTRIBUTES), divide o range
-                                        em `n_bins` faixas de igual largura e amostra
-                                        uniformemente entre elas.
+            strategy: "random"                 — amostragem aleatória simples.
+                      "stratified"              — balanceia por categoria artística.
+                      "uniform_bins"            — calcula a média aritmética dos 9
+                                                    atributos estéticos (BIN_ATTRIBUTES),
+                                                    divide o range em `n_bins` faixas de
+                                                    igual largura e amostra uniformemente
+                                                    entre elas (mesma contagem por bin).
+                      "proportional_stratified" — mesmo binning acima, mas aloca a
+                                                    amostra proporcionalmente ao tamanho
+                                                    de cada bin (preserva a distribuição
+                                                    original do dataset). O subset
+                                                    retornado carrega `.bin_report`, um
+                                                    texto com a distribuição por bin.
             seed:     Semente para reprodutibilidade.
-            n_bins:   Número de faixas usadas pela estratégia "uniform_bins".
+            n_bins:   Número de faixas usadas pelas estratégias baseadas em bins.
         """
+        bin_report = None
         if strategy == "random":
             sampled_df = self.df.sample(n=n, random_state=seed)
 
@@ -247,10 +312,34 @@ class APDDv2Dataset(Dataset):
             )
             sampled_df = self.df.loc[sampled_df.index]
 
+        elif strategy == "proportional_stratified":
+            if not self.bin_cols:
+                raise ValueError("Nenhum dos atributos estéticos usados para o binning foi encontrado no CSV.")
+
+            mean_score = self.df[self.bin_cols].mean(axis=1)
+            n_bins_eff = max(1, min(n_bins, mean_score.nunique(), len(self.df)))
+
+            cat = pd.cut(mean_score, bins=n_bins_eff, duplicates="drop")
+            df_binned = self.df.copy()
+            df_binned["_bin"] = cat.cat.codes
+            bin_edges = cat.cat.categories
+
+            bin_counts = df_binned.loc[df_binned["_bin"] >= 0, "_bin"].value_counts().sort_index()
+            n_eff = min(n, int(bin_counts.sum()))
+            alloc = _largest_remainder_allocation(bin_counts, n_eff)
+
+            parts = [
+                df_binned[df_binned["_bin"] == b].sample(n=int(cnt), random_state=seed)
+                for b, cnt in alloc.items() if cnt > 0
+            ]
+            sampled_df = pd.concat(parts).sample(frac=1, random_state=seed)  # shuffle final
+            sampled_df = self.df.loc[sampled_df.index]
+            bin_report = _format_bin_report(bin_counts, alloc, self.bin_cols, bin_edges)
+
         else:
             raise ValueError(
                 f"Estratégia desconhecida: '{strategy}'. "
-                "Use 'random', 'stratified' ou 'uniform_bins'."
+                "Use 'random', 'stratified', 'uniform_bins' ou 'proportional_stratified'."
             )
 
         # Expansão por ruído: cada imagem × tipo × nível
@@ -267,4 +356,4 @@ class APDDv2Dataset(Dataset):
                         rows.append(r)
             sampled_df = pd.DataFrame(rows)
 
-        return self._make_subset(sampled_df)
+        return self._make_subset(sampled_df, bin_report=bin_report)

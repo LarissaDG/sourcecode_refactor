@@ -1,5 +1,19 @@
+import os
 from datasets import load_dataset
 from torch.utils.data import DataLoader
+
+
+def _write_bin_report(cfg, subset):
+    """Se a estratégia de amostragem gerou um relatório de distribuição por
+    bin (ex: proportional_stratified), grava em <output_dir>/<nome>/sampling_bin_distribution.txt."""
+    bin_report = getattr(subset, "bin_report", None)
+    if not bin_report:
+        return
+    out_dir = os.path.join(cfg["experiment"]["output_dir"], cfg["experiment"]["name"])
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "sampling_bin_distribution.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(bin_report)
 
 
 def run_sampling(cfg) -> DataLoader:
@@ -20,6 +34,7 @@ def run_sampling(cfg) -> DataLoader:
             extra_kwargs[key] = cfg["sampling"][key]
 
     subset = dataset.sample(n=n, strategy=strategy, seed=seed, **extra_kwargs)
+    _write_bin_report(cfg, subset)
     loader = DataLoader(subset, batch_size=cfg["sampling"].get("batch_size", 8), shuffle=False)
     return loader
 

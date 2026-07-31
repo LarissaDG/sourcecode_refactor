@@ -1,11 +1,14 @@
 """
 Roda as duas versões de análise em sequência:
   1. Fiel ao ICCC (metricas.py) → figures_iccc/ + iccc_stats_report.txt
-  2. Nova versão (Friedman + CLD) → figures/ + samples/
+  2. Nova versão (Friedman + CLD) → figures/
+
+As amostras visuais (imagens de exemplo) não fazem parte desta análise local —
+rodam dentro do run.py, no cluster, junto com cada experimento (ver
+pipeline/samples.py) e ficam em outputs/<experimento>/samples/.
 
 Uso:
     python scripts/analyze_all.py --config configs/analysis_local.yaml
-    python scripts/analyze_all.py --config configs/analysis.yaml --skip-samples
 """
 
 import argparse
@@ -27,8 +30,6 @@ def run(script, config, extra_args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/analysis.yaml")
-    parser.add_argument("--skip-samples", action="store_true",
-                        help="Pula amostras visuais na análise nova")
     parser.add_argument("--skip-iccc", action="store_true",
                         help="Pula a versão ICCC fiel")
     parser.add_argument("--skip-new", action="store_true",
@@ -41,8 +42,7 @@ def main():
         run(os.path.join(base, "analyze_iccc.py"), args.config, [])
 
     if not args.skip_new:
-        extra = ["--skip-samples"] if args.skip_samples else []
-        run(os.path.join(base, "analyze.py"), args.config, extra)
+        run(os.path.join(base, "analyze.py"), args.config, [])
 
     print("\n✓ Análise completa.")
     print("  figures_iccc/ → metodologia ICCC (t-test, Mann-Whitney, ANOVA, radar)")

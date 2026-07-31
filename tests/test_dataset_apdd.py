@@ -103,6 +103,35 @@ def test_sample_uniform_bins_reproducible(mini_apdd_dir):
     assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
 
 
+def test_sample_proportional_stratified_size(mini_apdd_dir):
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=6, strategy="proportional_stratified", seed=42, n_bins=30)
+    assert len(subset) > 0
+    assert len(subset) <= 6
+
+
+def test_sample_proportional_stratified_reproducible(mini_apdd_dir):
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    s1 = ds.sample(n=6, strategy="proportional_stratified", seed=42)
+    s2 = ds.sample(n=6, strategy="proportional_stratified", seed=42)
+    assert [s1[i]["filename"] for i in range(len(s1))] == [s2[i]["filename"] for i in range(len(s2))]
+
+
+def test_sample_proportional_stratified_has_bin_report(mini_apdd_dir):
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=6, strategy="proportional_stratified", seed=42)
+    assert subset.bin_report is not None
+    assert "proportional_stratified" in subset.bin_report
+    assert f"Total amostrado: {len(subset)}" in subset.bin_report
+
+
+def test_sample_uniform_bins_has_no_bin_report(mini_apdd_dir):
+    """bin_report é exclusivo da proportional_stratified — outras estratégias não geram."""
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=6, strategy="uniform_bins", seed=42)
+    assert subset.bin_report is None
+
+
 def test_sample_unknown_strategy(mini_apdd_dir):
     import pytest
     ds = APDDv2Dataset(root=mini_apdd_dir)

@@ -8,6 +8,7 @@ os.environ.setdefault("CLIP_CACHE",         "/snfs1/speed/larissa.gomide/hf_cach
 os.environ.setdefault("XDG_CACHE_HOME",     "/sonic_home/larissa.gomide/casa/.cache")
 os.environ.setdefault("MPLCONFIGDIR",       "/sonic_home/larissa.gomide/casa/.matplotlib")
 
+import copy
 import glob
 import json
 import argparse
@@ -17,6 +18,7 @@ from utils.config import load_config
 from pipeline.sampling import run_sampling, loader_to_list
 from pipeline.captioning import run_captioning
 from pipeline.generation import run_generation
+from pipeline.samples import run_samples
 from pipeline.scoring import run_scoring
 
 logger = setup_logger("master", "logs")
@@ -99,6 +101,31 @@ def _reload_human_captions(cfg, data):
 
 
 def run_pipeline(cfg):
+    """
+    Orquestra a execução. Se `sampling.strategies` (lista) estiver presente,
+    roda o pipeline completo uma vez por estratégia, cada uma em sua própria
+    pasta de output (experiment.name sufixado com a estratégia). Caso
+    contrário, roda uma única vez com `sampling.strategy`.
+    """
+    strategies = cfg.get("sampling", {}).get("strategies")
+    if not strategies:
+        _run_single_pipeline(cfg)
+        return
+
+    base_name = cfg["experiment"]["name"]
+    for strategy in strategies:
+        sub_cfg = copy.deepcopy(cfg)
+        sub_cfg["experiment"]["name"] = f"{base_name}_{strategy}"
+        sub_cfg["sampling"]["strategy"] = strategy
+        sub_cfg["sampling"].pop("strategies", None)
+        logger.info(
+            "[MULTI-STRATEGY] '%s' com strategy='%s' → outputs/%s/",
+            base_name, strategy, sub_cfg["experiment"]["name"],
+        )
+        _run_single_pipeline(sub_cfg)
+
+
+def _run_single_pipeline(cfg):
     steps = cfg["pipeline"]["steps"]
     data = None
 
@@ -138,6 +165,12 @@ def run_pipeline(cfg):
             data = _load_data(cfg)
         data = run_generation(cfg, data)
         _save_data(cfg, data)
+
+    if steps.get("samples"):
+        if data is None:
+            data = _load_data(cfg)
+        if data is not None:
+            run_samples(cfg, data)
 
     if steps.get("scoring"):
         if data is None:

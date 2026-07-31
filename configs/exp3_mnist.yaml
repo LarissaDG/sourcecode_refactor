@@ -15,6 +15,7 @@ pipeline:
     sampling:   true
     captioning: false
     generation: false
+    samples:    true
     scoring:    true
 
 sampling:
