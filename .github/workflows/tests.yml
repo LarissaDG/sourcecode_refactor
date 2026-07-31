@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install pandas numpy pillow pyyaml ftfy regex tqdm timm pytest
+          pip install pandas numpy pillow pyyaml ftfy regex tqdm timm pytest matplotlib
 
       - name: Run tests
         run: pytest tests/ -v --ignore=tests/test_e2e.py -k "not apdd and not portinari and not mnist and not gif and not video"

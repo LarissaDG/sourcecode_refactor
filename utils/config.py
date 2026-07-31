@@ -21,10 +21,10 @@ def load_config(exp_config_path: str) -> dict:
     Carrega base.yaml e faz merge com o yaml do experimento.
     O yaml do experimento sempre tem precedência.
     """
-    with open(BASE_CONFIG_PATH) as f:
+    with open(BASE_CONFIG_PATH, encoding="utf-8-sig") as f:
         base_cfg = yaml.safe_load(f)
 
-    with open(exp_config_path) as f:
+    with open(exp_config_path, encoding="utf-8-sig") as f:
         exp_cfg = yaml.safe_load(f)
 
     cfg = _deep_merge(base_cfg, exp_cfg)

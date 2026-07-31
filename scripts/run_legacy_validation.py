@@ -50,7 +50,7 @@ def _stem(path):
 
 
 def load_cfg(path):
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         return yaml.safe_load(f)
 
 
