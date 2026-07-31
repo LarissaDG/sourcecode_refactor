@@ -41,7 +41,7 @@ trap notify EXIT
 
 echo "--- Fase 1: sampling + generation (Janus, sem captioning) ---"
 source "$VENV/bin/activate"
-python3 run.py --config configs/exp2b_portinari_human.yaml --steps sampling,generation \
+python3 run.py --config configs/exp2b_portinari_human.yaml --steps sampling,generation,samples \
     || { echo "ERRO fase Janus"; exit 1; }
 deactivate
 

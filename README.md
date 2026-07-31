@@ -37,7 +37,7 @@ O [artigo](https://arxiv.org/pdf/2411.08545) que propôs o conjunto de dados APD
 
 ## Visão Geral
 
-Pipeline de 4 estágios: **Sampling → Captioning → Generation → Scoring**
+Pipeline de 5 estágios: **Sampling → Captioning → Generation → Samples → Scoring**
 
 | Experimento | Dataset | Objetivo |
 |---|---|---|
@@ -264,14 +264,25 @@ sbatch scripts/slurm_download_data.sh
 sbatch scripts/link_32.sh          # ZIP 32 do Portinari (rate-limited pelo Google Drive)
 
 # 2. Experimentos
+sbatch slurm/completo/slurm_exp0_iccc.sh
 sbatch slurm/completo/slurm_exp1_apdd.sh
 sbatch slurm/completo/slurm_exp2a_portinari.sh
+# exp2b reusa as imagens do exp2a (reuse_from) — só submeta depois que o
+# exp2a_portinari acima já tiver terminado (outputs/exp2a_portinari/pipeline_data.json
+# precisa existir). Não são independentes, apesar de aparecerem em sequência aqui.
 sbatch slurm/completo/slurm_exp2b_portinari_human.sh
 sbatch slurm/completo/slurm_exp3_mnist.sh
 sbatch slurm/completo/slurm_exp4_noise.sh
 sbatch slurm/completo/slurm_exp5a_temporal.sh
 sbatch slurm/completo/slurm_exp5b_temporal_error.sh
 ```
+
+> Todos os jobs acima já incluem a etapa `samples` (amostras visuais, ver
+> [Amostras Visuais](#amostras-visuais)). Ela roda na mesma venv que já usa naquela fase
+> (`venv` do Janus para exp0/1/2a/2b, `apddv2` para exp3/4/5a/5b) — confirme que
+> `matplotlib`/`pillow` estão instalados na venv `apddv2` antes de rodar
+> (`source apddv2/bin/activate && python -c "import matplotlib, PIL"`), já que ela usa um
+> `requirements.txt` próprio do ArtCLIP, separado do deste repositório.
 
 #### Upload do APDDv2 (Windows → cluster)
 

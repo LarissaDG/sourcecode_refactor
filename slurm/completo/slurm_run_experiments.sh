@@ -59,46 +59,54 @@ run_exp() {
 # Altere "--test" para "" quando quiser rodar completo
 TEST="--test"
 
+# Exp 0 â€” ICCC (proportional_stratified, 502 imagens): todas as etapas
+run_exp "configs/exp0_iccc.yaml" \
+        "sampling,captioning,generation,samples" \
+        "scoring" \
+        "$TEST"
+
 # Exp 1 â€” APDDv2: todas as etapas
 run_exp "configs/exp1_apdd.yaml" \
-        "sampling,captioning,generation" \
+        "sampling,captioning,generation,samples" \
         "scoring" \
         "$TEST"
 
 # Exp 2a â€” Portinari (AI captions): todas as etapas
 run_exp "configs/exp2a_portinari.yaml" \
-        "sampling,captioning,generation" \
+        "sampling,captioning,generation,samples" \
         "scoring" \
         "$TEST"
 
 # Exp 2b â€” Portinari (human captions): sem captioning
+# IMPORTANTE: reusa as imagens do Exp2a (reuse_from) — só rode depois que
+# outputs/exp2a_portinari/pipeline_data.json já existir (Exp2a concluído).
 run_exp "configs/exp2b_portinari_human.yaml" \
-        "sampling,generation" \
+        "sampling,generation,samples" \
         "scoring" \
         "$TEST"
 
-# Exp 3 â€” MNIST: sÃ³ scoring
+# Exp 3 â€” MNIST: só scoring
 run_exp "configs/exp3_mnist.yaml" \
         "" \
-        "sampling,scoring" \
+        "sampling,samples,scoring" \
         "$TEST"
 
-# Exp 4 â€” RuÃ­do: sÃ³ scoring
+# Exp 4 â€” Ruído: só scoring
 run_exp "configs/exp4_noise.yaml" \
         "" \
-        "sampling,scoring" \
+        "sampling,samples,scoring" \
         "$TEST"
 
-# Exp 5a â€” Temporal sequencial: sÃ³ scoring
+# Exp 5a â€” Temporal sequencial: só scoring
 run_exp "configs/exp5a_temporal.yaml" \
         "" \
-        "sampling,scoring" \
+        "sampling,samples,scoring" \
         "$TEST"
 
-# Exp 5b â€” Temporal com erro: sÃ³ scoring
+# Exp 5b â€” Temporal com erro: só scoring
 run_exp "configs/exp5b_temporal_error.yaml" \
         "" \
-        "sampling,scoring" \
+        "sampling,samples,scoring" \
         "$TEST"
 
 # â”€â”€ NotificaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

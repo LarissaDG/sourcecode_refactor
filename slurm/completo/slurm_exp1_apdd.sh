@@ -42,7 +42,7 @@ trap notify EXIT
 
 echo "--- Fase 1: sampling + captioning + generation (Janus) ---"
 source "$VENV/bin/activate"
-python3 run.py --config configs/exp1_apdd.yaml --steps sampling,captioning,generation \
+python3 run.py --config configs/exp1_apdd.yaml --steps sampling,captioning,generation,samples \
     || { echo "ERRO fase Janus"; exit 1; }
 deactivate
 

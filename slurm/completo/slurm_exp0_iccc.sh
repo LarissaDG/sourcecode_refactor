@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=exp3_mnist
-#SBATCH --time=04:00:00
+#SBATCH --job-name=exp0_iccc
+#SBATCH --time=16:00:00
 #SBATCH -N 1
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=larissa.gomide@dcc.ufmg.br
@@ -23,26 +23,33 @@ export MPLCONFIGDIR="/sonic_home/larissa.gomide/casa/.matplotlib"
 
 
 
+# Notifica ao final — com sucesso ou erro
 notify() {
     local code=$?
     if [ $code -eq 0 ]; then
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \
-            "✅ exp3_mnist CONCLUÍDO — Phocus4" \
-            "Job finalizado com sucesso. Resultados em: /snfs1/speed/larissa.gomide/outputs/exp3_mnist/"
+            "✅ exp0_iccc CONCLUÍDO — Phocus4" \
+            "Job finalizado com sucesso. Resultados em: /snfs1/speed/larissa.gomide/outputs/exp0_iccc/"
     else
         source "$VENV/bin/activate"
         python3 scripts/manda_email.py \
-            "❌ exp3_mnist FALHOU — Phocus4" \
+            "❌ exp0_iccc FALHOU — Phocus4" \
             "Job abortou com erro (código $code). Verifique o log: $ROOT/slurm-${SLURM_JOB_ID}.out"
     fi
 }
 trap notify EXIT
 
-echo "--- sampling + scoring (ArtCLIP) ---"
+echo "--- Fase 1: sampling (proportional_stratified) + captioning + generation (Janus) ---"
+source "$VENV/bin/activate"
+python3 run.py --config configs/exp0_iccc.yaml --steps sampling,captioning,generation,samples \
+    || { echo "ERRO fase Janus"; exit 1; }
+deactivate
+
+echo "--- Fase 2: scoring (ArtCLIP) ---"
 source "$VENV_APDDV2/bin/activate"
-python3 run.py --config configs/exp3_mnist.yaml --steps sampling,samples,scoring \
-    || { echo "ERRO"; exit 1; }
+python3 run.py --config configs/exp0_iccc.yaml --steps scoring \
+    || { echo "ERRO fase ArtCLIP"; exit 1; }
 deactivate
 
 echo "=== FINALIZADO ===" && hostname

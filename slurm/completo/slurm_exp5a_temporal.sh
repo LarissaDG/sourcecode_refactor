@@ -41,7 +41,7 @@ trap notify EXIT
 
 echo "--- sampling + scoring (ArtCLIP) ---"
 source "$VENV_APDDV2/bin/activate"
-python3 run.py --config configs/exp5a_temporal.yaml --steps sampling,scoring \
+python3 run.py --config configs/exp5a_temporal.yaml --steps sampling,samples,scoring \
     || { echo "ERRO"; exit 1; }
 deactivate
 
