@@ -19,7 +19,24 @@
       "Skill(artifact-design:*)",
       "Bash(gh api *)",
       "Bash(curl -s https://raw.githubusercontent.com/WillianJunior/SpeedUFMG/main/user/storage.md)",
-      "Bash(cp \"C:\\\\Users\\\\jggom\\\\Documents\\\\UFMG\\\\Mestrado\\\\All Portinari\\\\ICCC-Portinari\\\\links.txt\" \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\\\\scripts\\\\portinari_links.txt\")"
+      "Bash(cp \"C:\\\\Users\\\\jggom\\\\Documents\\\\UFMG\\\\Mestrado\\\\All Portinari\\\\ICCC-Portinari\\\\links.txt\" \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\\\\scripts\\\\portinari_links.txt\")",
+      "PowerShell(cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; $env:PYTHONIOENCODING = \"utf-8\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1)",
+      "PowerShell(cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; $env:PYTHONIOENCODING = \"utf-8\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 4)",
+      "PowerShell(cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; $env:PYTHONIOENCODING = \"utf-8\"; python scripts/analyze_iccc.py --config configs/analysis_local.yaml --all-viz 2>&1 | Select-Object -Last 8)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/analyze_iccc.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 20)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/analyze_iccc.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 8)",
+      "Bash(find \"C:/Users/jggom/Downloads/Execucao dia 28\" -name \"*.png\" | grep -i \"sample\\\\|grid\\\\|caption\\\\|triplet\\\\|original\" | head -20)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 15)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 12)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/analyze_iccc.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 15)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 5)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/analyze_iccc.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 8; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 5)",
+      "PowerShell($env:PYTHONIOENCODING = \"utf-8\"; cd \"C:\\\\Users\\\\jggom\\\\Documents\\\\Estudos\\\\Mestrado\\\\sourcecode_refactor\"; python scripts/generate_html_reports.py --config configs/analysis_local.yaml 2>&1 | Select-Object -Last 20)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(python scripts/generate_html_reports.py --config configs/analysis_local.yaml)",
+      "Bash(venv_local/Scripts/python.exe -m pip show pytest pyyaml pandas torch torchvision pillow numpy)"
     ]
   }
 }
