@@ -3,6 +3,7 @@ Testa o loader do APDDv2.
 Usa o mini dataset sintético criado pelo conftest.py.
 """
 import os
+import pytest
 import torch
 from datasets.apddv2 import APDDv2Dataset
 
@@ -130,6 +131,66 @@ def test_sample_uniform_bins_has_no_bin_report(mini_apdd_dir):
     ds = APDDv2Dataset(root=mini_apdd_dir)
     subset = ds.sample(n=6, strategy="uniform_bins", seed=42)
     assert subset.bin_report is None
+
+
+# ── proportional_stratified com legacy_csv (reusa amostra fixa externa) ────────
+
+def _write_legacy_csv(tmp_path, filenames, col="filename"):
+    import pandas as pd
+    path = tmp_path / "sampled_dataset.csv"
+    pd.DataFrame({col: filenames}).to_csv(path, index=False)
+    return str(path)
+
+
+def test_sample_proportional_stratified_legacy_csv_filters_exact_set(mini_apdd_dir, tmp_path):
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.jpg", "img_002.jpg", "img_005.jpg"])
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=10, strategy="proportional_stratified", legacy_csv=legacy_csv)
+    filenames = {subset[i]["filename"] for i in range(len(subset))}
+    assert filenames == {"img_000.jpg", "img_002.jpg", "img_005.jpg"}
+
+
+def test_sample_proportional_stratified_legacy_csv_ignores_extension(mini_apdd_dir, tmp_path):
+    """Casa por stem — funciona mesmo se a extensão no CSV legado for diferente."""
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.png", "img_001.png"])
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=10, strategy="proportional_stratified", legacy_csv=legacy_csv)
+    filenames = {subset[i]["filename"] for i in range(len(subset))}
+    assert filenames == {"img_000.jpg", "img_001.jpg"}
+
+
+def test_sample_proportional_stratified_legacy_csv_warns_on_missing(mini_apdd_dir, tmp_path):
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.jpg", "nao_existe.jpg"])
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    with pytest.warns(RuntimeWarning, match="não encontradas"):
+        subset = ds.sample(n=10, strategy="proportional_stratified", legacy_csv=legacy_csv)
+    assert len(subset) == 1
+    assert subset[0]["filename"] == "img_000.jpg"
+
+
+def test_sample_proportional_stratified_legacy_csv_bin_report(mini_apdd_dir, tmp_path):
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.jpg", "img_001.jpg", "img_002.jpg"])
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=10, strategy="proportional_stratified", legacy_csv=legacy_csv)
+    assert subset.bin_report is not None
+    assert "legacy" in subset.bin_report.lower()
+    assert legacy_csv in subset.bin_report
+    assert "3/3" in subset.bin_report
+
+
+def test_sample_proportional_stratified_legacy_csv_missing_column_raises(mini_apdd_dir, tmp_path):
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.jpg"], col="not_a_filename_column")
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    with pytest.raises(ValueError, match="Coluna de filename"):
+        ds.sample(n=10, strategy="proportional_stratified", legacy_csv=legacy_csv)
+
+
+def test_sample_uniform_bins_ignores_legacy_csv(mini_apdd_dir, tmp_path):
+    """legacy_csv só tem efeito em proportional_stratified — uniform_bins ignora e amostra normal."""
+    legacy_csv = _write_legacy_csv(tmp_path, ["img_000.jpg"])
+    ds = APDDv2Dataset(root=mini_apdd_dir)
+    subset = ds.sample(n=6, strategy="uniform_bins", seed=42, legacy_csv=legacy_csv)
+    assert len(subset) > 1  # não ficou restrito ao único item do CSV legado
 
 
 def test_sample_unknown_strategy(mini_apdd_dir):

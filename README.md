@@ -41,7 +41,7 @@ Pipeline de 5 estágios: **Sampling → Captioning → Generation → Samples �
 
 | Experimento | Dataset | Objetivo |
 |---|---|---|
-| Exp 0 — ICCC | 502 pinturas, amostragem proportional stratified | Replica a metodologia original do paper ICCC 2025 |
+| Exp 0 — ICCC | 502 pinturas, 2 amostragens (uniform_bins + amostra original via legacy_csv) | Replica a metodologia original do paper ICCC 2025 |
 | Exp 1 — APDDv2 | ~500 pinturas, 2 amostragens (uniform_bins + proportional_stratified) | Baseline: Human GT vs Janus-1B/7B |
 | Exp 2a — Portinari | 500 pinturas, captions por IA | Impacto de captions automáticas |
 | Exp 2b — Portinari | 498 pinturas, captions humanas | Impacto de captions humanas |
@@ -235,7 +235,7 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 
 | Config | Estágios executados |
 |---|---|
-| `exp0_iccc.yaml` | sampling (proportional_stratified, 502 imgs) → captioning → generation → scoring |
+| `exp0_iccc.yaml` | sampling (uniform_bins **e** proportional_stratified) → captioning → generation → scoring |
 | `exp1_apdd.yaml` | sampling (uniform_bins **e** proportional_stratified) → captioning → generation → scoring |
 | `exp2a_portinari.yaml` | sampling → captioning → generation → scoring |
 | `exp2b_portinari_human.yaml` | sampling → generation → scoring (pula captioning) |
@@ -244,15 +244,24 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 | `exp5a_temporal.yaml` | scoring apenas |
 | `exp5b_temporal_error.yaml` | scoring apenas |
 
-> **`exp1_apdd.yaml` roda duas amostragens em uma única chamada** (`sampling.strategies` no
-> YAML): o pipeline completo é executado uma vez por estratégia, cada uma em sua própria
-> pasta — `outputs/exp1_apdd_uniform_bins/` e `outputs/exp1_apdd_proportional_stratified/`.
+> **`exp1_apdd.yaml` e `exp0_iccc.yaml` rodam duas amostragens em uma única chamada**
+> (`sampling.strategies` no YAML): o pipeline completo é executado uma vez por estratégia,
+> cada uma em sua própria pasta:
+> - `outputs/exp1_apdd_uniform_bins/` / `outputs/exp0_iccc_uniform_bins/`
+> - `outputs/exp1_apdd_proportional_stratified/` / `outputs/exp0_iccc_proportional_stratified/`
 >
-> **`exp0_iccc.yaml`** usa a estratégia `proportional_stratified`: os 502 imagens são
-> alocadas entre bins de score estético proporcionalmente ao tamanho de cada bin (preserva
-> a distribuição original do dataset, ao contrário do `uniform_bins`, que amostra igualmente
-> por bin). Ao final, grava `outputs/exp0_iccc/sampling_bin_distribution.txt` com a
-> distribuição das imagens amostradas por bin.
+> Em `exp1_apdd.yaml`, `proportional_stratified` calcula uma amostra nova: os N imagens são
+> alocadas entre bins de score estético proporcionalmente ao tamanho de cada bin (preserva a
+> distribuição original do dataset, ao contrário do `uniform_bins`, que amostra igualmente por
+> bin). Ao final, grava `sampling_bin_distribution.txt` com a distribuição por bin.
+>
+> Em **`exp0_iccc.yaml`**, `proportional_stratified` **não recalcula** — via
+> `sampling.legacy_csv`, reusa exatamente as mesmas 502 imagens do experimento ICCC original
+> (`/snfs1/speed/larissa.gomide/data/legacy_iccc/sampled_dataset.csv`), casando por nome de
+> arquivo (stem, ignorando extensão). Itens do CSV legado sem correspondência no dataset atual
+> são ignorados com aviso. `sampling_bin_distribution.txt` ainda é gerado, mas só como relatório
+> da distribuição por bin dessa amostra fixa — não influencia a seleção. Já o `uniform_bins`
+> do `exp0_iccc.yaml` ignora `legacy_csv` e amostra normalmente, igual ao `exp1_apdd.yaml`.
 
 ### No cluster (SLURM)
 

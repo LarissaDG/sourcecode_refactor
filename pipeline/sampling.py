@@ -29,7 +29,7 @@ def run_sampling(cfg) -> DataLoader:
 
     extra_kwargs = {}
     for key in ("n_bins", "noise_levels", "noise_types",
-                "error_frame", "error_type", "error_level"):
+                "error_frame", "error_type", "error_level", "legacy_csv"):
         if key in cfg["sampling"]:
             extra_kwargs[key] = cfg["sampling"][key]
 

@@ -1,9 +1,10 @@
 # ─────────────────────────────────────────────────────────
 # EXP 0 — ICCC: replica a metodologia original do paper ICCC 2025
-# Amostragem estratificada proporcional (proportional_stratified) → 502 imagens
+# Roda DUAS amostragens, igual ao exp1_apdd, cada uma na sua pasta de output:
+#   outputs/exp0_iccc_uniform_bins/            -> amostragem NOVA (uniform_bins)
+#   outputs/exp0_iccc_proportional_stratified/ -> NÃO recalcula: reusa a amostra
+#                                                  ORIGINAL do ICCC (legacy_csv)
 # Sampling → Caption (Janus-7B) → Generate (Janus-1B + Janus-7B) → Score
-# Gera outputs/exp0_iccc/sampling_bin_distribution.txt com a distribuição
-# das imagens amostradas por bin de score estético.
 # ─────────────────────────────────────────────────────────
 experiment:
   name: "exp0_iccc"
@@ -22,8 +23,10 @@ pipeline:
 
 sampling:
   n_samples: 502
-  strategy: "proportional_stratified"
   n_bins: 30
+  strategies: ["uniform_bins", "proportional_stratified"]
+  # Usado só pela estratégia proportional_stratified (uniform_bins ignora este campo)
+  legacy_csv: "/snfs1/speed/larissa.gomide/data/legacy_iccc/sampled_dataset.csv"
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"

@@ -72,6 +72,31 @@ def _largest_remainder_allocation(bin_counts: pd.Series, n: int) -> pd.Series:
     return alloc
 
 
+def _format_legacy_bin_report(sampled_df: pd.DataFrame, bin_cols: list, legacy_csv: str,
+                               n_found: int, n_total: int, n_bins: int) -> str:
+    lines = [
+        "Distribuicao da amostra legada do ICCC (proportional_stratified via legacy_csv)",
+        f"Fonte: {legacy_csv}",
+        f"Atributos usados no binning: {', '.join(bin_cols)}",
+        f"Imagens do CSV legado encontradas no dataset atual: {n_found}/{n_total}",
+        "",
+    ]
+    if not bin_cols or sampled_df.empty:
+        lines.append("(sem atributos estéticos disponíveis para o binning)")
+        return "\n".join(lines) + "\n"
+
+    mean_score = sampled_df[bin_cols].mean(axis=1)
+    n_bins_eff = max(1, min(n_bins, mean_score.nunique(), len(sampled_df)))
+    cat = pd.cut(mean_score, bins=n_bins_eff, duplicates="drop")
+    bin_counts = cat.value_counts().sort_index()
+
+    lines.append(f"{'Faixa de score':^20} | {'Total':>7}")
+    lines.append("-" * 32)
+    for edge, count in bin_counts.items():
+        lines.append(f"[{edge.left:.2f}, {edge.right:.2f}]".center(20) + f" | {count:>7}")
+    return "\n".join(lines) + "\n"
+
+
 def _format_bin_report(bin_counts: pd.Series, alloc: pd.Series, bin_cols: list,
                         bin_edges) -> str:
     lines = [
@@ -223,6 +248,42 @@ class APDDv2Dataset(Dataset):
                     break
         return path
 
+    def _load_legacy_csv_sample(self, legacy_csv: str) -> pd.DataFrame:
+        """
+        Carrega uma amostra FIXA a partir de um CSV externo (ex: sampled_dataset.csv
+        do ICCC original), em vez de recalcular a amostragem — usado para reproduzir
+        exatamente a seleção de imagens de um experimento legado. Casa por stem do
+        filename com o dataset atual; itens do CSV sem correspondência são ignorados
+        (com aviso).
+        """
+        legacy_df = pd.read_csv(legacy_csv, encoding="ISO-8859-1")
+        fn_col = _first_present(legacy_df.columns, ["filename", "Filename", "Numero da Obra", "image"])
+        if not fn_col:
+            raise ValueError(
+                f"Coluna de filename não encontrada em {legacy_csv}. "
+                f"Colunas disponíveis: {list(legacy_df.columns)}"
+            )
+
+        legacy_stems = {
+            os.path.splitext(str(v).strip())[0]
+            for v in legacy_df[fn_col]
+            if pd.notna(v)
+        }
+
+        current_stems = self.df["filename"].apply(lambda f: os.path.splitext(str(f).strip())[0])
+        sampled_df = self.df[current_stems.isin(legacy_stems)]
+
+        n_found, n_total = len(sampled_df), len(legacy_stems)
+        if n_found < n_total:
+            import warnings
+            warnings.warn(
+                f"_load_legacy_csv_sample: {n_total - n_found} imagens do CSV legado "
+                f"({legacy_csv}) não encontradas no dataset atual. Usando {n_found}/{n_total}.",
+                RuntimeWarning,
+            )
+
+        return sampled_df, n_found, n_total
+
     @staticmethod
     def _default_transform() -> transforms.Compose:
         """Normalização padrão do CLIP."""
@@ -253,7 +314,8 @@ class APDDv2Dataset(Dataset):
     # ------------------------------------------------------------------
 
     def sample(self, n: int, strategy: str = "random", seed: int = 42, n_bins: int = 30,
-               noise_levels=None, noise_types=None, **kwargs) -> "APDDv2Dataset":
+               noise_levels=None, noise_types=None, legacy_csv: str = None,
+               **kwargs) -> "APDDv2Dataset":
         """
         Retorna um subconjunto do dataset.
 
@@ -272,8 +334,14 @@ class APDDv2Dataset(Dataset):
                                                     original do dataset). O subset
                                                     retornado carrega `.bin_report`, um
                                                     texto com a distribuição por bin.
-            seed:     Semente para reprodutibilidade.
-            n_bins:   Número de faixas usadas pelas estratégias baseadas em bins.
+                                                    Se `legacy_csv` for informado, NÃO
+                                                    recalcula — carrega a amostra fixa
+                                                    daquele CSV (ex: reproduzir o
+                                                    experimento ICCC original).
+            seed:        Semente para reprodutibilidade.
+            n_bins:      Número de faixas usadas pelas estratégias baseadas em bins.
+            legacy_csv:  Caminho de um CSV externo com a coluna de filename da amostra
+                         a reusar (só tem efeito em strategy="proportional_stratified").
         """
         bin_report = None
         if strategy == "random":
@@ -313,28 +381,34 @@ class APDDv2Dataset(Dataset):
             sampled_df = self.df.loc[sampled_df.index]
 
         elif strategy == "proportional_stratified":
-            if not self.bin_cols:
-                raise ValueError("Nenhum dos atributos estéticos usados para o binning foi encontrado no CSV.")
+            if legacy_csv:
+                sampled_df, n_found, n_total = self._load_legacy_csv_sample(legacy_csv)
+                bin_report = _format_legacy_bin_report(
+                    sampled_df, self.bin_cols, legacy_csv, n_found, n_total, n_bins
+                )
+            else:
+                if not self.bin_cols:
+                    raise ValueError("Nenhum dos atributos estéticos usados para o binning foi encontrado no CSV.")
 
-            mean_score = self.df[self.bin_cols].mean(axis=1)
-            n_bins_eff = max(1, min(n_bins, mean_score.nunique(), len(self.df)))
+                mean_score = self.df[self.bin_cols].mean(axis=1)
+                n_bins_eff = max(1, min(n_bins, mean_score.nunique(), len(self.df)))
 
-            cat = pd.cut(mean_score, bins=n_bins_eff, duplicates="drop")
-            df_binned = self.df.copy()
-            df_binned["_bin"] = cat.cat.codes
-            bin_edges = cat.cat.categories
+                cat = pd.cut(mean_score, bins=n_bins_eff, duplicates="drop")
+                df_binned = self.df.copy()
+                df_binned["_bin"] = cat.cat.codes
+                bin_edges = cat.cat.categories
 
-            bin_counts = df_binned.loc[df_binned["_bin"] >= 0, "_bin"].value_counts().sort_index()
-            n_eff = min(n, int(bin_counts.sum()))
-            alloc = _largest_remainder_allocation(bin_counts, n_eff)
+                bin_counts = df_binned.loc[df_binned["_bin"] >= 0, "_bin"].value_counts().sort_index()
+                n_eff = min(n, int(bin_counts.sum()))
+                alloc = _largest_remainder_allocation(bin_counts, n_eff)
 
-            parts = [
-                df_binned[df_binned["_bin"] == b].sample(n=int(cnt), random_state=seed)
-                for b, cnt in alloc.items() if cnt > 0
-            ]
-            sampled_df = pd.concat(parts).sample(frac=1, random_state=seed)  # shuffle final
-            sampled_df = self.df.loc[sampled_df.index]
-            bin_report = _format_bin_report(bin_counts, alloc, self.bin_cols, bin_edges)
+                parts = [
+                    df_binned[df_binned["_bin"] == b].sample(n=int(cnt), random_state=seed)
+                    for b, cnt in alloc.items() if cnt > 0
+                ]
+                sampled_df = pd.concat(parts).sample(frac=1, random_state=seed)  # shuffle final
+                sampled_df = self.df.loc[sampled_df.index]
+                bin_report = _format_bin_report(bin_counts, alloc, self.bin_cols, bin_edges)
 
         else:
             raise ValueError(
