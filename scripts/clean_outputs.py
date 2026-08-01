@@ -3,11 +3,14 @@ Limpa os outputs da última execução do pipeline e diretórios de cache obsole
 
 Uso:
     python3 scripts/clean_outputs.py                    # limpa outputs/ inteiro
-    python3 scripts/clean_outputs.py --exp exp1_apdd   # limpa só um experimento
+    python3 scripts/clean_outputs.py --exp exp1_apdd   # limpa exp1_apdd/ e variantes
     python3 scripts/clean_outputs.py --dry-run          # mostra o que seria deletado
 
 Flags:
-    --exp       Nome do experimento (pasta dentro de outputs/)
+    --exp       Nome do experimento (pasta dentro de outputs/). Casa com o nome
+                exato E com variantes de sampling.strategies (ex: "exp1_apdd"
+                também limpa "exp1_apdd_uniform_bins" e
+                "exp1_apdd_proportional_stratified").
     --dry-run   Mostra o que seria deletado sem deletar nada
 """
 
@@ -50,7 +53,15 @@ def main():
         return
 
     if args.exp:
-        targets = [outputs_dir / args.exp]
+        # Casa com o nome exato e com variantes de sampling.strategies
+        # (ex: "exp1_apdd" -> "exp1_apdd", "exp1_apdd_uniform_bins", ...)
+        targets = [
+            p for p in outputs_dir.iterdir()
+            if p.is_dir() and (p.name == args.exp or p.name.startswith(args.exp + "_"))
+        ]
+        if not targets:
+            print(f"  Não encontrado: {outputs_dir / args.exp} (nem variantes '{args.exp}_*')")
+            return
     else:
         targets = [p for p in outputs_dir.iterdir() if p.is_dir()]
 
@@ -59,9 +70,6 @@ def main():
         return
 
     for target in targets:
-        if not target.exists():
-            print(f"  Não encontrado: {target}")
-            continue
         _delete(target, args.dry_run)
 
     if not args.dry_run:

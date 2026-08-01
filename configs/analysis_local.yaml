@@ -210,8 +210,8 @@ sampling:
   output_csv:   "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\Dados\\gaussian_sample.csv"
 
 paths:
-  outputs:       "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\outputs"
-  reports:       "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\reports"
+  outputs:       "C:\\Users\\jggom\\Downloads\\Execucao_dia_31\\outputs\\outputs"
+  reports:       "C:\\Users\\jggom\\Downloads\\Execucao_dia_31\\reports\\reports"
   apddv2_csv:    "C:\\Users\\jggom\\Documents\\UFMG\\Mestrado\\Implementação\\Código fonte\\ICCC\\APDDv2\\APDDv2-10023.csv"
   apddv2_images: ""
   sampled_small: "C:\\Users\\jggom\\Downloads\\Execucao dia 28\\Dados\\Arquivos_legados\\sampled_SMALL_with_gen_scored.csv"
