@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from itertools import combinations
-from scipy.stats import (friedmanchisquare, ks_2samp, pearsonr,
+from scipy.stats import (friedmanchisquare, kendalltau, ks_2samp, pearsonr,
                          spearmanr, wasserstein_distance, wilcoxon)
 from scipy.special import rel_entr
 from sklearn.cluster import KMeans
@@ -110,6 +110,21 @@ def load_human_gt(cfg) -> "pd.DataFrame | None":
 
 def _stem(filename) -> str:
     return os.path.splitext(os.path.basename(str(filename)))[0]
+
+
+def _exp1_scores_dir(cfg, strategy: str = "uniform_bins") -> str:
+    """
+    exp1_apdd roda 2 estratégias de amostragem (sampling.strategies no YAML),
+    cada uma na sua pasta: outputs/exp1_apdd_uniform_bins/,
+    outputs/exp1_apdd_proportional_stratified/. Usa uniform_bins como o Exp1
+    "principal" pras análises que citam só "exp1_apdd" (comparável ao antigo
+    single-run); cai pra outputs/exp1_apdd/ sem sufixo se existir (setups
+    antigos/locais que ainda não rodaram com sampling.strategies).
+    """
+    base = os.path.join(cfg["paths"]["outputs"], f"exp1_apdd_{strategy}")
+    if os.path.isdir(base):
+        return base
+    return os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
 
 
 def _available_attrs(cfg, *dfs) -> list:
@@ -462,7 +477,7 @@ def render_dist_diff_table(pairs_results: list, path: str, cfg, title=""):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def analyse_exp1(cfg, out_dir: str):
-    exp_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
+    exp_dir = _exp1_scores_dir(cfg)
     attrs = cfg["score_attributes"]
     alpha = cfg["stats"]["alpha"]
     pal = _palette(cfg); ht = _hatches(cfg)
@@ -867,8 +882,7 @@ def analyse_exp3(cfg, out_dir: str):
     exp3_dir = os.path.join(cfg["paths"]["outputs"], "exp3_mnist")
     df_mnist = load_scores(exp3_dir, "original")
 
-    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
-    df_apdd  = load_scores(exp1_dir, "original")
+    df_apdd  = load_scores(_exp1_scores_dir(cfg), "original")
 
     exp2a_dir = os.path.join(cfg["paths"]["outputs"], "exp2a_portinari")
     df_port  = load_scores(exp2a_dir, "original")
@@ -926,7 +940,7 @@ def analyse_comparisons(cfg, out_dir: str):
         d = os.path.join(cfg["paths"]["outputs"], exp)
         return load_scores(d, source)
 
-    df_apdd = _load("exp1_apdd", "original")
+    df_apdd = load_scores(_exp1_scores_dir(cfg), "original")
     df_port = _load("exp2a_portinari", "original")
     df_mnist = _load("exp3_mnist", "original")
 
@@ -1048,8 +1062,7 @@ def analyse_exp4(cfg, out_dir: str):
             save(fig, os.path.join(out_dir, "exp4_noise_boxplot.png"), cfg)
 
     # ── Distribution diffs vs baseline ─────────────────────────────────────
-    exp1_dir = os.path.join(cfg["paths"]["outputs"], "exp1_apdd")
-    df_base = load_scores(exp1_dir, "original")
+    df_base = load_scores(_exp1_scores_dir(cfg), "original")
     if df_base is not None and total_attr in df_base.columns:
         pairs = []
         for nt in sorted(noise_types):
@@ -1170,6 +1183,296 @@ def _exp5b_degradation(df5b, cfg, out_dir, total_attr, alpha, pal):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Diagnósticos avançados (sem outro modelo pra comparar — só o ArtCLIP)
+#   1. Monotonicidade:       score deve cair conforme o ruído aumenta (Exp4)
+#   2. Validade discriminante: o ArtCLIP separa Humano / Sintético / MNIST?
+#   3. Viés cultural:        score difere entre dentro e fora da base (Exp1 vs Exp2)
+#   4. Grupos de dificuldade: Fácil/Médio/Difícil (adaptado de TRI sem múltiplos avaliadores)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def render_simple_table_png(rows: list, col_labels: list, path: str, cfg, title=""):
+    """Tabela genérica (linhas já formatadas como string) renderizada como PNG."""
+    if not rows:
+        return
+    n_rows = len(rows)
+    n_cols = len(col_labels)
+    fig_w = max(8, 2 + n_cols * 2.2)
+    fig_h = max(2, 0.5 + n_rows * 0.45)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.axis("off")
+    tbl = ax.table(cellText=rows, colLabels=col_labels, cellLoc="center", loc="center")
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1, 1.6)
+    for j in range(n_cols):
+        tbl[(0, j)].set_facecolor("#CCCCCC")
+        tbl[(0, j)].set_text_props(fontweight="bold")
+    if title:
+        ax.set_title(title, pad=12, fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    save(fig, path, cfg)
+
+
+def _overlaid_density_chart(groups: list, out_path: str, cfg, title="", xlabel=""):
+    """
+    groups: lista de (label, valores, chave_de_cor) — chave resolvida via
+    _palette()/_hatches()/_linestyles(). Histogramas de densidade sobrepostos
+    (contorno + preenchimento com hachura), sem formas circulares/3D.
+    """
+    pal = _palette(cfg); ht = _hatches(cfg); ls = _linestyles(cfg)
+    fig, ax = plt.subplots(figsize=cfg["figures"]["figsize"])
+    for label, vals, key in groups:
+        vals = np.asarray(vals, dtype=float)
+        vals = vals[~np.isnan(vals)]
+        if len(vals) == 0:
+            continue
+        color = pal.get(key, "#888888")
+        hatch = ht.get(key, "")
+        style = ls.get(key, "solid")
+        ax.hist(vals, bins=30, density=True, histtype="step", linewidth=2.2,
+                linestyle=style, color=color, label=f"{label} (n={len(vals)})")
+        ax.hist(vals, bins=30, density=True, alpha=0.15, color=color, hatch=hatch)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Densidade")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(cfg["figures"]["grid"], alpha=0.3)
+    save(fig, out_path, cfg)
+
+
+def analyse_monotonicity(cfg, out_dir: str):
+    """
+    Teste de Monotonicidade (Análise Sequencial de Ruído) — Exp4.
+    Sem outro modelo pra comparar, valida o ArtCLIP contra a física do
+    problema: o score deve cair conforme o ruído aumenta. Métrica: Spearman ρ
+    e Kendall τ entre noise_level e score, por tipo de ruído.
+    """
+    exp4_dir = os.path.join(cfg["paths"]["outputs"], "exp4_noise")
+    df = load_scores(exp4_dir, "original")
+    total_attr = "Total aesthetic score"
+    if df is None or "noise_type" not in df.columns or "noise_level" not in df.columns:
+        print("[monotonicity] scores/metadados do exp4 não encontrados, pulando.")
+        return
+
+    alpha = cfg["stats"]["alpha"]
+    rows = []
+    for nt in sorted(df["noise_type"].dropna().unique()):
+        sub = df[df["noise_type"] == nt][["noise_level", total_attr]].dropna()
+        if len(sub) < 3:
+            continue
+        rho, p_s = spearmanr(sub["noise_level"], sub[total_attr])
+        tau, p_k = kendalltau(sub["noise_level"], sub[total_attr])
+        if p_s < alpha and rho < 0:
+            verdict = "Monotônico (decrescente)"
+        elif p_s < alpha and rho > 0:
+            verdict = "Anômalo (crescente)"
+        else:
+            verdict = "Não monotônico"
+        label_nt = L(cfg, "noise_types", nt) if nt in cfg["labels"][cfg["lang"]].get("noise_types", {}) else nt
+        rows.append([
+            label_nt, f"{rho:.3f}", f"{p_s:.3f}" if p_s >= 0.001 else "<0.001",
+            f"{tau:.3f}", f"{p_k:.3f}" if p_k >= 0.001 else "<0.001",
+            str(len(sub)), verdict,
+        ])
+    if not rows:
+        print("[monotonicity] nenhum tipo de ruído com dados suficientes, pulando.")
+        return
+    render_simple_table_png(
+        rows,
+        ["Tipo de ruído", "Spearman ρ", "p (ρ)", "Kendall τ", "p (τ)", "n", "Diagnóstico"],
+        os.path.join(out_dir, "monotonicity_table.png"), cfg,
+        title="Teste de Monotonicidade — Score vs. Nível de Ruído (Exp4)\n"
+              "(o gráfico exp4_noise_impact.png mostra a curva correspondente)"
+    )
+
+
+def analyse_discriminative_validity(cfg, out_dir: str):
+    """
+    Validade Discriminante — o ArtCLIP separa conteúdo estruturalmente
+    diferente (pintura humana / sintética vs. dígito MNIST, que não é arte)?
+    Sem outro modelo pra comparar, o teste é: as distribuições de score do
+    próprio ArtCLIP pra esses grupos são estatisticamente diferentes (KS) e
+    visualmente separáveis (densidade sobreposta)?
+    """
+    total_attr = "Total aesthetic score"
+    exp1 = _exp1_scores_dir(cfg)
+    df_human = load_scores(exp1, "original")
+    df_1b    = load_scores(exp1, "Janus-Pro-1B")
+    df_7b    = load_scores(exp1, "Janus-Pro-7B")
+    df_mnist = load_scores(os.path.join(cfg["paths"]["outputs"], "exp3_mnist"), "original")
+
+    groups = []
+    for label, df, key in [
+        ("Humano (APDDv2)", df_human, "original"),
+        ("Sintético (Janus-1B)", df_1b, "janus_1b"),
+        ("Sintético (Janus-7B)", df_7b, "janus_7b"),
+        ("MNIST", df_mnist, "mnist"),
+    ]:
+        if df is not None and total_attr in df.columns:
+            vals = df[total_attr].dropna().values
+            if len(vals) > 0:
+                groups.append((label, vals, key))
+
+    if len(groups) < 2:
+        print("[discriminative_validity] dados insuficientes, pulando.")
+        return
+
+    _overlaid_density_chart(
+        groups, os.path.join(out_dir, "discriminative_validity_density.png"), cfg,
+        title="Validade Discriminante — Distribuição de Score por Grupo",
+        xlabel=L(cfg, "axes", "score"),
+    )
+
+    pairs = []
+    for (n1, v1, _), (n2, v2, _) in combinations(groups, 2):
+        res = distribution_diff(pd.Series(v1), pd.Series(v2), n1, n2)
+        if res:
+            pairs.append(res)
+    if pairs:
+        render_dist_diff_table(
+            pairs, os.path.join(out_dir, "discriminative_validity_table.png"),
+            cfg, title="Validade Discriminante — KS Test entre Grupos"
+        )
+
+
+def analyse_cultural_bias(cfg, out_dir: str):
+    """
+    Viés Geográfico/Cultural — compara o score do ArtCLIP em obras DENTRO da
+    base de treino do ArtCLIP (APDDv2) vs. FORA da base (Portinari, arte
+    brasileira). Um desvio sistemático indica viés de calibração cultural.
+    """
+    total_attr = "Total aesthetic score"
+    df_in  = load_scores(_exp1_scores_dir(cfg), "original")
+    df_out = load_scores(os.path.join(cfg["paths"]["outputs"], "exp2a_portinari"), "original")
+
+    if (df_in is None or df_out is None
+            or total_attr not in df_in.columns or total_attr not in df_out.columns):
+        print("[cultural_bias] scores não encontrados, pulando.")
+        return
+
+    vals_in, vals_out = df_in[total_attr].dropna(), df_out[total_attr].dropna()
+    if len(vals_in) == 0 or len(vals_out) == 0:
+        print("[cultural_bias] sem valores válidos, pulando.")
+        return
+
+    pal = _palette(cfg); ht = _hatches(cfg)
+    fig, ax = plt.subplots(figsize=(7, 6))
+    bp = ax.boxplot([vals_in.values, vals_out.values],
+                    tick_labels=["APDDv2\n(dentro da base)", "Portinari\n(fora da base)"],
+                    patch_artist=True)
+    _style_median(bp)
+    for patch, key in zip(bp["boxes"], ["original", "janus_1b"]):
+        patch.set_facecolor(pal[key]); patch.set_hatch(ht[key])
+    ax.set_ylabel(L(cfg, "axes", "score"))
+    ax.set_title("Viés Cultural — Score Dentro vs. Fora da Base de Treino")
+    ax.grid(cfg["figures"]["grid"], alpha=0.3)
+    save(fig, os.path.join(out_dir, "cultural_bias_boxplot.png"), cfg)
+
+    res = distribution_diff(vals_in, vals_out, "APDDv2 (dentro)", "Portinari (fora)")
+    if res:
+        calibration_shift = float(vals_out.mean() - vals_in.mean())
+        rows = [[
+            f"{res['pair'][0]} vs {res['pair'][1]}",
+            f"{vals_in.mean():.2f}", f"{vals_out.mean():.2f}",
+            f"{calibration_shift:+.2f}",
+            f"{res['ks_stat']:.3f}", f"{res['ks_p']:.3f}" if res['ks_p'] >= 0.001 else "<0.001",
+            str(res['n1']), str(res['n2']),
+        ]]
+        render_simple_table_png(
+            rows,
+            ["Comparação", "Média dentro", "Média fora", "Desvio de calibração", "KS stat", "KS p", "n₁", "n₂"],
+            os.path.join(out_dir, "cultural_bias_table.png"), cfg,
+            title="Viés Cultural — Desvio de Calibração (fora − dentro da base)"
+        )
+
+
+def analyse_difficulty_groups(cfg, out_dir: str):
+    """
+    Cenário B adaptado (TRI sem múltiplos avaliadores/modelos): 3 grupos de
+    dificuldade construídos por manipulação em vez de por consenso entre
+    modelos — Fácil (humano original) / Médio (sintético limpo) / Difícil
+    (sintético + corrupção estrutural, ruído "shapes" no nível máximo).
+    Valida a regra de monotonicidade entre grupos (Fácil > Médio > Difícil) e
+    sinaliza "erros de calibração": imagens do grupo Difícil que pontuam
+    acima da mediana do grupo Fácil.
+    """
+    total_attr = "Total aesthetic score"
+    exp1 = _exp1_scores_dir(cfg)
+    df_easy = load_scores(exp1, "original")
+    df_med  = load_scores(exp1, "Janus-Pro-7B")
+
+    df4 = load_scores(os.path.join(cfg["paths"]["outputs"], "exp4_noise"), "original")
+    df_hard = None
+    if df4 is not None and "noise_type" in df4.columns and "noise_level" in df4.columns:
+        shapes = df4[df4["noise_type"] == "shapes"]
+        if not shapes.empty:
+            max_level = shapes["noise_level"].max()
+            df_hard = shapes[shapes["noise_level"] == max_level]
+
+    groups_raw = [
+        ("Fácil (Humano)", df_easy, "original"),
+        ("Médio (Sintético limpo)", df_med, "janus_7b"),
+        ("Difícil (Sintético + ruído estrutural)", df_hard, "highlight"),
+    ]
+    groups = []
+    for name, d, key in groups_raw:
+        if d is None or total_attr not in d.columns:
+            continue
+        vals = d[total_attr].dropna().values
+        if len(vals) > 0:
+            groups.append((name, vals, key))
+
+    if len(groups) < 2:
+        print("[difficulty_groups] dados insuficientes, pulando.")
+        return
+
+    # ── Matriz de confusão estética (densidade sobreposta) ──────────────────
+    _overlaid_density_chart(
+        groups, os.path.join(out_dir, "difficulty_groups_density.png"), cfg,
+        title="Matriz de Confusão Estética — Grupos de Dificuldade",
+        xlabel=L(cfg, "axes", "score"),
+    )
+
+    # ── Barras de média com regra de monotonicidade ─────────────────────────
+    pal = _palette(cfg); ht = _hatches(cfg)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    means = [float(np.mean(v)) for _, v, _ in groups]
+    sems  = [float(np.std(v, ddof=1) / np.sqrt(len(v))) if len(v) > 1 else 0.0 for _, v, _ in groups]
+    x = np.arange(len(groups))
+    bars = ax.bar(x, means, yerr=sems, capsize=5,
+                  color=[pal[k] for _, _, k in groups], edgecolor="black")
+    for bar, (_, _, k) in zip(bars, groups):
+        bar.set_hatch(ht[k])
+    ax.set_xticks(x); ax.set_xticklabels([n for n, _, _ in groups], rotation=15, ha="right")
+    ax.set_ylabel(L(cfg, "axes", "score"))
+    monotonic = all(means[i] >= means[i + 1] for i in range(len(means) - 1))
+    ax.set_title("Regra de Monotonicidade entre Grupos de Dificuldade\n"
+                 + ("✓ Ordem preservada (Fácil > Médio > Difícil)" if monotonic
+                    else "✗ Ordem violada — possível erro de calibração"))
+    ax.grid(cfg["figures"]["grid"], alpha=0.3, axis="y")
+    plt.tight_layout()
+    save(fig, os.path.join(out_dir, "difficulty_groups_means.png"), cfg)
+
+    # ── Tabela de estatísticas + erro de calibração ─────────────────────────
+    easy_vals = groups[0][1]
+    easy_median = float(np.median(easy_vals)) if len(easy_vals) else float("nan")
+    rows = []
+    for name, vals, _ in groups:
+        n_above = int(np.sum(vals > easy_median)) if not np.isnan(easy_median) else 0
+        pct_above = 100 * n_above / len(vals) if len(vals) else 0.0
+        rows.append([
+            name, str(len(vals)), f"{np.mean(vals):.2f}", f"{np.median(vals):.2f}",
+            f"{np.std(vals):.2f}", f"{pct_above:.1f}%",
+        ])
+    render_simple_table_png(
+        rows,
+        ["Grupo", "n", "Média", "Mediana", "Std", "% acima da mediana do Fácil"],
+        os.path.join(out_dir, "difficulty_groups_table.png"), cfg,
+        title=f"Grupos de Dificuldade — Estatísticas e Erros de Calibração (mediana Fácil={easy_median:.2f})"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 # As amostras visuais (imagens de exemplo por experimento) não são mais geradas
@@ -1204,6 +1507,11 @@ def main():
         analyse_exp5(cfg, fig_dir)
         print("── Comparações (Fig 4.9, 4.10) ─────────────────────")
         analyse_comparisons(cfg, fig_dir)
+        print("── Diagnósticos avançados ──────────────────────────")
+        analyse_monotonicity(cfg, fig_dir)
+        analyse_discriminative_validity(cfg, fig_dir)
+        analyse_cultural_bias(cfg, fig_dir)
+        analyse_difficulty_groups(cfg, fig_dir)
 
     print("\nConcluído.")
 

@@ -416,7 +416,22 @@ python scripts/analyze.py --config configs/analysis_local.yaml
 | Pasta | Conteúdo |
 |---|---|
 | `reports/figures_iccc/` | Gráficos da metodologia ICCC (t-test, Mann-Whitney, ANOVA, radar) |
-| `reports/figures/` | Gráficos por experimento (Friedman, Wilcoxon, CLD, clusters, noise, temporal) |
+| `reports/figures/` | Gráficos por experimento (Friedman, Wilcoxon, CLD, clusters, noise, temporal) + diagnósticos avançados |
+
+#### Diagnósticos avançados (sem outro modelo pra comparar — só o ArtCLIP)
+
+Quatro análises que validam o ArtCLIP contra si mesmo, já que não há outro modelo de
+referência disponível para comparação direta:
+
+| Análise | Arquivos | O que mede |
+|---|---|---|
+| Monotonicidade | `monotonicity_table.png` | Spearman ρ / Kendall τ entre nível de ruído e score (Exp4) — o score deve cair conforme o ruído aumenta |
+| Validade discriminante | `discriminative_validity_density.png`, `_table.png` | KS test + densidade sobreposta: Humano (APDDv2) vs. Sintético (Janus-1B/7B) vs. MNIST |
+| Viés cultural | `cultural_bias_boxplot.png`, `_table.png` | Score dentro da base de treino (APDDv2) vs. fora (Portinari) — desvio de calibração cultural |
+| Grupos de dificuldade | `difficulty_groups_density.png`, `_means.png`, `_table.png` | Regra de monotonicidade Fácil (humano) > Médio (sintético limpo) > Difícil (sintético + ruído estrutural no nível máximo); tabela sinaliza % de imagens do grupo Difícil acima da mediana do Fácil ("erro de calibração") |
+
+Todas usam `outputs/exp1_apdd_uniform_bins/` como o Exp1 "principal" (já que `exp1_apdd`
+agora tem 2 pastas — ver nota sobre `sampling.strategies` mais acima).
 
 As **amostras visuais** (imagens de exemplo de entrada/saída de cada experimento) não são
 geradas por esses scripts — elas rodam automaticamente dentro do `run.py`, no cluster, junto
