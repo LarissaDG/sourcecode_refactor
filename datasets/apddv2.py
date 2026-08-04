@@ -23,8 +23,9 @@ AESTHETIC_ATTRIBUTES = [
 ]
 
 # Os 9 atributos usados para calcular o score médio na amostragem por bins
-# (exclui "The overall", que já é uma síntese dos demais)
-BIN_ATTRIBUTES = [a for a in AESTHETIC_ATTRIBUTES if a != "The overall"]
+# (exclui "The sense of order" — modelo 6 do ArtCLIP tem bug conhecido e é
+# excluído da avaliação, ver README)
+BIN_ATTRIBUTES = [a for a in AESTHETIC_ATTRIBUTES if a != "The sense of order"]
 
 # Possíveis nomes de colunas no CSV (CSV oficial vs. fixtures de teste)
 SCORE_COL_CANDIDATES = ["Total aesthetic score", "Score"]

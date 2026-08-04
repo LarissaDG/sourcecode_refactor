@@ -443,7 +443,20 @@ separado nem das imagens originais localmente.
 
 ### Relatórios HTML
 
-Gera as páginas do GitHub Pages com todas as figuras embutidas (base64):
+`Paper_iccc.html` e `exp1_apdd.html` contam uma narrativa própria (EDA do dataset, valores
+ausentes, amostragem antes/depois com toggle uniform_bins/proportional_stratified, amostras
+de exemplo, e as perguntas sobre impacto do tamanho do modelo — Friedman+Wilcoxon, diferença
+de score, consistência) — gerada por `scripts/analyze_paper.py`, separado do
+`scripts/analyze.py`/`analyze_iccc.py` genéricos. Rode antes de gerar o HTML:
+
+```powershell
+python scripts/analyze_paper.py --config configs/analysis_local.yaml
+```
+
+Toda tabela sai em 2 formatos em `reports/figures_paper/`: `<nome>.png` (imagem, embutida no
+HTML) e `<nome>.tex.txt` (LaTeX, pra colar direto na dissertação/paper).
+
+Depois, gera as páginas do GitHub Pages com todas as figuras embutidas (base64):
 
 ```powershell
 python scripts/generate_html_reports.py --config configs/analysis_local.yaml
@@ -454,13 +467,18 @@ Arquivos gerados em `reports/`:
 | Arquivo | Conteúdo |
 |---|---|
 | `index.html` | Página inicial com resumo e navegação |
-| `Paper_iccc.html` | Metodologia original ICCC 2025 (legacy) |
-| `exp1_apdd.html` | Experimento 1 — APDDv2 |
+| `Paper_iccc.html` | Amostra original do ICCC 2025 (`exp0_iccc`, via `legacy_csv`) — EDA, amostragem, perguntas 1-3, validação de reprodutibilidade |
+| `exp1_apdd.html` | Experimento 1 — mesma narrativa, `exp1_apdd_*`, com toggle uniform_bins/proportional_stratified + comparação entre as duas estratégias |
 | `exp2a_portinari.html` | Experimento 2a — Portinari (AI captions) |
 | `exp2b_portinari_human.html` | Experimento 2b — Portinari (human captions) |
 | `exp3_mnist.html` | Experimento 3 — MNIST |
 | `exp4_noise.html` | Experimento 4 — Ruído |
 | `exp5_temporal.html` | Experimento 5 — Temporal |
+
+> `exp2a`/`exp2b`/`exp3`/`exp4`/`exp5` ainda usam o gerador antigo (figuras de
+> `scripts/analyze.py`/`analyze_iccc.py` + `reports/samples/`, que não é mais preenchido desde
+> que as amostras passaram a ser geradas por `pipeline/samples.py` em `outputs/<exp>/samples/`)
+> — atualização pendente, fora do escopo desta rodada.
 
 ---
 

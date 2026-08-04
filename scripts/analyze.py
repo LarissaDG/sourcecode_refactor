@@ -363,7 +363,7 @@ def render_stat_table_png(fw_result: dict, attrs: list, group_names: list,
     row_labels = [attr_label(cfg, a) for a in attrs]
 
     cell_text = []
-    cell_bold = []  # (row, col) to bold
+    cell_bold = []  # (row, col) to bold — filled in below, applied to the table after creation
 
     for i, attr in enumerate(attrs):
         row_text = []
@@ -376,7 +376,7 @@ def render_stat_table_png(fw_result: dict, attrs: list, group_names: list,
         else:
             best_g = None
 
-        for g in group_names:
+        for j, g in enumerate(group_names):
             if g not in row_info:
                 row_text.append("—")
             else:
@@ -385,7 +385,7 @@ def render_stat_table_png(fw_result: dict, attrs: list, group_names: list,
                 l = row_info[g]["letter"]
                 cell = f"{m:.2f}±{s:.2f}{l}"
                 if g == best_g:
-                    cell = f"*{cell}*"
+                    cell_bold.append((i, j))
                 row_text.append(cell)
 
         if fp is not None:
@@ -420,6 +420,8 @@ def render_stat_table_png(fw_result: dict, attrs: list, group_names: list,
         cell.set_text_props(fontweight="bold")
     for i in range(n_rows):
         tbl[(i + 1, -1)].set_facecolor("#F5F5F5")
+    for i, j in cell_bold:
+        tbl[(i + 1, j)].set_text_props(fontweight="bold")
 
     if title:
         ax.set_title(title, pad=12, fontsize=11, fontweight="bold")
