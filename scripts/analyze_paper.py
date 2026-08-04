@@ -317,7 +317,7 @@ def _attr_before_after_grid(df_full, df_sampled, out_dir, cfg, filename):
             ax_l.hist(vf, bins=bins, color=COLOR_BEFORE, alpha=0.8, edgecolor="white", linewidth=0.4)
             ax_l.axvline(vf.mean(), color="#d63031", ls="--", lw=1.4, label=f"μ={vf.mean():.2f}")
             ax_l.legend(fontsize=7, loc="upper left")
-        ax_l.set_xlim(0, 10); ax_l.set_xticks(np.arange(0, 11, 2))
+        ax_l.set_xlim(0, 10); ax_l.set_xticks(np.arange(0, 11, 1))
         ax_l.set_ylabel(attr_label(cfg, col), fontsize=8)
         ax_l.tick_params(labelsize=7)
         ax_l.grid(True, alpha=0.2, axis="y")
@@ -329,9 +329,15 @@ def _attr_before_after_grid(df_full, df_sampled, out_dir, cfg, filename):
         else:
             ax_r.text(0.5, 0.5, "Sem dados", ha="center", va="center", transform=ax_r.transAxes,
                       fontsize=8, color="#636e72")
-        ax_r.set_xlim(0, 10); ax_r.set_xticks(np.arange(0, 11, 2))
+        ax_r.set_xlim(0, 10); ax_r.set_xticks(np.arange(0, 11, 1))
         ax_r.tick_params(labelsize=7)
         ax_r.grid(True, alpha=0.2, axis="y")
+
+        if not vf.empty and not vs.empty:
+            delta = vs.mean() - vf.mean()
+            arrow, arrow_color = ("▲", "#2e7d32") if delta >= 0 else ("▼", "#c0392b")
+            ax_r.text(0.98, 0.95, f"{arrow} {delta:+.2f}", ha="right", va="top",
+                      transform=ax_r.transAxes, fontsize=9, fontweight="bold", color=arrow_color)
 
         if i == 0:
             ax_l.set_title(f"Antes (n = {len(vf):,})", fontsize=10, fontweight="bold", color=COLOR_BEFORE)
