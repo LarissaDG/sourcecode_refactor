@@ -487,6 +487,8 @@ def _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix=""):
     def align(df_ref, df_gen, attr):
         if df_ref is None or df_gen is None:
             return None, None
+        if attr not in df_ref.columns or attr not in df_gen.columns:
+            return None, None  # ex: "The sense of order" — agente falhou ao carregar no scoring
         a, b = df_ref.copy(), df_gen.copy()
         if "stem" not in a.columns: a["stem"] = a["filename"].apply(_stem)
         if "stem" not in b.columns: b["stem"] = b["filename"].apply(_stem)
