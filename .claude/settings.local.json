@@ -36,7 +36,8 @@
       "mcp__visualize__read_me",
       "mcp__visualize__show_widget",
       "Bash(python scripts/generate_html_reports.py --config configs/analysis_local.yaml)",
-      "Bash(venv_local/Scripts/python.exe -m pip show pytest pyyaml pandas torch torchvision pillow numpy)"
+      "Bash(venv_local/Scripts/python.exe -m pip show pytest pyyaml pandas torch torchvision pillow numpy)",
+      "Bash(python -m pytest tests/test_dataset_apdd.py -q)"
     ]
   }
 }
