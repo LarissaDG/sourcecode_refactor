@@ -163,6 +163,43 @@ footer { text-align: center; padding: 1.5rem; color: #636e72; font-size: 0.82rem
     não têm valor na coluna <code>Description_en</code> do acervo original — sem legenda humana
     disponível, essas 2 imagens não entraram na etapa de geração/pontuação do Exp2b.</p></div>
 </div>
+
+
+<div style="background:white;border-radius:10px;padding:1.4rem 1.6rem;
+            box-shadow:0 2px 8px rgba(0,0,0,.08);margin:1rem 0;">
+  <h4 style="margin-bottom:.8rem;color:#2d3436;">Tamanho das Legendas — Acervo Completo (Antes da Amostragem) <span class="viz-id">SAMP-5b</span></h4>
+  <p style="font-size:.88rem;color:#636e72;margin-bottom:.5rem;">
+    Mesma estatística acima, agora calculada sobre a descrição original de <b>todo o acervo do
+    Portinari</b> (5.118 obras, coluna <code>Descrição</code> de <code>acervoPortinari.csv</code>),
+    antes da amostragem aleatória de 500 obras usada em Exp2a/Exp2b.
+  </p>
+  <div class="info" style="font-size:.82rem;margin-bottom:.8rem;">
+    <strong>Atenção — idiomas diferentes:</strong> o acervo completo só tem a descrição em
+    <b>português</b> (<code>Descrição</code>). A tradução para o inglês
+    (<code>Description_en</code>, usada nas tabelas de Exp2a/Exp2b acima) existe apenas para as
+    500 obras já amostradas. Os números abaixo não são diretamente comparáveis palavra-a-palavra
+    com os de Exp2a/Exp2b por causa da língua — servem para caracterizar a variabilidade do
+    texto-fonte completo antes da amostragem, não para medir o efeito da amostragem em si.
+  </div>
+  <div style="overflow-x:auto;margin-top:.8rem;">
+    <table style="border-collapse:collapse;font-size:.85rem;width:100%;max-width:560px;">
+      <thead>
+        <tr style="background:#2d3436;color:white;">
+          <th style="padding:.45rem .7rem;text-align:left;">Métrica</th>
+          <th style="padding:.45rem .7rem;text-align:right;">Palavras</th>
+          <th style="padding:.45rem .7rem;text-align:right;">Caracteres</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:#f8f9fa;"><td style="padding:.4rem .7rem;">Mínimo</td><td style="padding:.4rem .7rem;text-align:right;">9</td><td style="padding:.4rem .7rem;text-align:right;">56</td></tr>
+        <tr><td style="padding:.4rem .7rem;">Máximo</td><td style="padding:.4rem .7rem;text-align:right;">1117</td><td style="padding:.4rem .7rem;text-align:right;">6939</td></tr>
+        <tr style="background:#f8f9fa;"><td style="padding:.4rem .7rem;">Média</td><td style="padding:.4rem .7rem;text-align:right;">118.7</td><td style="padding:.4rem .7rem;text-align:right;">723.6</td></tr>
+        <tr><td style="padding:.4rem .7rem;">Desvio padrão</td><td style="padding:.4rem .7rem;text-align:right;">72.0</td><td style="padding:.4rem .7rem;text-align:right;">424.9</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.8rem;color:#636e72;margin-top:.4rem;">n = 5.112 obras com descrição não vazia (de 5.118 no acervo completo).</p>
+</div>
 </section>
 
 
