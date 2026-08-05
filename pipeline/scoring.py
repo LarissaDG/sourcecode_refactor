@@ -1,10 +1,48 @@
+import hashlib
 import os
 import torch
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageFile
 
+from datasets.noise import NOISE_FNS
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+
+def _stable_seed(*parts) -> int:
+    """Seed determinístico (estável entre processos/máquinas, ao contrário de
+    hash() nativo do Python, que é aleatorizado por padrão a cada execução)."""
+    key = "|".join(str(p) for p in parts).encode("utf-8")
+    return int(hashlib.md5(key).hexdigest(), 16) % (2**31)
+
+
+def _apply_noise_if_needed(image: Image.Image, sample: dict, img_path: str) -> Image.Image:
+    """
+    Reaplica o ruído descrito em sample['noise_type']/['noise_level'] sobre a
+    imagem recém-aberta do disco.
+
+    Necessário porque `data` passa por _save_data/_load_data (JSON) entre as
+    etapas do pipeline, e um tensor de imagem não sobrevive a esse round-trip
+    — o campo 'image' chega sempre None em run_scoring(). Sem isso, toda
+    imagem "ruidosa" era pontuada como se fosse a original sem ruído (Exp4 e
+    Exp5b apresentavam o mesmo score para todos os níveis/tipos de ruído).
+    """
+    noise_type = sample.get("noise_type")
+    if not noise_type or noise_type == "none":
+        return image
+    noise_level = sample.get("noise_level")
+    try:
+        noise_level = int(noise_level)
+    except (TypeError, ValueError):
+        return image
+    if noise_level <= 0:
+        return image
+    if noise_type not in NOISE_FNS:
+        return image
+    seed = _stable_seed(os.path.basename(img_path), noise_type, noise_level)
+    np.random.seed(seed)
+    return NOISE_FNS[noise_type](image, noise_level)
 
 
 # ── Carregamento de um agente ─────────────────────────────────────────────────
@@ -86,6 +124,7 @@ def run_scoring(cfg, data: list) -> None:
 
             try:
                 image = Image.open(img_path).convert("RGB")
+                image = _apply_noise_if_needed(image, sample, img_path)
                 image_t = preprocess(image).unsqueeze(0).to(device)
             except Exception as e:
                 print(f"  [!] Erro ao abrir {img_path}: {e}")

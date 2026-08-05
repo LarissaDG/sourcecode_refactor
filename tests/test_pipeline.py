@@ -179,3 +179,109 @@ def test_scoring_no_all_nan_columns(mini_apdd_dir, base_cfg, monkeypatch, tmp_pa
     run_scoring(cfg, _make_data_with_generated(mini_apdd_dir, tmp_path))
     df = pd.read_csv(os.path.join(str(tmp_path), "test_exp1", "scores", "scores_original.csv"))
     assert not df.isnull().all().any()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CAIXINHA 4 — reaplicação de ruído no scoring (Exp4/Exp5b)
+#
+# `data` passa por _save_data/_load_data (JSON) entre etapas do pipeline, então
+# o tensor de imagem já-ruidosa nunca sobrevive até run_scoring — o campo
+# 'image' chega sempre None. Sem reaplicar o ruído a partir de
+# noise_type/noise_level, toda amostra "ruidosa" era pontuada como a imagem
+# original, produzindo o mesmo score pra todos os níveis/tipos (bug real
+# encontrado analisando outputs/exp4_noise e outputs/exp5b_temporal_error).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _make_solid_image(path, color=(120, 120, 120)):
+    Image.new("RGB", (64, 64), color=color).save(path)
+
+
+def test_apply_noise_if_needed_changes_pixels(tmp_path):
+    from pipeline.scoring import _apply_noise_if_needed
+
+    path = os.path.join(str(tmp_path), "img.png")
+    _make_solid_image(path)
+    image = Image.open(path).convert("RGB")
+
+    noised = _apply_noise_if_needed(
+        image, {"noise_type": "gaussian", "noise_level": 80}, path
+    )
+    assert np.array(noised).tobytes() != np.array(image).tobytes()
+
+
+def test_apply_noise_if_needed_noop_without_noise(tmp_path):
+    from pipeline.scoring import _apply_noise_if_needed
+
+    path = os.path.join(str(tmp_path), "img.png")
+    _make_solid_image(path)
+    image = Image.open(path).convert("RGB")
+
+    for sample in [
+        {"noise_type": "none", "noise_level": 50},
+        {"noise_type": None, "noise_level": 50},
+        {"noise_type": "gaussian", "noise_level": 0},
+        {},
+    ]:
+        result = _apply_noise_if_needed(image, sample, path)
+        assert np.array(result).tobytes() == np.array(image).tobytes()
+
+
+def test_apply_noise_if_needed_is_reproducible(tmp_path):
+    from pipeline.scoring import _apply_noise_if_needed
+
+    path = os.path.join(str(tmp_path), "img.png")
+    _make_solid_image(path)
+    image = Image.open(path).convert("RGB")
+    sample = {"noise_type": "shapes", "noise_level": 60}
+
+    a = _apply_noise_if_needed(image, sample, path)
+    b = _apply_noise_if_needed(image, sample, path)
+    assert np.array(a).tobytes() == np.array(b).tobytes()
+
+
+def test_apply_noise_if_needed_differs_by_level(tmp_path):
+    from pipeline.scoring import _apply_noise_if_needed
+
+    path = os.path.join(str(tmp_path), "img.png")
+    _make_solid_image(path)
+    image = Image.open(path).convert("RGB")
+
+    low  = _apply_noise_if_needed(image, {"noise_type": "gaussian", "noise_level": 10}, path)
+    high = _apply_noise_if_needed(image, {"noise_type": "gaussian", "noise_level": 90}, path)
+    assert np.array(low).tobytes() != np.array(high).tobytes()
+
+
+def _mock_scoring_deps_pixel_aware(monkeypatch):
+    """Como _mock_scoring_deps, mas o `_predict` mockado depende de verdade do
+    conteúdo do tensor (média dos pixels), pra detectar se o ruído foi
+    realmente aplicado antes da predição — o mock padrão (`np.random.uniform`)
+    não seria sensível a isso."""
+    monkeypatch.setitem(sys.modules, "models",          MagicMock())
+    monkeypatch.setitem(sys.modules, "models.clip",     _fake_clip)
+    monkeypatch.setitem(sys.modules, "models.aesclip",  MagicMock())
+
+    import pipeline.scoring as sc
+    monkeypatch.setattr(sc, "_load_agent", lambda *a, **kw: MagicMock())
+    monkeypatch.setattr(sc, "_predict",    lambda model, t: float(t.mean()))
+
+
+def test_scoring_produces_different_scores_per_noise_level(tmp_path, base_cfg, monkeypatch):
+    """Regressão pro bug real: mesma imagem-base, dois níveis de ruído
+    diferentes -> scores diferentes no CSV final (antes do fix, eram iguais)."""
+    _mock_scoring_deps_pixel_aware(monkeypatch)
+    from pipeline.scoring import run_scoring
+
+    img_path = os.path.join(str(tmp_path), "base.png")
+    _make_solid_image(img_path, color=(100, 150, 200))
+
+    data = [
+        {"filename": img_path, "path": img_path, "noise_type": "gaussian", "noise_level": 10},
+        {"filename": img_path, "path": img_path, "noise_type": "gaussian", "noise_level": 90},
+    ]
+    cfg = {**base_cfg, "experiment": {**base_cfg["experiment"], "output_dir": str(tmp_path)}}
+    run_scoring(cfg, data)
+
+    df = pd.read_csv(os.path.join(str(tmp_path), "test_exp1", "scores", "scores_original.csv"))
+    scores = df["Total aesthetic score"].tolist()
+    assert len(scores) == 2
+    assert scores[0] != scores[1]
