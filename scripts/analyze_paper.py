@@ -600,6 +600,42 @@ def deviation_line_graph(diffs_by_group, attrs, out_dir, cfg, filename, title,
     save_fig(fig, os.path.join(out_dir, filename), cfg)
 
 
+def boxplot_grid_by_attribute(dfs_by_dataset, attrs, out_dir, cfg, filename, title,
+                               colors=None):
+    """
+    dfs_by_dataset: {rotulo_dataset: DataFrame} com colunas = attrs.
+    Grade 3x3 (ou o quanto couber) — um boxplot por atributo, comparando os
+    datasets lado a lado dentro do mesmo subplot.
+    """
+    n = len(attrs)
+    ncols = 3
+    nrows = int(np.ceil(n / ncols))
+    palette = colors or ["#33A650", "#e17055", "#a29bfe", "#0984e3", "#fdcb6e"]
+    dataset_labels = list(dfs_by_dataset.keys())
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.3 * ncols, 3.6 * nrows))
+    axes = np.array(axes).reshape(-1)
+    for i, attr in enumerate(attrs):
+        ax = axes[i]
+        data = [dfs_by_dataset[lbl][attr].dropna().values for lbl in dataset_labels
+                if attr in dfs_by_dataset[lbl].columns]
+        labels_present = [lbl for lbl in dataset_labels if attr in dfs_by_dataset[lbl].columns]
+        bp = ax.boxplot(data, tick_labels=labels_present, patch_artist=True, widths=0.6,
+                         medianprops=dict(color="#2d3436", linewidth=1.6))
+        for patch, lbl in zip(bp["boxes"], labels_present):
+            patch.set_facecolor(palette[dataset_labels.index(lbl) % len(palette)])
+            patch.set_alpha(0.75)
+        ax.set_ylim(0, 10); ax.set_yticks(np.arange(0, 11, 2))
+        ax.set_title(attr_label(cfg, attr), fontsize=10, fontweight="bold")
+        ax.tick_params(labelsize=8)
+        ax.grid(True, alpha=0.25, axis="y")
+    for j in range(n, len(axes)):
+        axes[j].axis("off")
+    fig.suptitle(title, fontsize=13, fontweight="bold", y=1.01)
+    plt.tight_layout()
+    save_fig(fig, os.path.join(out_dir, filename), cfg)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════
