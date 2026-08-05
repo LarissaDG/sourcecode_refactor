@@ -542,6 +542,65 @@ def _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix=""):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Comparações entre experimentos (Exp2a×Exp2b, Exp1×Exp2a×Exp2b)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def distribution_diff_table_per_attr(dfs, comparisons, attrs, out_dir, cfg, name, title=""):
+    """
+    dfs: {label: DataFrame} com colunas = attrs.
+    comparisons: lista de (rotulo_comparacao, label_a, label_b) — uma linha por
+    (atributo, comparação) na tabela final, usando distribution_diff() (KS/Wasserstein/KL)
+    sobre os valores brutos de cada grupo (não pareados por imagem — são amostras
+    independentes vindas de experimentos diferentes).
+    """
+    rows = []
+    for attr in attrs:
+        for comp_label, a, b in comparisons:
+            if attr not in dfs[a].columns or attr not in dfs[b].columns:
+                continue
+            res = distribution_diff(dfs[a][attr], dfs[b][attr], a, b)
+            if res is None:
+                continue
+            p_str = f"{res['ks_p']:.4f}" if res["ks_p"] >= 0.0001 else "<0.0001"
+            rows.append([
+                attr_label(cfg, attr), comp_label,
+                f"{res['ks_stat']:.3f}", p_str,
+                f"{res['wasserstein']:.3f}", f"{res['kl']:.3f}",
+            ])
+    save_table(
+        rows, ["Atributo", "Comparação", "KS", "p (KS)", "Wasserstein", "KL"],
+        out_dir, name, cfg, title=title,
+    )
+    return rows
+
+
+def deviation_line_graph(diffs_by_group, attrs, out_dir, cfg, filename, title,
+                          ylabel="Human − Janus-7B (Average Score)"):
+    """
+    diffs_by_group: {rotulo_grupo: {attr: diff_medio}} — uma linha por grupo,
+    eixo X = atributos (por extenso), eixo Y = valor de diferença.
+    """
+    labels = [attr_label(cfg, a) for a in attrs]
+    x = np.arange(len(attrs))
+    markers = ["o", "s", "^", "D", "v"]
+    linestyles = ["-", "--", "-.", ":", "-"]
+    palette = ["#2d3436", COLOR_HUMAN_1B, COLOR_HUMAN_7B, "#6c5ce7", "#00b894"]
+
+    fig, ax = plt.subplots(figsize=(max(9, len(attrs) * 0.9), 5.5))
+    for i, (group_label, diffs) in enumerate(diffs_by_group.items()):
+        y = [diffs.get(a) for a in attrs]
+        ax.plot(x, y, marker=markers[i % len(markers)], linestyle=linestyles[i % len(linestyles)],
+                color=palette[i % len(palette)], linewidth=2, markersize=7, label=group_label)
+    ax.axhline(0, color="black", linewidth=0.9, alpha=0.6)
+    ax.set_xticks(x); ax.set_xticklabels(labels, rotation=40, ha="right")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.legend(); ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    save_fig(fig, os.path.join(out_dir, filename), cfg)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════
 
