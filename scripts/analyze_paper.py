@@ -58,6 +58,13 @@ COLOR_UNIFORM  = "#448FF2"  # azul — estratégia uniform_bins
 COLOR_STRAT    = "#F2A007"  # laranja — estratégia proportional_stratified
 
 STRATEGIES = ["uniform_bins", "proportional_stratified"]
+
+# Eixo Y do Q2 (Human − Gerado por atributo) do Paper_iccc.html, fixado pra bater
+# com a mesma faixa/ticks usada no Q2 do Portinari (exp2_portinari.html) — pedido
+# explícito da usuária em 2026-08-06 pra ficarem visualmente comparáveis.
+PAPER_Q2_YLIM = (-0.12, 0.95)
+PAPER_Q2_YTICKS = np.arange(-0.2, 1.0, 0.1)
+
 STRATEGY_LABELS = {
     "uniform_bins": "Uniforme",
     "proportional_stratified": "Estratificado Proporcional",
@@ -252,8 +259,10 @@ def _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, sh
         (axes[0], full_avg, COLOR_BEFORE, "Antes (APDDv2 completo)", True),
         (axes[1], sampled_avg, COLOR_AFTER, f"Depois ({STRATEGY_LABELS[strategy]})", show_full_stats),
     ]
+    n_bins = 30
+    bin_width = 10 / n_bins
     for ax, vals, color, label, show_stats in panels:
-        ax.hist(vals, bins=30, range=(0, 10), density=True, color=color, alpha=0.75, edgecolor="white")
+        ax.hist(vals, bins=n_bins, range=(0, 10), density=False, color=color, alpha=0.75, edgecolor="white")
         mu, med = vals.mean(), vals.median()
         ax.axvline(mu, color="#2d3436", ls="--", lw=1.6, label=f"Média = {mu:.2f}")
         ax.axvline(med, color="#6c5ce7", ls=":", lw=1.6, label=f"Mediana = {med:.2f}")
@@ -261,12 +270,14 @@ def _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, sh
         if show_stats and len(vals) > 3:
             sk, kt, std = skew(vals), kurtosis(vals), vals.std()
             xs = np.linspace(0, 10, 300)
-            ax.plot(xs, scipy_norm.pdf(xs, mu, std), color="#d63031", lw=2, label="Ajuste normal")
+            # escala a densidade da normal pra contagem esperada por bin (density * n * largura_do_bin)
+            ax.plot(xs, scipy_norm.pdf(xs, mu, std) * len(vals) * bin_width,
+                    color="#d63031", lw=2, label="Ajuste normal")
             title += f"\nAssimetria = {sk:.3f}   Curtose = {kt:.3f}"
         ax.set_xlim(0, 10)
         ax.set_xticks(np.arange(0, 11, 1))
         ax.set_xlabel("Score Médio por Imagem")
-        ax.set_ylabel("Frequência (densidade)")
+        ax.set_ylabel("Contagem")
         ax.set_title(title, fontsize=11)
         ax.legend(fontsize=8, loc="upper left")
         ax.grid(True, alpha=0.25, axis="y")
@@ -394,14 +405,14 @@ def build_strategy_comparison(cfg, out_dir):
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(avg_u, bins=30, range=(0, 10), density=True, histtype="step", linewidth=2.2,
+    ax.hist(avg_u, bins=30, range=(0, 10), density=False, histtype="step", linewidth=2.2,
             color=COLOR_UNIFORM, label=f"Uniforme (n={len(avg_u)})")
-    ax.hist(avg_u, bins=30, range=(0, 10), density=True, alpha=0.15, color=COLOR_UNIFORM, hatch="///")
-    ax.hist(avg_s, bins=30, range=(0, 10), density=True, histtype="step", linewidth=2.2,
+    ax.hist(avg_u, bins=30, range=(0, 10), density=False, alpha=0.15, color=COLOR_UNIFORM, hatch="///")
+    ax.hist(avg_s, bins=30, range=(0, 10), density=False, histtype="step", linewidth=2.2,
             linestyle="dashed", color=COLOR_STRAT, label=f"Estratificado Proporcional (n={len(avg_s)})")
-    ax.hist(avg_s, bins=30, range=(0, 10), density=True, alpha=0.15, color=COLOR_STRAT, hatch="xxx")
+    ax.hist(avg_s, bins=30, range=(0, 10), density=False, alpha=0.15, color=COLOR_STRAT, hatch="xxx")
     ax.set_xlim(0, 10); ax.set_xticks(np.arange(0, 11, 1))
-    ax.set_xlabel("Score Médio por Imagem"); ax.set_ylabel("Densidade")
+    ax.set_xlabel("Score Médio por Imagem"); ax.set_ylabel("Contagem")
     ax.set_title("Uniforme vs. Estratificado Proporcional — Comparação das Distribuições")
     ax.legend(); ax.grid(True, alpha=0.3)
     plt.tight_layout()
@@ -457,7 +468,7 @@ def _save_q1_latex(fw, attrs, group_names, out_dir, cfg, name):
         f.write("\n".join(lines))
 
 
-def build_questions(cfg, base_name, strategy, out_dir, suffix=""):
+def build_questions(cfg, base_name, strategy, out_dir, suffix="", q2_ylim=None, q2_yticks=None):
     """Perguntas 1, 2 e 3 — Friedman/Wilcoxon, barras de diferença, tabela de diferença."""
     exp_dir = _exp_scores_dir(cfg, base_name, strategy)
     df_1b = load_scores(exp_dir, "Janus-Pro-1B")
@@ -485,11 +496,11 @@ def build_questions(cfg, base_name, strategy, out_dir, suffix=""):
         _save_q1_latex(fw, attrs, list(groups.keys()), out_dir, cfg, name)
 
     # ── Perguntas 2 e 3 ──────────────────────────────────────────────────
-    _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix)
+    _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix, ylim=q2_ylim, yticks=q2_yticks)
     print(f"  ✓ Perguntas 1-3 ({base_name}, {strategy})")
 
 
-def _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix=""):
+def _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix="", ylim=None, yticks=None):
     def align(df_ref, df_gen, attr):
         if df_ref is None or df_gen is None:
             return None, None
@@ -525,6 +536,10 @@ def _score_diff_bars_hr(df_human, df_1b, df_7b, attrs, out_dir, cfg, suffix=""):
            color=COLOR_HUMAN_7B, hatch="xxx", edgecolor="white")
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_xticks(x); ax.set_xticklabels([labels[i] for i in valid], rotation=40, ha="right")
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    if yticks is not None:
+        ax.set_yticks(yticks)
     ax.set_ylabel("Average Score")
     ax.set_title("Diferença Média de Score (Human − Gerado) por Atributo")
     ax.legend(); ax.grid(True, alpha=0.3, axis="y")
@@ -657,9 +672,11 @@ def main():
     build_eda(cfg, shared_dir)
     build_missing_values(cfg, shared_dir)
 
-    print("── Paper ICCC (exp0_iccc) ─────────────────────────────")
-    build_sampling_section(cfg, "exp0_iccc", ["proportional_stratified"], iccc_dir)
-    build_questions(cfg, "exp0_iccc", "proportional_stratified", iccc_dir, suffix="_proportional_stratified")
+    print("── Paper ICCC (exp0_iccc) — ambas as estratégias ──────")
+    build_sampling_section(cfg, "exp0_iccc", STRATEGIES, iccc_dir)
+    for strategy in STRATEGIES:
+        build_questions(cfg, "exp0_iccc", strategy, iccc_dir, suffix=f"_{strategy}",
+                         q2_ylim=PAPER_Q2_YLIM, q2_yticks=PAPER_Q2_YTICKS)
 
     print("── Exp 1 (exp1_apdd) — ambas as estratégias ───────────")
     build_sampling_section(cfg, "exp1_apdd", STRATEGIES, exp1_dir_out)
