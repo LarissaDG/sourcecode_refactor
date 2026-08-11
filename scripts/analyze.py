@@ -25,8 +25,8 @@ import numpy as np
 import pandas as pd
 import yaml
 from itertools import combinations
-from scipy.stats import (friedmanchisquare, kendalltau, ks_2samp, pearsonr,
-                         spearmanr, wasserstein_distance, wilcoxon)
+from scipy.stats import (friedmanchisquare, kendalltau, kruskal, ks_2samp, mannwhitneyu,
+                         pearsonr, spearmanr, wasserstein_distance, wilcoxon)
 from scipy.special import rel_entr
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -299,6 +299,63 @@ def friedman_wilcoxon(groups_dict: dict, attrs: list, alpha=0.05) -> dict:
             for g in valid
         }
         result[attr]["_friedman_p"] = friedman_p
+
+    return result
+
+
+def kruskal_mannwhitney(groups_dict: dict, attrs: list, alpha=0.05) -> dict:
+    """
+    Igual a friedman_wilcoxon, mas pra amostras INDEPENDENTES (não pareadas) —
+    ex.: comparar atributos entre datasets diferentes (APDDv2 vs. Portinari vs.
+    MNIST), onde não há como alinhar por 'stem' (imagens diferentes). Usa
+    Kruskal-Wallis como teste ômnibus e Mann-Whitney U pareado a pareado (com o
+    mesmo Compact Letter Display de friedman_wilcoxon) em vez de Friedman/Wilcoxon.
+
+    groups_dict: {group_name: DataFrame com a coluna de cada atributo}.
+    Retorna: {attr: {group_name: {"mean", "std", "letter", "n"}, "_kruskal_p": float}}
+    """
+    result = {}
+    group_names = list(groups_dict.keys())
+
+    for attr in attrs:
+        vals_by_group = {}
+        for name, df in groups_dict.items():
+            if df is None or attr not in df.columns:
+                continue
+            v = df[attr].dropna().values
+            if len(v) > 0:
+                vals_by_group[name] = v
+
+        valid = [g for g in group_names if g in vals_by_group]
+        if len(valid) < 2:
+            continue
+
+        kruskal_p = 1.0
+        if len(valid) >= 3:
+            try:
+                _, kruskal_p = kruskal(*[vals_by_group[g] for g in valid])
+            except Exception:
+                pass
+
+        pval_dict = {}
+        for g1, g2 in combinations(valid, 2):
+            pair = tuple(sorted([g1, g2]))
+            try:
+                _, p = mannwhitneyu(vals_by_group[g1], vals_by_group[g2])
+                pval_dict[pair] = p
+            except Exception:
+                pval_dict[pair] = 1.0
+
+        means = {g: float(np.mean(vals_by_group[g])) for g in valid}
+        stds  = {g: float(np.std(vals_by_group[g], ddof=1)) if len(vals_by_group[g]) > 1 else 0.0
+                 for g in valid}
+        letters = _compact_letters(valid, means, pval_dict, alpha)
+
+        result[attr] = {
+            g: {"mean": means[g], "std": stds[g], "letter": letters[g], "n": len(vals_by_group[g])}
+            for g in valid
+        }
+        result[attr]["_kruskal_p"] = kruskal_p
 
     return result
 

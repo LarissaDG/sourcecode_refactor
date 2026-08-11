@@ -749,12 +749,184 @@ def gen_aims(cfg, base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# APDDv2 x Portinari x MNIST — tabelas com teste estatístico único (Kruskal-
+# Wallis + Mann-Whitney par-a-par) entre TODOS os grupos de cada linha, ao
+# invés de reaproveitar letras de testes separados por bloco. APDDv2 = amostra
+# de exp0_iccc_proportional_stratified (502 imgs, reprodução estratificada do
+# Paper ICCC) — pedido explícito da usuária em 2026-08-06.
+# ═══════════════════════════════════════════════════════════════════════════
+
+TITLE_CASE = {
+    "Theme and logic": "Theme and Logic", "Creativity": "Creativity",
+    "Layout and composition": "Layout and Composition", "Space and perspective": "Space and Perspective",
+    "Light and shadow": "Light and Shadow", "Color": "Color",
+    "Details and texture": "Details and Texture", "The overall": "Overall", "Mood": "Mood",
+}
+
+
+def _render_kw_table_png(rows_raw, col_labels, out_path, title):
+    """rows_raw: lista de linhas, cada célula = (texto_plano, is_bold)."""
+    n_rows, n_cols = len(rows_raw), len(col_labels)
+    fig_w = max(9, 1.2 + n_cols * 1.7)
+    fig_h = max(2, 0.7 + n_rows * 0.42)
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.axis("off")
+    text_rows = [[c[0] for c in row] for row in rows_raw]
+    tbl = ax.table(cellText=text_rows, colLabels=col_labels, cellLoc="center", loc="center")
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1, 1.5)
+    for j in range(n_cols):
+        tbl[(0, j)].set_facecolor("#CCCCCC")
+        tbl[(0, j)].set_text_props(fontweight="bold")
+    for i, row in enumerate(rows_raw):
+        for j, (_, is_bold) in enumerate(row):
+            if is_bold:
+                tbl[(i + 1, j)].set_text_props(fontweight="bold")
+    ax.set_title(title, pad=12, fontsize=11, fontweight="bold")
+    plt.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _kw_row_cells(row_info, col_order):
+    means = {g: row_info[g]["mean"] for g in col_order if g in row_info}
+    best_g = max(means, key=means.get) if means else None
+    tex_cells, png_cells = [], []
+    for g in col_order:
+        if g not in row_info:
+            tex_cells.append("\\textemdash"); png_cells.append(("—", False)); continue
+        m, s, l = row_info[g]["mean"], row_info[g]["std"], row_info[g]["letter"]
+        is_best = g == best_g
+        tex = f"{m:.2f}$\\pm${s:.2f}$^{{{l}}}$"
+        if is_best:
+            tex = f"\\textbf{{{m:.2f}}}$\\pm${s:.2f}$^{{{l}}}$"
+        tex_cells.append(tex)
+        png_cells.append((f"{m:.2f}±{s:.2f}^{l}", is_best))
+    return tex_cells, png_cells
+
+
+def gen_apddv2_portinari_mnist_tables(cfg, base_dir):
+    print("\n=== APDDv2 x Portinari x MNIST — tabelas Kruskal-Wallis ===")
+    out_dir = os.path.join(base_dir, "shared")
+    os.makedirs(out_dir, exist_ok=True)
+    OUT_ROOT = cfg["paths"]["outputs"]
+
+    apdd_full = az.load_human_gt(cfg)
+    iccc_dir = ap._exp_scores_dir(cfg, "exp0_iccc", "proportional_stratified")
+    iccc_1b = az.load_scores(iccc_dir, "Janus-Pro-1B")
+    stems_iccc = set(iccc_1b["filename"].apply(az._stem)) if iccc_1b is not None else set()
+    apdd_strat = apdd_full[apdd_full["stem"].isin(stems_iccc)].copy()
+    print(f"  APDDv2 (Paper ICCC estratificado): {len(apdd_strat)} imagens (esperado 502)")
+
+    def load_exp(exp_dir_name):
+        exp_dir = os.path.join(OUT_ROOT, exp_dir_name)
+        human = az.load_scores(exp_dir, "original")
+        d1b = az.load_scores(exp_dir, "Janus-Pro-1B")
+        d7b = az.load_scores(exp_dir, "Janus-Pro-7B")
+        for d in (human, d1b, d7b):
+            if d is not None and "stem" not in d.columns:
+                d["stem"] = d["filename"].apply(az._stem)
+        return human, d1b, d7b
+
+    human_2a, d1b_2a, d7b_2a = load_exp("exp2a_portinari")
+    human_2b, d1b_2b, d7b_2b = load_exp("exp2b_portinari_human")
+    mnist = az.load_scores(os.path.join(OUT_ROOT, "exp3_mnist"), "original")
+
+    # ── Tabela 1: APDDv2 x Portinari-Sintética(H,1B,7B) x Portinari-Humana(H,1B,7B) ──
+    groups_t1 = {
+        "APDDv2": apdd_strat,
+        "Exp2a-Human": human_2a, "Exp2a-1B": d1b_2a, "Exp2a-7B": d7b_2a,
+        "Exp2b-Human": human_2b, "Exp2b-1B": d1b_2b, "Exp2b-7B": d7b_2b,
+    }
+    km1 = az.kruskal_mannwhitney(groups_t1, ATTRS, cfg["stats"]["alpha"])
+    col_order1 = ["APDDv2", "Exp2a-Human", "Exp2a-1B", "Exp2a-7B", "Exp2b-Human", "Exp2b-1B", "Exp2b-7B"]
+    col_labels1 = ["Atributo", "APDDv2", "Human", "Janus-1B", "Janus-7B", "Human", "Janus-1B", "Janus-7B"]
+
+    tex_rows1, png_rows1 = [], []
+    for attr in ATTRS:
+        tex_cells, png_cells = _kw_row_cells(km1.get(attr, {}), col_order1)
+        tex_rows1.append([TITLE_CASE[attr]] + tex_cells)
+        png_rows1.append([(TITLE_CASE[attr], False)] + png_cells)
+
+    tex1 = r"""\begin{table*}[t]
+\centering
+\caption{Comparação dos escores do ArtCLIP por atributo para APDDv2 (amostra
+estratificada proporcional, reprodução do Paper ICCC, $n=502$), Portinari com
+descrição sintética (Exp2a) e Portinari com descrição humana (Exp2b). Letras
+sobrescritas diferentes indicam diferença estatisticamente significativa entre
+os \emph{sete} grupos da linha (Kruskal-Wallis + Mann-Whitney par-a-par,
+$p<0{,}05$, tratado como amostras independentes mesmo onde há pareamento
+parcial, para permitir uma única comparação válida cobrindo também APDDv2
+vs. Portinari). Em negrito, o melhor valor de cada linha.}
+\label{tab:apddv2_portinari_kw}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c ccc ccc}
+\toprule
+ & APDDv2 & \multicolumn{3}{c}{Portinari --- Descrição Sintética} & \multicolumn{3}{c}{Portinari --- Descrição Humana} \\
+\cmidrule(lr){2-2} \cmidrule(lr){3-5} \cmidrule(lr){6-8}
+""" + " & ".join(col_labels1) + r""" \\
+\midrule
+"""
+    for cells in tex_rows1:
+        tex1 += " & ".join(cells) + r" \\" + "\n"
+    tex1 += "\\bottomrule\n\\end{tabular}%\n}\n\\end{table*}\n"
+    with open(os.path.join(out_dir, "tab_apddv2_portinari_kw.tex.txt"), "w", encoding="utf-8") as f:
+        f.write(tex1)
+    _render_kw_table_png(
+        png_rows1, ["Atributo", "APDDv2", "Sint.-Human", "Sint.-1B", "Sint.-7B", "Hum.-Human", "Hum.-1B", "Hum.-7B"],
+        os.path.join(out_dir, "tab_apddv2_portinari_kw.png"),
+        "APDDv2 x Portinari (Sintética/Humana) — Kruskal-Wallis + Mann-Whitney (7 grupos/linha)",
+    )
+    print("  -> tab_apddv2_portinari_kw.png / .tex.txt")
+
+    # ── Tabela 2: APDDv2(Human) x Portinari(Human) x MNIST ──────────────────
+    groups_t2 = {"APDDv2 (Human)": apdd_strat, "Portinari (Human)": human_2a, "MNIST": mnist}
+    km2 = az.kruskal_mannwhitney(groups_t2, ATTRS, cfg["stats"]["alpha"])
+    col_order2 = ["APDDv2 (Human)", "Portinari (Human)", "MNIST"]
+
+    tex_rows2, png_rows2 = [], []
+    for attr in ATTRS:
+        tex_cells, png_cells = _kw_row_cells(km2.get(attr, {}), col_order2)
+        tex_rows2.append([TITLE_CASE[attr]] + tex_cells)
+        png_rows2.append([(TITLE_CASE[attr], False)] + png_cells)
+
+    tex2 = r"""\begin{table}[t]
+\centering
+\caption{Comparação dos escores do ArtCLIP (\textit{Human/original}) por
+atributo entre APDDv2 (amostra estratificada proporcional, reprodução do
+Paper ICCC, $n=502$), Portinari ($n=500$) e MNIST ($n=500$) --- três amostras
+independentes. Letras sobrescritas diferentes indicam diferença
+estatisticamente significativa (Kruskal-Wallis + Mann-Whitney par-a-par,
+$p<0{,}05$). Em negrito, o melhor valor de cada linha.}
+\label{tab:apddv2_portinari_mnist_kw}
+\begin{tabular}{lccc}
+\toprule
+Atributo & APDDv2 (Human) & Portinari (Human) & MNIST \\
+\midrule
+"""
+    for cells in tex_rows2:
+        tex2 += " & ".join(cells) + r" \\" + "\n"
+    tex2 += "\\bottomrule\n\\end{tabular}\n\\end{table}\n"
+    with open(os.path.join(out_dir, "tab_apddv2_portinari_mnist_kw.tex.txt"), "w", encoding="utf-8") as f:
+        f.write(tex2)
+    _render_kw_table_png(
+        png_rows2, ["Atributo", "APDDv2 (Human)", "Portinari (Human)", "MNIST"],
+        os.path.join(out_dir, "tab_apddv2_portinari_mnist_kw.png"),
+        "APDDv2 x Portinari x MNIST (Human) — Kruskal-Wallis + Mann-Whitney",
+    )
+    print("  -> tab_apddv2_portinari_mnist_kw.png / .tex.txt")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════
 
 GENERATORS = {
     "paper_exp1": gen_paper_and_exp1,
     "exp2": gen_exp2, "exp3": gen_exp3, "exp4": gen_exp4, "exp5": gen_exp5, "aims": gen_aims,
+    "kw_tables": gen_apddv2_portinari_mnist_tables,
 }
 
 
