@@ -382,7 +382,6 @@ def build_sampling_section(cfg, base_name, strategies, out_dir):
     if df_full is None:
         print("[sampling] APDDv2-10023.csv não encontrado, pulando.")
         return
-    n_bins = cfg.get("sampling", {}).get("num_bins", 30)
 
     for strategy in strategies:
         exp_dir = _exp_scores_dir(cfg, base_name, strategy)
@@ -392,6 +391,14 @@ def build_sampling_section(cfg, base_name, strategies, out_dir):
             continue
         stems = set(df_scores["filename"].apply(_stem))
         df_sampled = df_full[df_full["stem"].isin(stems)]
+
+        # SAMP-2 (tabela de bins): a granularidade real publicada no site é 30 bins
+        # (sampling.n_bins de configs/exp0_iccc.yaml/exp1_apdd.yaml) em TODOS os
+        # casos, exceto exp0_iccc/proportional_stratified — a reprodução do CSV
+        # legado do ICCC, cujo relatório original foi publicado com 10 bins.
+        # Confirmado 2026-08-11 conferindo o HTML real das 4 combinações
+        # (iccc×{uniform,stratified}, exp1×{uniform,stratified}).
+        n_bins = 10 if (base_name == "exp0_iccc" and strategy == "proportional_stratified") else 30
 
         show_stats = (strategy == "proportional_stratified")
         _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, show_stats)
