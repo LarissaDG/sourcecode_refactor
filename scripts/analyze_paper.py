@@ -255,27 +255,33 @@ def build_missing_values(cfg, out_dir):
 # 3. Amostragem — antes/depois, por estratégia
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, show_full_stats):
+def _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, show_full_stats,
+                                  depois_n_bins=30):
     full_avg = _avg_score(df_full).dropna()
     sampled_avg = _avg_score(df_sampled).dropna()
     if full_avg.empty or sampled_avg.empty:
         return
 
-    # Os mesmos edges usados por datasets/apddv2.py::sample() (pd.cut sobre o
-    # score médio do dataset COMPLETO, 30 bins) — não um range fixo 0-10.
-    # Forçar 0-10 aqui espalharia os mesmos pontos por bins que datasets/apddv2.py
-    # nunca usou (a pontuação média real fica entre ~2 e ~9), inflando a contagem
-    # visível por bin sem que a amostragem em si tenha mudado.
-    n_bins = 30
-    edges = np.histogram_bin_edges(full_avg, bins=n_bins)
-    bin_width = (edges[-1] - edges[0]) / n_bins
+    # "Antes" usa sempre 30 bins sobre o dataset completo — é o mesmo painel,
+    # byte-a-byte, independente da estratégia (mesmos dados, mesma métrica).
+    # "Depois" usa depois_n_bins, que por padrão também é 30 (a granularidade
+    # real da amostragem), mas cai pra 10 no único caso onde a tabela SAMP-2
+    # publicada usa 10 (exp0_iccc/proportional_stratified — reprodução do CSV
+    # legado, ver build_sampling_section). Os edges de cada painel são
+    # calculados sobre o dataset COMPLETO (não um range fixo 0-10) — ver nota
+    # em build_sampling_section/_bin_distribution_table.
+    edges_antes = np.histogram_bin_edges(full_avg, bins=30)
+    edges_depois = np.histogram_bin_edges(full_avg, bins=depois_n_bins)
+    bin_width_antes = (edges_antes[-1] - edges_antes[0]) / 30
+    bin_width_depois = (edges_depois[-1] - edges_depois[0]) / depois_n_bins
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     panels = [
-        (axes[0], full_avg, COLOR_BEFORE, "Antes (APDDv2 completo)", True),
-        (axes[1], sampled_avg, COLOR_AFTER, f"Depois ({STRATEGY_LABELS[strategy]})", show_full_stats),
+        (axes[0], full_avg, COLOR_BEFORE, "Antes (APDDv2 completo)", True, edges_antes, bin_width_antes),
+        (axes[1], sampled_avg, COLOR_AFTER, f"Depois ({STRATEGY_LABELS[strategy]})", show_full_stats,
+         edges_depois, bin_width_depois),
     ]
-    for ax, vals, color, label, show_stats in panels:
+    for ax, vals, color, label, show_stats, edges, bin_width in panels:
         ax.hist(vals, bins=edges, density=False, color=color, alpha=0.75, edgecolor="white")
         mu, med = vals.mean(), vals.median()
         ax.axvline(mu, color="#2d3436", ls="--", lw=1.6, label=f"Média = {mu:.2f}")
@@ -392,16 +398,21 @@ def build_sampling_section(cfg, base_name, strategies, out_dir):
         stems = set(df_scores["filename"].apply(_stem))
         df_sampled = df_full[df_full["stem"].isin(stems)]
 
-        # SAMP-2 (tabela de bins): a granularidade real publicada no site é 30 bins
-        # (sampling.n_bins de configs/exp0_iccc.yaml/exp1_apdd.yaml) em TODOS os
-        # casos, exceto exp0_iccc/proportional_stratified — a reprodução do CSV
-        # legado do ICCC, cujo relatório original foi publicado com 10 bins.
-        # Confirmado 2026-08-11 conferindo o HTML real das 4 combinações
-        # (iccc×{uniform,stratified}, exp1×{uniform,stratified}).
+        # Granularidade do painel "Depois" (SAMP-1) e da tabela SAMP-2: a real
+        # publicada no site é 30 bins (sampling.n_bins de configs/exp0_iccc.yaml/
+        # exp1_apdd.yaml) em TODOS os casos, exceto exp0_iccc/proportional_stratified
+        # — a reprodução do CSV legado do ICCC, cujo relatório original foi publicado
+        # com 10 bins (não há amostragem por bins nesse caso — o legacy_csv só reusa
+        # a lista fixa de 502 imagens; os 10 bins são só um resumo descritivo do
+        # resultado). Confirmado 2026-08-11/12 conferindo o HTML real das 4
+        # combinações (iccc×{uniform,stratified}, exp1×{uniform,stratified}).
+        # O painel "Antes" do SAMP-1 SEMPRE usa 30 bins, nas duas estratégias —
+        # é o mesmo dado (APDDv2 completo), tem que sair byte-a-byte igual.
         n_bins = 10 if (base_name == "exp0_iccc" and strategy == "proportional_stratified") else 30
 
         show_stats = (strategy == "proportional_stratified")
-        _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, show_stats)
+        _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, show_stats,
+                                     depois_n_bins=n_bins)
         _bin_distribution_table(df_full, df_sampled, out_dir, cfg,
                                 f"sampling_bin_table_{strategy}", n_bins=n_bins)
         _attr_before_after_grid(df_full, df_sampled, out_dir, cfg,
