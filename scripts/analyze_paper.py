@@ -93,6 +93,24 @@ def _exp_scores_dir(cfg, base_name, strategy):
     return os.path.join(cfg["paths"]["outputs"], base_name)
 
 
+def _load_legacy_gen_scores(path):
+    """
+    Carrega sampled_SMALL/BIG_with_gen_scored.csv — scores ORIGINAIS do Janus-Pro
+    gerados na submissão do ICCC 2025 (reprodução exata do paper publicado).
+    Usado em vez do pipeline novo pra exp0_iccc/proportional_stratified: o
+    Janus-Pro é generativo/não-determinístico, então re-rodar a geração produz
+    imagens sintéticas diferentes das originais (mesma seleção de 502 imagens,
+    mas scores de Janus-1B/7B não batem com o paper — confirmado numericamente
+    em 2026-08-12: diferença média ~0.5 pt, máxima ~3 pt por imagem/atributo).
+    """
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        return pd.read_csv(path, encoding="latin1")
+    except Exception:
+        return pd.read_csv(path)
+
+
 def _avg_score(df):
     """Média dos 9 atributos de BIN_ATTRS por linha (métrica usada na amostragem)."""
     cols = [c for c in BIN_ATTRS if c in df.columns]
@@ -515,9 +533,14 @@ def _save_q1_latex(fw, attrs, group_names, out_dir, cfg, name):
 
 def build_questions(cfg, base_name, strategy, out_dir, suffix="", q2_ylim=None, q2_yticks=None):
     """Perguntas 1, 2 e 3 — Friedman/Wilcoxon, barras de diferença, tabela de diferença."""
-    exp_dir = _exp_scores_dir(cfg, base_name, strategy)
-    df_1b = load_scores(exp_dir, "Janus-Pro-1B")
-    df_7b = load_scores(exp_dir, "Janus-Pro-7B")
+    if base_name == "exp0_iccc" and strategy == "proportional_stratified":
+        # Reprodução exata do paper publicado — ver docstring de _load_legacy_gen_scores.
+        df_1b = _load_legacy_gen_scores(cfg["paths"].get("sampled_small", ""))
+        df_7b = _load_legacy_gen_scores(cfg["paths"].get("sampled_big", ""))
+    else:
+        exp_dir = _exp_scores_dir(cfg, base_name, strategy)
+        df_1b = load_scores(exp_dir, "Janus-Pro-1B")
+        df_7b = load_scores(exp_dir, "Janus-Pro-7B")
     df_human = load_human_gt(cfg)
     if df_human is None or (df_1b is None and df_7b is None):
         print(f"[questions] {base_name} ({strategy}): dados insuficientes, pulando.")
