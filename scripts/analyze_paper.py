@@ -254,22 +254,29 @@ def _sampling_distribution_chart(df_full, df_sampled, strategy, out_dir, cfg, sh
     if full_avg.empty or sampled_avg.empty:
         return
 
+    # Os mesmos edges usados por datasets/apddv2.py::sample() (pd.cut sobre o
+    # score médio do dataset COMPLETO, 30 bins) — não um range fixo 0-10.
+    # Forçar 0-10 aqui espalharia os mesmos pontos por bins que datasets/apddv2.py
+    # nunca usou (a pontuação média real fica entre ~2 e ~9), inflando a contagem
+    # visível por bin sem que a amostragem em si tenha mudado.
+    n_bins = 30
+    edges = np.histogram_bin_edges(full_avg, bins=n_bins)
+    bin_width = (edges[-1] - edges[0]) / n_bins
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     panels = [
         (axes[0], full_avg, COLOR_BEFORE, "Antes (APDDv2 completo)", True),
         (axes[1], sampled_avg, COLOR_AFTER, f"Depois ({STRATEGY_LABELS[strategy]})", show_full_stats),
     ]
-    n_bins = 30
-    bin_width = 10 / n_bins
     for ax, vals, color, label, show_stats in panels:
-        ax.hist(vals, bins=n_bins, range=(0, 10), density=False, color=color, alpha=0.75, edgecolor="white")
+        ax.hist(vals, bins=edges, density=False, color=color, alpha=0.75, edgecolor="white")
         mu, med = vals.mean(), vals.median()
         ax.axvline(mu, color="#2d3436", ls="--", lw=1.6, label=f"Média = {mu:.2f}")
         ax.axvline(med, color="#6c5ce7", ls=":", lw=1.6, label=f"Mediana = {med:.2f}")
         title = f"{label}\n(n = {len(vals):,})"
         if show_stats and len(vals) > 3:
             sk, kt, std = skew(vals), kurtosis(vals), vals.std()
-            xs = np.linspace(0, 10, 300)
+            xs = np.linspace(edges[0], edges[-1], 300)
             # escala a densidade da normal pra contagem esperada por bin (density * n * largura_do_bin)
             ax.plot(xs, scipy_norm.pdf(xs, mu, std) * len(vals) * bin_width,
                     color="#d63031", lw=2, label="Ajuste normal")
@@ -291,7 +298,10 @@ def _bin_distribution_table(df_full, df_sampled, out_dir, cfg, name, n_bins=30):
     sampled_avg = _avg_score(df_sampled).dropna()
     if full_avg.empty:
         return
-    edges = np.linspace(0, 10, n_bins + 1)
+    # Mesmos edges de datasets/apddv2.py::sample() — ver comentário em
+    # _sampling_distribution_chart. Sem isso, os "Bin 1"/"Bin 30" desta tabela
+    # não são os mesmos bins que a amostragem real usou.
+    edges = np.histogram_bin_edges(full_avg, bins=n_bins)
     full_binned = pd.cut(full_avg, bins=edges, include_lowest=True)
     sampled_binned = pd.cut(sampled_avg, bins=edges, include_lowest=True) if not sampled_avg.empty else None
     full_counts = full_binned.value_counts().sort_index()
@@ -404,13 +414,16 @@ def build_strategy_comparison(cfg, out_dir):
         print("[strategy_comparison] amostras vazias, pulando.")
         return
 
+    # Mesmos edges de datasets/apddv2.py::sample() (ver _sampling_distribution_chart).
+    edges = np.histogram_bin_edges(_avg_score(df_full).dropna(), bins=30)
+
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(avg_u, bins=30, range=(0, 10), density=False, histtype="step", linewidth=2.2,
+    ax.hist(avg_u, bins=edges, density=False, histtype="step", linewidth=2.2,
             color=COLOR_UNIFORM, label=f"Uniforme (n={len(avg_u)})")
-    ax.hist(avg_u, bins=30, range=(0, 10), density=False, alpha=0.15, color=COLOR_UNIFORM, hatch="///")
-    ax.hist(avg_s, bins=30, range=(0, 10), density=False, histtype="step", linewidth=2.2,
+    ax.hist(avg_u, bins=edges, density=False, alpha=0.15, color=COLOR_UNIFORM, hatch="///")
+    ax.hist(avg_s, bins=edges, density=False, histtype="step", linewidth=2.2,
             linestyle="dashed", color=COLOR_STRAT, label=f"Estratificado Proporcional (n={len(avg_s)})")
-    ax.hist(avg_s, bins=30, range=(0, 10), density=False, alpha=0.15, color=COLOR_STRAT, hatch="xxx")
+    ax.hist(avg_s, bins=edges, density=False, alpha=0.15, color=COLOR_STRAT, hatch="xxx")
     ax.set_xlim(0, 10); ax.set_xticks(np.arange(0, 11, 1))
     ax.set_xlabel("Score Médio por Imagem"); ax.set_ylabel("Contagem")
     ax.set_title("Uniforme vs. Estratificado Proporcional — Comparação das Distribuições")
