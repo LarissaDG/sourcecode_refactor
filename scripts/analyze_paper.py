@@ -337,9 +337,11 @@ def _bin_distribution_table(df_full, df_sampled, out_dir, cfg, name, n_bins=30):
     )
 
 
-def _attr_before_after_grid(df_full, df_sampled, out_dir, cfg, filename):
+def _attr_before_after_grid(df_full, df_sampled, out_dir, cfg, filename, n_bins=30):
     cols = BIN_ATTRS
-    bins = np.linspace(0, 10, 26)
+    bins = np.linspace(0, 10, n_bins + 1)
+    n_full_total = len(df_full)     # n verdadeiro do dataset completo — NÃO usar
+    n_sampled_total = len(df_sampled)  # len(vf)/len(vs) do 1º atributo, que pode ter nulos
     n = len(cols)
     fig, axes = plt.subplots(n, 2, figsize=(13, 3.0 * n))
     for i, col in enumerate(cols):
@@ -374,8 +376,13 @@ def _attr_before_after_grid(df_full, df_sampled, out_dir, cfg, filename):
                       transform=ax_r.transAxes, fontsize=9, fontweight="bold", color=arrow_color)
 
         if i == 0:
-            ax_l.set_title(f"Antes (n = {len(vf):,})", fontsize=10, fontweight="bold", color=COLOR_BEFORE)
-            ax_r.set_title(f"Depois (n = {len(vs):,})", fontsize=10, fontweight="bold", color="#a68b00")
+            # n do dataset inteiro (df_full/df_sampled), NÃO len(vf)/len(vs) — esses
+            # refletiam só quantas linhas tinham o 1º atributo (BIN_ATTRS[0]) não-nulo,
+            # que é MENOR que o n real quando esse atributo específico tem valores
+            # ausentes (ex.: "Theme and logic" só tem 7.964/10.023 preenchidos —
+            # o título mostrava n=7.964 como se fosse o tamanho do dataset completo).
+            ax_l.set_title(f"Antes (n = {n_full_total:,})", fontsize=10, fontweight="bold", color=COLOR_BEFORE)
+            ax_r.set_title(f"Depois (n = {n_sampled_total:,})", fontsize=10, fontweight="bold", color="#a68b00")
 
     fig.suptitle("Distribuição por Atributo Estético — Antes vs. Depois da Amostragem",
                  fontsize=13, fontweight="bold", y=1.002)
@@ -416,7 +423,7 @@ def build_sampling_section(cfg, base_name, strategies, out_dir):
         _bin_distribution_table(df_full, df_sampled, out_dir, cfg,
                                 f"sampling_bin_table_{strategy}", n_bins=n_bins)
         _attr_before_after_grid(df_full, df_sampled, out_dir, cfg,
-                                f"sampling_attr_grid_{strategy}.png")
+                                f"sampling_attr_grid_{strategy}.png", n_bins=n_bins)
         print(f"  ✓ Amostragem ({strategy}): n_amostrado={len(df_sampled)}")
 
 
