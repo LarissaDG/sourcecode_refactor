@@ -130,16 +130,31 @@ def gen_paper_and_exp1(cfg, base_dir):
     ap.build_missing_values(cfg, shared_dir)
     print("  -> EDA + missing values (shared/)")
 
-    ap.build_sampling_section(cfg, "exp0_iccc", ap.STRATEGIES, iccc_dir)
+    # outputs/exp0_iccc_*/exp1_apdd_* no cluster ainda foram amostrados com a
+    # métrica ANTIGA de binning (excluía "The overall", não "The sense of
+    # order" — mesmo bug já contornado no Exp4). As seções de amostragem
+    # (histograma antes/depois, grid por atributo, comparação uniforme x
+    # estratificado) recalculam o score médio pra binning — usar a métrica
+    # nova aqui re-binaria os MESMOS 469/502/500 pontos numa grade que a
+    # amostragem real nunca respeitou, estourando a contagem por bin (~19 em
+    # vez de ~16). Enquanto ela não reroda no cluster com o bug corrigido,
+    # usar a métrica antiga aqui é o que reflete fielmente a amostragem real.
+    old_bin_attrs = ap.BIN_ATTRS
+    ap.BIN_ATTRS = OLD_BIN_ATTRS
+    try:
+        ap.build_sampling_section(cfg, "exp0_iccc", ap.STRATEGIES, iccc_dir)
+        ap.build_sampling_section(cfg, "exp1_apdd", ap.STRATEGIES, exp1_dir_out)
+        ap.build_strategy_comparison(cfg, exp1_dir_out)
+    finally:
+        ap.BIN_ATTRS = old_bin_attrs
+
     for strategy in ap.STRATEGIES:
         ap.build_questions(cfg, "exp0_iccc", strategy, iccc_dir, suffix=f"_{strategy}",
                             q2_ylim=ap.PAPER_Q2_YLIM, q2_yticks=ap.PAPER_Q2_YTICKS)
     print("  -> Paper ICCC (iccc/), ambas as estratégias (Q2 eixo Y fixo, igual Portinari)")
 
-    ap.build_sampling_section(cfg, "exp1_apdd", ap.STRATEGIES, exp1_dir_out)
     for strategy in ap.STRATEGIES:
         ap.build_questions(cfg, "exp1_apdd", strategy, exp1_dir_out, suffix=f"_{strategy}")
-    ap.build_strategy_comparison(cfg, exp1_dir_out)
     print("  -> Exp1 (exp1/), ambas as estratégias + comparação")
 
 

@@ -49,6 +49,13 @@ ALL_ATTRS = [
 # (modelo 6 do ArtCLIP tem bug conhecido, ver README). Mesmo critério de
 # datasets/apddv2.py::BIN_ATTRIBUTES.
 BIN_ATTRS = [a for a in ALL_ATTRS if a != "The sense of order"]
+# Métrica de binning ANTES da correção do bug (excluía "The overall", não
+# "The sense of order") — outputs/exp0_iccc_*/exp1_apdd_*/exp4_noise ainda não
+# foram re-amostrados no cluster com o BIN_ATTRS corrigido acima, então as
+# seções de amostragem (histograma, grid por atributo, comparação de
+# estratégias) desses experimentos precisam recalcular o score médio com esta
+# métrica antiga pra bater com a amostragem real já feita.
+OLD_BIN_ATTRS = [a for a in ALL_ATTRS if a != "The overall"]
 
 COLOR_BEFORE   = "#33A650"  # verde — antes da amostragem
 COLOR_AFTER    = "#F1C40F"  # amarelo — depois da amostragem
@@ -685,17 +692,28 @@ def main():
     build_eda(cfg, shared_dir)
     build_missing_values(cfg, shared_dir)
 
-    print("── Paper ICCC (exp0_iccc) — ambas as estratégias ──────")
-    build_sampling_section(cfg, "exp0_iccc", STRATEGIES, iccc_dir)
+    # outputs/exp0_iccc_*/exp1_apdd_* no cluster ainda foram amostrados com a
+    # métrica antiga de binning (ver OLD_BIN_ATTRS acima) — usar BIN_ATTRS
+    # corrigido aqui re-binaria os mesmos pontos numa grade que a amostragem
+    # real nunca respeitou. Regenerar quando ela rerodar no cluster.
+    global BIN_ATTRS
+    old_bin_attrs = BIN_ATTRS
+    BIN_ATTRS = OLD_BIN_ATTRS
+    try:
+        print("── Paper ICCC (exp0_iccc) — ambas as estratégias ──────")
+        build_sampling_section(cfg, "exp0_iccc", STRATEGIES, iccc_dir)
+
+        print("── Exp 1 (exp1_apdd) — ambas as estratégias ───────────")
+        build_sampling_section(cfg, "exp1_apdd", STRATEGIES, exp1_dir_out)
+        build_strategy_comparison(cfg, exp1_dir_out)
+    finally:
+        BIN_ATTRS = old_bin_attrs
+
     for strategy in STRATEGIES:
         build_questions(cfg, "exp0_iccc", strategy, iccc_dir, suffix=f"_{strategy}",
                          q2_ylim=PAPER_Q2_YLIM, q2_yticks=PAPER_Q2_YTICKS)
-
-    print("── Exp 1 (exp1_apdd) — ambas as estratégias ───────────")
-    build_sampling_section(cfg, "exp1_apdd", STRATEGIES, exp1_dir_out)
     for strategy in STRATEGIES:
         build_questions(cfg, "exp1_apdd", strategy, exp1_dir_out, suffix=f"_{strategy}")
-    build_strategy_comparison(cfg, exp1_dir_out)
 
     print(f"\n✓ Figuras/tabelas salvas em: {base_dir}")
 
