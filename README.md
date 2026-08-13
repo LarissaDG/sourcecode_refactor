@@ -162,7 +162,7 @@ python3 scripts/download_all.py --out data/ --only temporal   # requer yt-dlp
 No cluster:
 
 ```bash
-sbatch scripts/slurm_download_data.sh
+sbatch slurm/completo/slurm_download_data.sh
 ```
 
 ### APDDv2
@@ -275,8 +275,11 @@ Submeter na ordem abaixo. Cada job envia e-mail ao terminar:
 
 ```bash
 # 1. Download de datasets
-sbatch scripts/slurm_download_data.sh
+sbatch slurm/completo/slurm_download_data.sh
 sbatch scripts/link_32.sh          # ZIP 32 do Portinari (rate-limited pelo Google Drive)
+# Para baixar/re-baixar só o dataset temporal (TimeCraft), sem repetir os
+# outros 3 datasets — retomável se o walltime estourar, é só reenviar:
+# sbatch slurm/completo/slurm_download_timecraft.sh
 
 # 2. Experimentos
 sbatch slurm/completo/slurm_exp0_iccc.sh

@@ -102,12 +102,12 @@ else
         || { echo "ERRO: download_mnist.py falhou"; exit 1; }
 fi
 
-echo "=== [4/4] Vídeos temporais ==="
+echo "=== [4/4] Vídeos temporais (TimeCraft) ==="
 if [ -d "$DATA_DIR/temporal/frames" ] && [ "$(ls "$DATA_DIR/temporal/frames" 2>/dev/null | wc -l)" -gt 0 ]; then
     echo "  Vídeos temporais já baixados. Pulando."
 else
-    python3 scripts/download_temporal.py --out "$DATA_DIR/temporal" \
-        || { echo "ERRO: download_temporal.py falhou"; exit 1; }
+    python3 scripts/download_timecraft.py --out "$DATA_DIR/temporal" \
+        || { echo "ERRO: download_timecraft.py falhou"; exit 1; }
 fi
 
 echo "=== FINALIZADO ===" && hostname

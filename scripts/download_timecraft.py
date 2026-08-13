@@ -19,6 +19,11 @@ paradinho" que alguns vídeos mostram como abertura antes de reiniciar do
 zero. Nem todo vídeo de 2019 ainda está disponível no YouTube hoje; os que
 falharem são pulados (mesmo comportamento do notebook original do TimeCraft).
 
+Retomável: pode ser interrompido a qualquer momento (ex: walltime do SLURM) e
+rodado de novo com o mesmo comando — vídeos já baixados não são rebaixados,
+vídeos já extraídos não são reextraídos, e metadata.csv é reescrito a cada
+vídeo processado (não só no final), então nada fica sem registro.
+
 Uso:
     python3 scripts/download_timecraft.py --out data/temporal
 
@@ -114,6 +119,17 @@ def download_video(vid_id: str, vid_name: str, out_dir: Path) -> Path | None:
     return None
 
 
+def frames_already_extracted(info: dict, n_frames: int, frames_dir: Path) -> bool:
+    """True se os n_frames PNGs já existem em disco para esse vídeo — usado
+    para pular reextração ao retomar um download interrompido."""
+    vid_frames_dir = frames_dir / info["vid_name"]
+    if not vid_frames_dir.is_dir():
+        return False
+    existing = {p.name for p in vid_frames_dir.glob("*.png")}
+    expected = {f"{info['vid_name']}_frame_{i:04d}.png" for i in range(n_frames)}
+    return expected.issubset(existing)
+
+
 def extract_frame_window(video_path: Path, info: dict, offset: int, n_frames: int,
                           scale: float, frames_dir: Path) -> int:
     """Extrai info['framenums'][offset : offset+n_frames], recorta pelo crop
@@ -185,14 +201,25 @@ def main():
     infos = load_video_infos(repo_dir)
 
     # ── Baixa vídeos e extrai a janela de frames ─────────────────────────────
+    # Retomável: se o job for interrompido (ex: walltime do SLURM), rodar de
+    # novo pula vídeos já baixados (download_video checa o .mp4 em disco) e
+    # pula reextração de vídeos cujos n_frames PNGs já existem — só refaz o
+    # que realmente falta. metadata.csv é reescrito a cada vídeo processado,
+    # não só no final, então uma interrupção não deixa o resumo em branco.
     rows = []
     did_not_download = []
     for info in tqdm(infos, desc="Processando vídeos"):
         vid_name = info["vid_name"]
         n_available = len(info["framenums"])
 
+        already_extracted = (not args.skip_frames) and frames_already_extracted(
+            info, args.n_frames, frames_dir
+        )
+
         video_path = videos_dir / f"{vid_name}.mp4"
-        if not args.skip_download:
+        if already_extracted:
+            video_path = video_path if video_path.exists() else None
+        elif not args.skip_download:
             video_path = download_video(info["vid_id"], vid_name, videos_dir)
             if video_path is None:
                 did_not_download.append(vid_name)
@@ -201,6 +228,7 @@ def main():
                     "n_framenums_disponiveis": n_available,
                     "frames_extraidos": 0, "status": "download_falhou",
                 })
+                pd.DataFrame(rows).to_csv(csv_path, index=False)
                 continue
         elif not video_path.exists():
             did_not_download.append(vid_name)
@@ -209,25 +237,30 @@ def main():
                 "n_framenums_disponiveis": n_available,
                 "frames_extraidos": 0, "status": "video_nao_encontrado",
             })
+            pd.DataFrame(rows).to_csv(csv_path, index=False)
             continue
 
-        n_saved = 0
-        if not args.skip_frames:
-            n_saved = extract_frame_window(
-                video_path, info, args.offset, args.n_frames, args.scale, frames_dir
-            )
+        if already_extracted:
+            n_saved = args.n_frames
+            status = "ok_ja_existia"
+        else:
+            n_saved = 0
+            if not args.skip_frames:
+                n_saved = extract_frame_window(
+                    video_path, info, args.offset, args.n_frames, args.scale, frames_dir
+                )
+            status = "ok" if n_saved > 0 else ("nao_extraido" if args.skip_frames else "sem_frames_na_janela")
 
         rows.append({
             "vid_name": vid_name, "vid_id": info["vid_id"],
             "n_framenums_disponiveis": n_available,
             "frames_extraidos": n_saved,
-            "status": "ok" if n_saved > 0 else ("nao_extraido" if args.skip_frames else "sem_frames_na_janela"),
+            "status": status,
         })
+        pd.DataFrame(rows).to_csv(csv_path, index=False)
 
     df = pd.DataFrame(rows)
-    df.to_csv(csv_path, index=False)
-
-    n_ok = int((df["status"] == "ok").sum()) if not args.skip_frames else int((df["status"] == "nao_extraido").sum())
+    n_ok = int(df["status"].isin(["ok", "ok_ja_existia"]).sum())
     print(f"\nMetadados salvos -> {csv_path}")
     print(f"Vídeos que falharam no download ({len(did_not_download)}): {did_not_download}")
 
