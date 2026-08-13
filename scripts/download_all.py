@@ -9,7 +9,7 @@ Uso:
 Datasets:
     portinari   → data/portinari/   (download_portinari.py)
     mnist       → data/mnist/       (download_mnist.py)
-    temporal    → data/temporal/    (download_temporal.py — requer yt-dlp)
+    temporal    → data/temporal/    (download_timecraft.py — requer yt-dlp + git)
     apddv2      → manual (link de download não está mais disponível)
 
 Flags:
@@ -69,9 +69,9 @@ def main():
 
     if do_temporal:
         run(
-            [sys.executable, str(SCRIPTS_DIR / "download_temporal.py"),
+            [sys.executable, str(SCRIPTS_DIR / "download_timecraft.py"),
              "--out", str(out / "temporal")],
-            "Temporal — vídeos @ArtsyLolaCo + frames"
+            "Temporal — vídeos TimeCraft (Digital Paintings) + frames"
         )
 
     print("\n" + "="*60)

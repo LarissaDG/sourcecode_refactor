@@ -47,7 +47,7 @@ Pipeline de 5 estágios: **Sampling → Captioning → Generation → Samples �
 | Exp 2b — Portinari | 498 pinturas, captions humanas | Impacto de captions humanas |
 | Exp 3 — MNIST | Dígitos manuscritos | Arte vs. Não-Arte |
 | Exp 4 — Ruído | APDDv2 + ruído sintético (gaussian/blur/shapes) | Robustez estética |
-| Exp 5 — Temporal | Frames de vídeo (@ArtsyLolaCo) + ruído sintético | Consistência e degradação temporal |
+| Exp 5 — Temporal | Frames de vídeo (TimeCraft — Digital Paintings) + ruído sintético | Consistência e degradação temporal |
 
 ---
 
@@ -206,7 +206,13 @@ Baixado automaticamente. Amostra 500 dígitos (50 por classe, seed=42).
 
 ### Temporal (frames de vídeo)
 
-Baixado de `@ArtsyLolaCo` (YouTube Shorts). Até 500 vídeos, 1 frame/segundo.
+Baixado do dataset "Digital Paintings" do [TimeCraft](https://github.com/xamyzhao/timecraft)
+(CVPR 2020 — *Painting Many Pasts*). `download_timecraft.py` clona o repositório, lê os 83
+`.pkl` publicados em `dataset/digital_vid_caches_minimal.zip` (um por vídeo/peça, cada um com
+o ID do YouTube e a lista de frames do vídeo original), baixa cada vídeo via `yt-dlp` e extrai
+24 frames a partir do offset 24 dentro dessa lista (pula os 24 primeiros frames — alguns
+vídeos abrem com a pintura já finalizada antes de reiniciar do zero). Nem todo vídeo de 2019
+ainda está disponível hoje; os que falharem são pulados e listados no final.
 
 ---
 

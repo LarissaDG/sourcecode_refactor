@@ -20,7 +20,11 @@ pipeline:
 
 sampling:
   strategy: "sequential"
-  n_samples: 12000  # 500 videos x 24 frames
+  # ~24 frames/video (fixo pela extracao, ver download_timecraft.py) x quantos
+  # videos o download_timecraft.py conseguir baixar (ate 83, depende do que
+  # ainda esta disponivel no YouTube). Deixado generoso para nao truncar o
+  # dataset real caso o numero de videos baixados varie.
+  n_samples: 3000
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"

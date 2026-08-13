@@ -20,8 +20,9 @@ pipeline:
 
 sampling:
   strategy: "progressive_degradation"
-  # 500 videos x 24 frames x 3 tipos de ruido = 36.000 linhas
-  # frame 0 -> 0% degradacao, frame 23 -> 100% degradacao
+  # ~24 frames/video (fixo pela extracao, ver download_timecraft.py) x quantos
+  # videos o download_timecraft.py conseguir baixar (ate 83) x 3 tipos de ruido
+  # frame 0 -> 0% degradacao, ultimo frame -> 100% degradacao
 
 scoring:
   weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
