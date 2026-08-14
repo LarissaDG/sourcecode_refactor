@@ -9,12 +9,15 @@
 # job combinado slurm_download_data.sh. Útil pra re-rodar so o Exp5 sem
 # repetir APDDv2/Portinari/MNIST.
 #
-# Retomável: se o job estourar o walltime (--time acima) ou for cancelado no
-# meio, é só reenviar o mesmo sbatch de novo — download_timecraft.py pula
-# vídeos já baixados e frames já extraídos, então o job não recomeça do zero.
-#
-# ANTES de rodar pela primeira vez, apague o dataset antigo (@ArtsyLolaCo)
-# pra não misturar os dois:
+# Apaga o dataset antigo (@ArtsyLolaCo) automaticamente, mas só na PRIMEIRA
+# vez: usa um marcador ($TEMPORAL_DIR/.timecraft_download) pra saber se já
+# limpou antes. Sem isso, um reenvio do job depois de estourar o walltime
+# apagaria os vídeos/frames já baixados nessa mesma rodada -- o que
+# destruiria justamente a retomada que o download_timecraft.py foi feito pra
+# suportar (pula vídeo já baixado, pula frame já extraído). Se algum dia
+# você quiser forçar uma limpeza total de novo (ex: pra pegar vídeos que
+# ficaram disponíveis de novo no YouTube), apague o marcador ou a pasta
+# inteira na mão antes de reenviar:
 #   rm -rf /snfs1/speed/larissa.gomide/data/temporal
 
 set -x
@@ -22,11 +25,22 @@ set -x
 ROOT="/sonic_home/larissa.gomide/sourcecode_refactor"
 VENV_DOWNLOAD="$ROOT/venv_download"
 DATA_DIR="/snfs1/speed/larissa.gomide/data"
+TEMPORAL_DIR="$DATA_DIR/temporal"
+MARKER="$TEMPORAL_DIR/.timecraft_download"
 
 export HOME="/sonic_home/larissa.gomide/casa/"
 export XDG_CACHE_HOME="/sonic_home/larissa.gomide/casa/.cache"
 
 mkdir -p "$DATA_DIR"
+
+if [ ! -f "$MARKER" ]; then
+    echo "Marcador não encontrado em $TEMPORAL_DIR -- assumindo dataset antigo (@ArtsyLolaCo) ou pasta vazia. Apagando..."
+    rm -rf "$TEMPORAL_DIR"
+    mkdir -p "$TEMPORAL_DIR"
+    touch "$MARKER"
+else
+    echo "Marcador encontrado em $TEMPORAL_DIR -- retomando download já em andamento (nada é apagado)."
+fi
 
 notify() {
     local code=$?

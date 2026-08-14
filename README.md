@@ -277,9 +277,6 @@ Submeter na ordem abaixo. Cada job envia e-mail ao terminar:
 # 1. Download de datasets
 sbatch slurm/completo/slurm_download_data.sh
 sbatch scripts/link_32.sh          # ZIP 32 do Portinari (rate-limited pelo Google Drive)
-# Para baixar/re-baixar só o dataset temporal (TimeCraft), sem repetir os
-# outros 3 datasets — retomável se o walltime estourar, é só reenviar:
-# sbatch slurm/completo/slurm_download_timecraft.sh
 
 # 2. Experimentos
 sbatch slurm/completo/slurm_exp0_iccc.sh
@@ -294,6 +291,31 @@ sbatch slurm/completo/slurm_exp4_noise.sh
 sbatch slurm/completo/slurm_exp5a_temporal.sh
 sbatch slurm/completo/slurm_exp5b_temporal_error.sh
 ```
+
+#### Re-baixar só o dataset temporal (TimeCraft) e encadear o Exp5
+
+Pra baixar/re-baixar só o dataset do Exp5 sem repetir APDDv2/Portinari/MNIST, e já
+disparar exp5a/exp5b automaticamente assim que o download terminar com sucesso, use
+`--dependency=afterok`:
+
+```bash
+JOBID_DOWNLOAD=$(sbatch --parsable slurm/completo/slurm_download_timecraft.sh)
+echo "Download job: $JOBID_DOWNLOAD"
+
+sbatch --dependency=afterok:$JOBID_DOWNLOAD slurm/completo/slurm_exp5a_temporal.sh
+sbatch --dependency=afterok:$JOBID_DOWNLOAD slurm/completo/slurm_exp5b_temporal_error.sh
+```
+
+`--parsable` faz o `sbatch` imprimir só o número do job (em vez de "Submitted batch job
+123456"), fácil de capturar na variável. exp5a e exp5b dependem só do download, não um do
+outro, então rodam em paralelo assim que ele terminar.
+
+`afterok` só dispara se o job de download terminar com status 0 (`COMPLETED`). Se ele
+estourar o `--time` do walltime (`TIMEOUT`) ou for cancelado, os jobs de exp5a/exp5b ficam
+parados esperando uma dependência que nunca vai ser satisfeita — confira com
+`sacct -j $JOBID_DOWNLOAD --format=JobID,State,ExitCode`, e se o download não completou,
+reenvie o mesmo `slurm_download_timecraft.sh` (retoma de onde parou, não perde o que já
+baixou) e submeta exp5a/exp5b de novo apontando pro novo job id.
 
 > Todos os jobs acima já incluem a etapa `samples` (amostras visuais, ver
 > [Amostras Visuais](#amostras-visuais)). Ela roda na mesma venv que já usa naquela fase
