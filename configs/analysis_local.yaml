@@ -43,15 +43,15 @@ labels:
 
     attributes:
       Total aesthetic score:   "Total Score"
-      Theme and logic:         "Theme & Logic"
+      Theme and logic:         "Theme and Logic"
       Creativity:              "Creativity"
-      Layout and composition:  "Layout & Composition"
-      Space and perspective:   "Space & Perspective"
+      Layout and composition:  "Layout and Composition"
+      Space and perspective:   "Space and Perspective"
       The sense of order:      "Sense of Order"
-      Light and shadow:        "Light & Shadow"
+      Light and shadow:        "Light and Shadow"
       Color:                   "Color"
-      Details and texture:     "Details & Texture"
-      The overall:             "Overall"
+      Details and texture:     "Details and Texture"
+      The overall:             "The overall"
       Mood:                    "Mood"
 
     noise_types:

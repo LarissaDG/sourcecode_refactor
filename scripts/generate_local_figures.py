@@ -38,10 +38,23 @@ ATTRS = [
     "Theme and logic", "Creativity", "Layout and composition", "Space and perspective",
     "Light and shadow", "Color", "Details and texture", "The overall", "Mood",
 ]
-# Nomes dos critérios NUNCA são traduzidos em gráfico/tabela — sempre o nome literal
-# do atributo (ex.: "The overall", não "Geral"). Mantido como dict (não identidade
-# implícita) só pra não precisar tocar em todo call-site que já indexa por ele.
-ATTR_LABEL = {a: a for a in ATTRS}
+# Rótulo padronizado por critério (pedido explícito da usuária em 2026-08-16):
+# Title Case em todo mundo, EXCETO "The overall", que fica exatamente assim —
+# não "The Overall", não "Overall". "The sense of order" também entra aqui
+# (vira "Sense of Order", sem o "The") pra cobrir os poucos lugares que usam
+# ALL_ATTRS (10 atributos) em vez do ATTRS de 9 acima.
+ATTR_LABEL = {
+    "Theme and logic":        "Theme and Logic",
+    "Creativity":              "Creativity",
+    "Layout and composition":  "Layout and Composition",
+    "Space and perspective":   "Space and Perspective",
+    "The sense of order":      "Sense of Order",
+    "Light and shadow":        "Light and Shadow",
+    "Color":                   "Color",
+    "Details and texture":     "Details and Texture",
+    "The overall":             "The overall",
+    "Mood":                    "Mood",
+}
 OLD_BIN_ATTRS = [  # métrica usada na amostragem real do Exp4 (antes da correção "The sense of order")
     "Theme and logic", "Creativity", "Layout and composition",
     "Space and perspective", "The sense of order", "Light and shadow",
@@ -686,6 +699,105 @@ def gen_exp5(cfg, base_dir):
                   title="Ponto de Detecção Estatística por Atributo")
     print("  -> q5_table.png / .tex.txt")
 
+    # Q6 — RMSE por vídeo: consistência natural (original vs. média do próprio
+    # vídeo — "consistência perfeita" seria uma linha horizontal) vs.
+    # sensibilidade ao ruído (original vs. degradação progressiva), separado
+    # por tipo de ruído e por atributo. Ideia da usuária, 2026-08-16.
+    colors_nt = {"blur": ap.COLOR_HUMAN_1B, "gaussian": ap.COLOR_HUMAN_7B, "shapes": "#f39c12"}
+    markers_nt = {"blur": "o", "gaussian": "s", "shapes": "^"}
+    noise_label_pt = {"gaussian": "Ruído Gaussiano", "blur": "Desfoque (Blur)", "shapes": "Formas (Shapes)"}
+
+    rmse_rows = []  # {video_id, noise_type, attr, rmse_self, rmse_noise}
+    for vid, g in exp5a.groupby("video_id"):
+        g = g.sort_values("frame_idx")
+        self_rmse = {
+            attr: float(np.sqrt(((g[attr] - g[attr].mean()) ** 2).mean()))
+            for attr in ATTRS if g[attr].notna().sum() >= 2
+        }
+        for nt in ["blur", "gaussian", "shapes"]:
+            noisy = exp5b[(exp5b["video_id"] == vid) & (exp5b["noise_type"] == nt)]
+            merged = g[["frame_idx", *ATTRS]].merge(
+                noisy[["frame_idx", *ATTRS]], on="frame_idx", suffixes=("_clean", "_noisy")
+            )
+            for attr in ATTRS:
+                if attr not in self_rmse:
+                    continue
+                pair = merged[[attr + "_clean", attr + "_noisy"]].dropna()
+                if len(pair) < 2:
+                    continue
+                rmse_noise = float(np.sqrt(((pair[attr + "_clean"] - pair[attr + "_noisy"]) ** 2).mean()))
+                rmse_rows.append({
+                    "video_id": vid, "noise_type": nt, "attr": attr,
+                    "rmse_self": self_rmse[attr], "rmse_noise": rmse_noise,
+                })
+    rmse_df = pd.DataFrame(rmse_rows)
+
+    def _rmse_scatter(ax, attr, legend=False):
+        sub = rmse_df[rmse_df["attr"] == attr]
+        for nt in ["blur", "gaussian", "shapes"]:
+            s = sub[sub["noise_type"] == nt]
+            ax.scatter(s["rmse_self"], s["rmse_noise"], color=colors_nt[nt], marker=markers_nt[nt],
+                       s=42, alpha=0.85, edgecolor="white", linewidth=0.6,
+                       label=noise_label_pt[nt] if legend else None)
+        lim = max(0.01, sub["rmse_self"].max() if len(sub) else 0, sub["rmse_noise"].max() if len(sub) else 0) * 1.08
+        ax.plot([0, lim], [0, lim], color="#636e72", linestyle="--", linewidth=1, alpha=0.6)
+        ax.set_xlim(0, lim); ax.set_ylim(0, lim)
+
+    fig, ax = plt.subplots(figsize=(7, 6.5))
+    _rmse_scatter(ax, "The overall", legend=True)
+    ax.set_xlabel("RMSE — consistência natural (original vs. média do vídeo)")
+    ax.set_ylabel("RMSE — sensibilidade ao ruído (original vs. degradação progressiva)")
+    ax.set_title("Consistência Temporal vs. Sensibilidade ao Ruído por Vídeo — atributo 'The overall'",
+                 fontsize=11, fontweight="bold")
+    ax.legend(); ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "q6_rmse_overall.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    fig, axes = plt.subplots(3, 3, figsize=(4.2 * 3, 4.0 * 3))
+    axes = np.array(axes).reshape(-1)
+    for i, attr in enumerate(ATTRS):
+        ax = axes[i]
+        _rmse_scatter(ax, attr, legend=(i == 0))
+        ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.25)
+        if i == 0:
+            ax.legend(fontsize=7)
+    fig.supxlabel("RMSE — consistência natural (original vs. média do vídeo)", fontsize=10)
+    fig.supylabel("RMSE — sensibilidade ao ruído (original vs. degradação progressiva)", fontsize=10)
+    fig.suptitle("Consistência Temporal vs. Sensibilidade ao Ruído por Vídeo, por Atributo",
+                 fontsize=12, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "q6_rmse_grid.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    rows_tbl = []
+    for attr in ATTRS:
+        for nt in ["blur", "gaussian", "shapes"]:
+            s = rmse_df[(rmse_df["attr"] == attr) & (rmse_df["noise_type"] == nt)]
+            if len(s) == 0:
+                continue
+            rmse_self_mean = s["rmse_self"].mean()
+            rmse_noise_mean = s["rmse_noise"].mean()
+            ratio = rmse_noise_mean / rmse_self_mean if rmse_self_mean > 0 else float("nan")
+            rows_tbl.append([
+                ATTR_LABEL[attr], noise_label_pt[nt],
+                f"{rmse_self_mean:.3f}", f"{rmse_noise_mean:.3f}",
+                f"{ratio:.2f}x" if not np.isnan(ratio) else "—",
+            ])
+    ap.save_table(
+        rows_tbl, ["Atributo", "Tipo de Ruído", "RMSE Consist. Natural", "RMSE Sensib. ao Ruído", "Razão"],
+        out_dir, "q6_table", cfg,
+        title="RMSE — Consistência Natural vs. Sensibilidade ao Ruído (média por vídeo)",
+        col_widths=[1.3, 1.3, 1.2, 1.2, 0.8],
+    )
+    print("  -> q6_table.png / .tex.txt")
+
     for i in [1, 3]:
         _copy(os.path.join(OUT_ROOT, "exp5a_temporal", "samples", f"sequence_{i:04d}.gif"), os.path.join(out_dir, "samples"))
         _copy(os.path.join(OUT_ROOT, "exp5b_temporal_error", "samples", f"degradation_{i:04d}.gif"), os.path.join(out_dir, "samples"))
@@ -771,14 +883,6 @@ def gen_aims(cfg, base_dir):
 # Paper ICCC) — pedido explícito da usuária em 2026-08-06.
 # ═══════════════════════════════════════════════════════════════════════════
 
-TITLE_CASE = {
-    "Theme and logic": "Theme and Logic", "Creativity": "Creativity",
-    "Layout and composition": "Layout and Composition", "Space and perspective": "Space and Perspective",
-    "Light and shadow": "Light and Shadow", "Color": "Color",
-    "Details and texture": "Details and Texture", "The overall": "Overall", "Mood": "Mood",
-}
-
-
 def _render_kw_table_png(rows_raw, col_labels, out_path, title):
     """rows_raw: lista de linhas, cada célula = (texto_plano, is_bold)."""
     n_rows, n_cols = len(rows_raw), len(col_labels)
@@ -862,8 +966,8 @@ def gen_apddv2_portinari_mnist_tables(cfg, base_dir):
     tex_rows1, png_rows1 = [], []
     for attr in ATTRS:
         tex_cells, png_cells = _kw_row_cells(km1.get(attr, {}), col_order1)
-        tex_rows1.append([TITLE_CASE[attr]] + tex_cells)
-        png_rows1.append([(TITLE_CASE[attr], False)] + png_cells)
+        tex_rows1.append([ATTR_LABEL[attr]] + tex_cells)
+        png_rows1.append([(ATTR_LABEL[attr], False)] + png_cells)
 
     tex1 = r"""\begin{table*}[t]
 \centering
@@ -904,8 +1008,8 @@ vs. Portinari). Em negrito, o melhor valor de cada linha.}
     tex_rows2, png_rows2 = [], []
     for attr in ATTRS:
         tex_cells, png_cells = _kw_row_cells(km2.get(attr, {}), col_order2)
-        tex_rows2.append([TITLE_CASE[attr]] + tex_cells)
-        png_rows2.append([(TITLE_CASE[attr], False)] + png_cells)
+        tex_rows2.append([ATTR_LABEL[attr]] + tex_cells)
+        png_rows2.append([(ATTR_LABEL[attr], False)] + png_cells)
 
     tex2 = r"""\begin{table}[t]
 \centering
