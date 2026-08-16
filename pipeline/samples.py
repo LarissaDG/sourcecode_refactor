@@ -276,13 +276,12 @@ def _video_samples_no_noise(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_fra
 
 # ── Exp 5b — degradação progressiva ─────────────────────────────────────────────
 
-def _video_samples_progressive(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=6,
-                                repr_noise_type="gaussian"):
+def _video_samples_progressive(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=6):
     """
     Cada frame do Exp5b tem 3 variantes (uma por tipo de ruído) no mesmo nível de
-    degradação. Para manter 1 GIF/1 grid por vídeo, usa `repr_noise_type` (gaussian
-    por padrão) como representante — os outros tipos seguem a mesma curva de
-    degradação por frame, só a textura do ruído muda.
+    degradação. Gera 1 GIF por (vídeo, tipo de ruído) e um único grid combinado
+    com 1 linha por (vídeo, tipo) — mesma lógica de "linha = tipo de ruído" do
+    grid estático do Exp4 (_noise_grids), aplicada aqui por vídeo.
     """
     video_ids = _pick_video_ids(data, n_videos)
     if not video_ids:
@@ -291,16 +290,17 @@ def _video_samples_progressive(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_
 
     rows = []
     for vid in video_ids:
-        frames = _frames_for_video(data, vid, noise_type=repr_noise_type)
-        if not frames:
-            continue
-        _save_gif(frames, apply_noise=True,
-                  out_path=os.path.join(out_dir, f"degradation_{vid}.gif"))
-        idxs = sorted(set(np.linspace(0, len(frames) - 1, grid_frames).round().astype(int)))
-        rows.append((vid, [frames[i] for i in idxs]))
+        for noise_key, label in NOISE_ROW_TYPES:
+            frames = _frames_for_video(data, vid, noise_type=noise_key)
+            if not frames:
+                continue
+            _save_gif(frames, apply_noise=True,
+                      out_path=os.path.join(out_dir, f"degradation_{vid}_{noise_key}.gif"))
+            idxs = sorted(set(np.linspace(0, len(frames) - 1, grid_frames).round().astype(int)))
+            rows.append((f"{vid} ({label})", [frames[i] for i in idxs]))
 
     _save_frame_grid(rows, os.path.join(out_dir, "frame_grid_uniform6.png"),
-                      title=f"Exp 5b — degradação progressiva (frames uniformes, ruído {repr_noise_type})",
+                      title="Exp 5b — degradação progressiva (frames uniformes, por tipo de ruído)",
                       apply_noise=True)
 
 

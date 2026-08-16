@@ -114,23 +114,27 @@ def test_noise_grids_creates_one_file_per_instance(mini_apdd_dir, tmp_path):
 
 # ── Vídeo — Exp 5a (sem ruído) ────────────────────────────────────────────────────
 
-def _video_data(mini_apdd_dir, n_videos=2, n_frames=5, with_noise=False):
+def _video_data(mini_apdd_dir, n_videos=2, n_frames=5, with_noise=False, noise_types=("gaussian",)):
     paths = _image_paths(mini_apdd_dir, n_frames)
     data = []
     for v in range(n_videos):
         vid = f"v{v:02d}"
         for i, p in enumerate(paths):
-            item = {
+            base = {
                 "video_id": vid,
                 "frame_idx": i,
                 "path": p,
                 "filename": f"{vid}_frame_{i:04d}.png",
             }
-            if with_noise:
-                item["noise_type"] = "gaussian"
+            if not with_noise:
+                data.append(base)
+                continue
+            for nt in noise_types:
+                item = dict(base)
+                item["noise_type"] = nt
                 item["noise_level"] = round(i / (n_frames - 1) * 100)
                 item["degradation_pct"] = float(item["noise_level"])
-            data.append(item)
+                data.append(item)
     return data
 
 
@@ -143,11 +147,24 @@ def test_video_no_noise_creates_gif_and_grid(mini_apdd_dir, tmp_path):
 
 
 def test_video_progressive_creates_gif_and_grid(mini_apdd_dir, tmp_path):
-    data = _video_data(mini_apdd_dir, n_videos=2, n_frames=6, with_noise=True)
+    data = _video_data(mini_apdd_dir, n_videos=2, n_frames=6, with_noise=True,
+                        noise_types=("blur", "gaussian", "shapes"))
     samples_mod._video_samples_progressive(data, str(tmp_path), n_videos=2, grid_frames=3)
-    assert (tmp_path / "degradation_v00.gif").exists()
-    assert (tmp_path / "degradation_v01.gif").exists()
+    for vid in ("v00", "v01"):
+        for nt in ("blur", "gaussian", "shapes"):
+            assert (tmp_path / f"degradation_{vid}_{nt}.gif").exists()
     assert (tmp_path / "frame_grid_uniform6.png").exists()
+
+
+def test_video_progressive_skips_missing_noise_type(mini_apdd_dir, tmp_path):
+    """Se um vídeo só tem 1 dos 3 tipos de ruído nos dados, gera só o GIF
+    daquele tipo, sem quebrar nos outros dois."""
+    data = _video_data(mini_apdd_dir, n_videos=1, n_frames=6, with_noise=True,
+                        noise_types=("gaussian",))
+    samples_mod._video_samples_progressive(data, str(tmp_path), n_videos=1, grid_frames=3)
+    assert (tmp_path / "degradation_v00_gaussian.gif").exists()
+    assert not (tmp_path / "degradation_v00_blur.gif").exists()
+    assert not (tmp_path / "degradation_v00_shapes.gif").exists()
 
 
 # ── Dispatcher (run_samples) ─────────────────────────────────────────────────────

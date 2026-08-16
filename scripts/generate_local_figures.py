@@ -798,9 +798,18 @@ def gen_exp5(cfg, base_dir):
     )
     print("  -> q6_table.png / .tex.txt")
 
-    for i in [1, 3]:
-        _copy(os.path.join(OUT_ROOT, "exp5a_temporal", "samples", f"sequence_{i:04d}.gif"), os.path.join(out_dir, "samples"))
-        _copy(os.path.join(OUT_ROOT, "exp5b_temporal_error", "samples", f"degradation_{i:04d}.gif"), os.path.join(out_dir, "samples"))
+    # Copia os GIFs pelos video_id reais (TimeCraft) — não mais nomes numéricos
+    # (0001/0003), que eram do dataset antigo @ArtsyLolaCo e não existem mais.
+    # Exp5b agora tem 1 GIF por (vídeo, tipo de ruído), não 1 representante só.
+    sample_video_ids = sorted(exp5a["video_id"].unique())[:3]
+    for vid in sample_video_ids:
+        _copy(os.path.join(OUT_ROOT, "exp5a_temporal", "samples", f"sequence_{vid}.gif"),
+              os.path.join(out_dir, "samples"))
+        for nt in ["blur", "gaussian", "shapes"]:
+            _copy(os.path.join(OUT_ROOT, "exp5b_temporal_error", "samples", f"degradation_{vid}_{nt}.gif"),
+                  os.path.join(out_dir, "samples"))
+    _copy(os.path.join(OUT_ROOT, "exp5a_temporal", "samples", "frame_grid_last6.png"), os.path.join(out_dir, "samples"))
+    _copy(os.path.join(OUT_ROOT, "exp5b_temporal_error", "samples", "frame_grid_uniform6.png"), os.path.join(out_dir, "samples"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
