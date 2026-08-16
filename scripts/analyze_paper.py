@@ -141,13 +141,17 @@ def _latex_escape(s):
             .replace("%", r"\%").replace("_", r"\_").replace("#", r"\#"))
 
 
-def save_table(rows, col_labels, out_dir, name, cfg, title="", row_labels=None):
+def save_table(rows, col_labels, out_dir, name, cfg, title="", row_labels=None, col_widths=None):
     """
     Salva uma tabela simples em 2 formatos:
       <out_dir>/<name>.png     — imagem (matplotlib table)
       <out_dir>/<name>.tex.txt — LaTeX (booktabs)
 
     rows: lista de listas de strings já formatadas (sem markup).
+    col_widths: pesos relativos de largura por coluna (ex.: [1, 3, 1, 1] dá à
+    2ª coluna 3x a largura das outras) — usar quando alguma coluna tem texto
+    bem mais longo que as demais (ex.: rótulo de comparação "A × B"), senão
+    o texto estoura a largura fixa padrão e fica cortado/sobreposto.
     """
     os.makedirs(out_dir, exist_ok=True)
     n_rows, n_cols = len(rows), len(col_labels)
@@ -155,7 +159,8 @@ def save_table(rows, col_labels, out_dir, name, cfg, title="", row_labels=None):
         return
 
     # ── PNG ──────────────────────────────────────────────────────────────
-    fig_w = max(8, 1.5 + (n_cols + (1 if row_labels else 0)) * 2.0)
+    width_bonus = (max(col_widths) / (sum(col_widths) / len(col_widths)) - 1) * 2.5 if col_widths else 0
+    fig_w = max(8, 1.5 + (n_cols + (1 if row_labels else 0)) * 2.0 + width_bonus)
     fig_h = max(2, 0.6 + n_rows * 0.42)
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.axis("off")
@@ -163,6 +168,9 @@ def save_table(rows, col_labels, out_dir, name, cfg, title="", row_labels=None):
     if row_labels:
         kwargs["rowLabels"] = row_labels
         kwargs["rowLoc"] = "right"
+    if col_widths:
+        total = sum(col_widths)
+        kwargs["colWidths"] = [w / total for w in col_widths]
     tbl = ax.table(**kwargs)
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(9)
@@ -653,6 +661,7 @@ def distribution_diff_table_per_attr(dfs, comparisons, attrs, out_dir, cfg, name
     save_table(
         rows, ["Atributo", "Comparação", "KS", "p (KS)", "Wasserstein", "KL"],
         out_dir, name, cfg, title=title,
+        col_widths=[1.3, 3.0, 0.9, 0.9, 1.1, 0.9],
     )
     return rows
 

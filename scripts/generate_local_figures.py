@@ -190,8 +190,8 @@ def gen_exp2(cfg, base_dir):
 
     diffs_7b_by_exp = {}
     for key, human, d1b, d7b, label in [
-        ("exp2a", human_2a, d1b_2a, d7b_2a, "Exp2a (legenda IA)"),
-        ("exp2b", human_2b, d1b_2b, d7b_2b, "Exp2b (legenda humana)"),
+        ("exp2a", human_2a, d1b_2a, d7b_2a, "Descrições Sintéticas"),
+        ("exp2b", human_2b, d1b_2b, d7b_2b, "Descrições Humanas"),
     ]:
         attrs_present = [a for a in ATTRS if a in human.columns]
         groups = {"Human": human}
@@ -224,7 +224,7 @@ def gen_exp2(cfg, base_dir):
     y_min = np.floor(min(0, min(all_vals)) / 0.1) * 0.1 - 0.02
     y_max = np.ceil(max(all_vals) / 0.1) * 0.1 + 0.05
     y_ticks = np.arange(np.floor(y_min / 0.1) * 0.1, y_max + 0.001, 0.1)
-    for key, label in [("exp2a", "Exp2a (legenda IA)"), ("exp2b", "Exp2b (legenda humana)")]:
+    for key, label in [("exp2a", "Descrições Sintéticas"), ("exp2b", "Descrições Humanas")]:
         _diff_bars(
             {"Human − Janus-1B": diffs_1b_by_exp[key], "Human − Janus-7B": diffs_7b_by_exp[key]},
             ATTRS, [ap.COLOR_HUMAN_1B, ap.COLOR_HUMAN_7B], ["///", "xxx"],
@@ -238,18 +238,18 @@ def gen_exp2(cfg, base_dir):
     dfs_q4 = {"Exp2a-1B": d1b_2a, "Exp2b-1B": d1b_2b, "Exp2a-7B": d7b_2a, "Exp2b-7B": d7b_2b}
     ap.distribution_diff_table_per_attr(
         dfs_q4,
-        [("Janus-Pro-1B: Exp2a × Exp2b", "Exp2a-1B", "Exp2b-1B"),
-         ("Janus-Pro-7B: Exp2a × Exp2b", "Exp2a-7B", "Exp2b-7B")],
+        [("Janus-Pro-1B: Descrições Sintéticas × Humanas", "Exp2a-1B", "Exp2b-1B"),
+         ("Janus-Pro-7B: Descrições Sintéticas × Humanas", "Exp2a-7B", "Exp2b-7B")],
         attrs_present, out_dir, cfg, "q4_dist_diff_exp2a_exp2b",
-        title="Diferença de Distribuição — Legenda IA (Exp2a) vs. Legenda Humana (Exp2b)",
+        title="Diferença de Distribuição — Descrições Sintéticas vs. Descrições Humanas",
     )
     print("  -> q4_dist_diff_exp2a_exp2b.png / .tex.txt")
 
     # Q5 — deviation line: Exp2a x Exp2b
     ap.deviation_line_graph(
-        {"Exp2a (legenda IA)": diffs_7b_by_exp["exp2a"], "Exp2b (legenda humana)": diffs_7b_by_exp["exp2b"]},
+        {"Descrições Sintéticas": diffs_7b_by_exp["exp2a"], "Descrições Humanas": diffs_7b_by_exp["exp2b"]},
         attrs_present, out_dir, cfg, "q5_deviation_line.png",
-        title="Gráfico de Desvio por Atributo — Exp2a vs. Exp2b (Human − Janus-7B)",
+        title="Gráfico de Desvio por Atributo — Descrições Sintéticas vs. Humanas (Human − Janus-7B)",
     )
     print("  -> q5_deviation_line.png")
 
@@ -258,11 +258,11 @@ def gen_exp2(cfg, base_dir):
     dfs_q6 = {"Exp1-Uniforme-7B": d7b_1u, "Exp2a-7B": d7b_2a, "Exp2b-7B": d7b_2b}
     ap.distribution_diff_table_per_attr(
         dfs_q6,
-        [("APDDv2(Exp1-Unif.) × Exp2a", "Exp1-Uniforme-7B", "Exp2a-7B"),
-         ("APDDv2(Exp1-Unif.) × Exp2b", "Exp1-Uniforme-7B", "Exp2b-7B"),
-         ("Exp2a × Exp2b", "Exp2a-7B", "Exp2b-7B")],
+        [("APDDv2(Exp1-Unif.) × Descrições Sintéticas", "Exp1-Uniforme-7B", "Exp2a-7B"),
+         ("APDDv2(Exp1-Unif.) × Descrições Humanas", "Exp1-Uniforme-7B", "Exp2b-7B"),
+         ("Descrições Sintéticas × Humanas", "Exp2a-7B", "Exp2b-7B")],
         attrs_67, out_dir, cfg, "q6_dist_diff_exp1_exp2",
-        title="Diferença de Distribuição — APDDv2 (Exp1 Uniforme) vs. Portinari (Exp2a/Exp2b), Janus-7B",
+        title="Diferença de Distribuição — APDDv2 (Exp1 Uniforme) vs. Portinari (Descrições Sintéticas/Humanas), Janus-7B",
     )
     print("  -> q6_dist_diff_exp1_exp2.png / .tex.txt")
 
@@ -271,10 +271,10 @@ def gen_exp2(cfg, base_dir):
         r, g = _align(human_1u, d7b_1u, a)
         diffs_7b_1u[a] = float(np.mean(r - g)) if r is not None else None
     ap.deviation_line_graph(
-        {"Exp1 Uniforme (APDDv2)": diffs_7b_1u, "Exp2a (Portinari, legenda IA)": diffs_7b_by_exp["exp2a"],
-         "Exp2b (Portinari, legenda humana)": diffs_7b_by_exp["exp2b"]},
+        {"Exp1 Uniforme (APDDv2)": diffs_7b_1u, "Portinari (Descrições Sintéticas)": diffs_7b_by_exp["exp2a"],
+         "Portinari (Descrições Humanas)": diffs_7b_by_exp["exp2b"]},
         attrs_67, out_dir, cfg, "q7_deviation_line.png",
-        title="Gráfico de Desvio por Atributo — Exp1(Uniforme) vs. Exp2a vs. Exp2b (Human − Janus-7B)",
+        title="Gráfico de Desvio por Atributo — Exp1(Uniforme) vs. Portinari (Sintéticas/Humanas) (Human − Janus-7B)",
     )
     print("  -> q7_deviation_line.png")
 
@@ -323,8 +323,8 @@ def gen_exp2(cfg, base_dir):
         ap.save_table(rows, ["Métrica", "Palavras", "Caracteres"], out_dir, name, cfg, title=f"{title} (n={n})")
         print(f"  -> {name}.png / .tex.txt")
 
-    caption_table("samp5_captions_exp2a", "Tamanho das Legendas — Exp2a (Janus-7B)", cap_2a["words"], cap_2a["chars"], cap_2a["n"])
-    caption_table("samp5_captions_exp2b", "Tamanho das Legendas — Exp2b (Humana, EN)", cap_2b["words"], cap_2b["chars"], cap_2b["n"])
+    caption_table("samp5_captions_exp2a", "Tamanho das Legendas — Descrições Sintéticas (Janus-7B)", cap_2a["words"], cap_2a["chars"], cap_2a["n"])
+    caption_table("samp5_captions_exp2b", "Tamanho das Legendas — Descrições Humanas (EN)", cap_2b["words"], cap_2b["chars"], cap_2b["n"])
     caption_table("samp5b_captions_full_archive", "Tamanho das Legendas — Acervo Completo (PT, antes da amostragem)",
                   full_words.tolist(), full_chars.tolist(), len(desc))
 
@@ -869,7 +869,7 @@ def gen_apddv2_portinari_mnist_tables(cfg, base_dir):
 \centering
 \caption{Comparação dos escores do ArtCLIP por atributo para APDDv2 (amostra
 estratificada proporcional, reprodução do Paper ICCC, $n=502$), Portinari com
-descrição sintética (Exp2a) e Portinari com descrição humana (Exp2b). Letras
+descrição sintética e Portinari com descrição humana. Letras
 sobrescritas diferentes indicam diferença estatisticamente significativa entre
 os \emph{sete} grupos da linha (Kruskal-Wallis + Mann-Whitney par-a-par,
 $p<0{,}05$, tratado como amostras independentes mesmo onde há pareamento
