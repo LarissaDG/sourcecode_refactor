@@ -517,25 +517,51 @@ def gen_exp4(cfg, base_dir):
     print("  -> q3_table.png / .tex.txt")
 
     # bônus — curva de degradação
-    avg_attr = "The overall"
     levels = sorted(noise_df["noise_level"].unique())
-    fig, ax = plt.subplots(figsize=(9, 5.5))
-    human_mean = human_apdd[avg_attr].mean()
-    ax.axhline(human_mean, color="#2d3436", linestyle="--", linewidth=1.5, label=f"Human (baseline) = {human_mean:.2f}")
     colors_curve = {"blur": ap.COLOR_HUMAN_1B, "gaussian": ap.COLOR_HUMAN_7B, "shapes": "#f39c12"}
     markers_curve = {"blur": "o", "gaussian": "s", "shapes": "^"}
     noise_label_pt = {"gaussian": "Ruído Gaussiano", "blur": "Desfoque (Blur)", "shapes": "Formas (Shapes)"}
-    for nt in ["blur", "gaussian", "shapes"]:
-        means_by_level = [noise_df[(noise_df["noise_type"] == nt) & (noise_df["noise_level"] == lv)][avg_attr].mean()
-                           for lv in levels]
-        ax.plot(levels, means_by_level, marker=markers_curve[nt], color=colors_curve[nt],
-                linewidth=2, markersize=6, label=noise_label_pt[nt])
+
+    def _degradation_curve(ax, attr, legend=False):
+        human_mean = human_apdd[attr].mean()
+        ax.axhline(human_mean, color="#2d3436", linestyle="--", linewidth=1.5,
+                   label=f"Human (baseline) = {human_mean:.2f}" if legend else None)
+        for nt in ["blur", "gaussian", "shapes"]:
+            means_by_level = [noise_df[(noise_df["noise_type"] == nt) & (noise_df["noise_level"] == lv)][attr].mean()
+                               for lv in levels]
+            ax.plot(levels, means_by_level, marker=markers_curve[nt], color=colors_curve[nt],
+                    linewidth=2, markersize=6, label=noise_label_pt[nt] if legend else None)
+        ax.set_ylim(0, 10); ax.set_xticks(levels)
+
+    avg_attr = "The overall"
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    _degradation_curve(ax, avg_attr, legend=True)
+    ax.set_yticks(np.arange(0, 11, 1))
     ax.set_xlabel("Nível de Ruído"); ax.set_ylabel(f"Score Médio ({ATTR_LABEL[avg_attr]})")
-    ax.set_ylim(0, 10); ax.set_yticks(np.arange(0, 11, 1)); ax.set_xticks(levels)
     ax.set_title("Curva de Degradação — Score vs. Nível de Ruído", fontsize=12, fontweight="bold")
     ax.legend(); ax.grid(True, alpha=0.3)
     plt.tight_layout()
     p = os.path.join(out_dir, "degradation_curve.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    fig, axes = plt.subplots(3, 3, figsize=(4.2 * 3, 3.6 * 3))
+    axes = np.array(axes).reshape(-1)
+    for i, attr in enumerate(attrs_present):
+        ax = axes[i]
+        _degradation_curve(ax, attr, legend=(i == 0))
+        ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.25)
+        if i == 0:
+            ax.legend(fontsize=7)
+    fig.supxlabel("Nível de Ruído", fontsize=10)
+    fig.supylabel("Score Médio", fontsize=10)
+    fig.suptitle("Curva de Degradação — Score vs. Nível de Ruído, por Atributo",
+                 fontsize=12, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "degradation_curve_grid.png")
     fig.savefig(p, dpi=110, bbox_inches="tight")
     plt.close(fig)
     print(f"  -> {p}")
