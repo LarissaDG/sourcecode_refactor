@@ -156,6 +156,26 @@ def test_video_progressive_creates_gif_and_grid(mini_apdd_dir, tmp_path):
     assert (tmp_path / "frame_grid_uniform6.png").exists()
 
 
+# ── Vídeo — Exp 5c (janela macro, 1 fps, sem ruído) ──────────────────────────────
+
+def test_video_macro_creates_gif_and_grid(mini_apdd_dir, tmp_path):
+    data = _video_data(mini_apdd_dir, n_videos=2, n_frames=5)
+    samples_mod._video_samples_macro(data, str(tmp_path), n_videos=2, grid_frames=3)
+    assert (tmp_path / "sequence_v00.gif").exists()
+    assert (tmp_path / "sequence_v01.gif").exists()
+    assert (tmp_path / "frame_grid_uniform5.png").exists()
+
+
+def test_video_macro_grid_labels_show_real_frame_position():
+    """O grid do Exp5c mostra a posição real do frame na sequência (não uma
+    renumeração 1..N) -- checa isso direto em _frame_label, sem depender de
+    inspecionar pixels do PNG gerado."""
+    frames = [{"frame_idx": i} for i in range(30)]
+    idxs = sorted({0, 7, 14, 22, 29})
+    labels = [samples_mod._frame_label(frames[i]) for i in idxs]
+    assert labels == ["Frame 0", "Frame 7", "Frame 14", "Frame 22", "Frame 29"]
+
+
 def test_video_progressive_skips_missing_noise_type(mini_apdd_dir, tmp_path):
     """Se um vídeo só tem 1 dos 3 tipos de ruído nos dados, gera só o GIF
     daquele tipo, sem quebrar nos outros dois."""

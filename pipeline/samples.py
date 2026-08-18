@@ -274,6 +274,38 @@ def _video_samples_no_noise(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_fra
                       apply_noise=False)
 
 
+# ── Exp 5c — janela macro (vídeo inteiro, 1 fps, sem ruído) ─────────────────────
+
+def _video_samples_macro(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=5):
+    """
+    Mesma ideia de _video_samples_no_noise (sem ruído), mas a sequência aqui é
+    bem mais longa (o vídeo inteiro truncado, 1 frame/seg, em vez de ~24
+    frames do início) — por isso o grid usa frames uniformemente espaçados ao
+    longo de toda a sequência (como _video_samples_progressive já faz para o
+    Exp5b), em vez de só os últimos N, pra dar uma amostra representativa do
+    vídeo inteiro. O rótulo de cada frame no grid mostra o índice real dele
+    na sequência (segundo do vídeo), não uma renumeração 1..5.
+    """
+    video_ids = _pick_video_ids(data, n_videos)
+    if not video_ids:
+        print("[samples] sem vídeos (exp5c), pulando.")
+        return
+
+    rows = []
+    for vid in video_ids:
+        frames = _frames_for_video(data, vid)
+        if not frames:
+            continue
+        _save_gif(frames, apply_noise=False,
+                  out_path=os.path.join(out_dir, f"sequence_{vid}.gif"))
+        idxs = sorted(set(np.linspace(0, len(frames) - 1, grid_frames).round().astype(int)))
+        rows.append((vid, [frames[i] for i in idxs]))
+
+    _save_frame_grid(rows, os.path.join(out_dir, "frame_grid_uniform5.png"),
+                      title="Exp 5c — frames uniformemente amostrados ao longo do vídeo (1 fps, sem ruído)",
+                      apply_noise=False)
+
+
 # ── Exp 5b — degradação progressiva ─────────────────────────────────────────────
 
 def _video_samples_progressive(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=6):
@@ -329,5 +361,7 @@ def run_samples(cfg, data):
         _video_samples_no_noise(data, out_dir)
     elif name.startswith("exp5b_temporal_error"):
         _video_samples_progressive(data, out_dir)
+    elif name.startswith("exp5c_temporal_macro"):
+        _video_samples_macro(data, out_dir)
     else:
         print(f"[samples] nenhum layout de amostra definido para '{name}', pulando.")

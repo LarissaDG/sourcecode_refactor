@@ -458,11 +458,11 @@ def gen_exp3(cfg, base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Exp4 — Ruído (dados placeholder — ver aviso no HTML)
+# Exp4 — Ruído
 # ═══════════════════════════════════════════════════════════════════════════
 
 def gen_exp4(cfg, base_dir):
-    print("\n=== Exp4 — Ruído (⚠ dados placeholder até nova execução no cluster) ===")
+    print("\n=== Exp4 — Ruído ===")
     out_dir = os.path.join(base_dir, "exp4")
     os.makedirs(out_dir, exist_ok=True)
     OUT_ROOT = cfg["paths"]["outputs"]
@@ -527,10 +527,13 @@ def gen_exp4(cfg, base_dir):
         ax.axhline(human_mean, color="#2d3436", linestyle="--", linewidth=1.5,
                    label=f"Human (baseline) = {human_mean:.2f}" if legend else None)
         for nt in ["blur", "gaussian", "shapes"]:
-            means_by_level = [noise_df[(noise_df["noise_type"] == nt) & (noise_df["noise_level"] == lv)][attr].mean()
-                               for lv in levels]
-            ax.plot(levels, means_by_level, marker=markers_curve[nt], color=colors_curve[nt],
-                    linewidth=2, markersize=6, label=noise_label_pt[nt] if legend else None)
+            by_level = [noise_df[(noise_df["noise_type"] == nt) & (noise_df["noise_level"] == lv)][attr]
+                        for lv in levels]
+            means = [s.mean() for s in by_level]
+            stds = [s.std() for s in by_level]
+            ax.errorbar(levels, means, yerr=stds, marker=markers_curve[nt], color=colors_curve[nt],
+                       linewidth=2, markersize=6, capsize=3, elinewidth=1, alpha=0.9,
+                       label=noise_label_pt[nt] if legend else None)
         ax.set_ylim(0, 10); ax.set_xticks(levels)
 
     avg_attr = "The overall"
@@ -839,6 +842,110 @@ def gen_exp5(cfg, base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Exp5c — Temporal (janela macro, 1 fps, sem ruído)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def gen_exp5c(cfg, base_dir):
+    print("\n=== Exp5c — Temporal (janela macro) ===")
+    out_dir = os.path.join(base_dir, "exp5c")
+    os.makedirs(out_dir, exist_ok=True)
+    OUT_ROOT = cfg["paths"]["outputs"]
+
+    df = az.load_scores(os.path.join(OUT_ROOT, "exp5c_temporal_macro"), "original")
+    if df is None:
+        print("  [aviso] outputs/exp5c_temporal_macro/scores/scores_original.csv não encontrado, pulando "
+              "(rode slurm_extract_exp5c_frames.sh + slurm_exp5c_temporal_macro.sh no cluster primeiro).")
+        return
+
+    video_ids = sorted(df["video_id"].unique())
+    n_videos = len(video_ids)
+
+    # Q1 — pedido principal: grade 3x3, uma linha clarinha por vídeo + média em destaque
+    fig, axes = plt.subplots(3, 3, figsize=(4.6 * 3, 3.4 * 3))
+    axes = np.array(axes).reshape(-1)
+    for i, attr in enumerate(ATTRS):
+        ax = axes[i]
+        for vid in video_ids:
+            sub = df[df["video_id"] == vid].sort_values("frame_idx")
+            ax.plot(sub["frame_idx"], sub[attr], color="#74b9ff", alpha=0.25, linewidth=0.9)
+        mean_by_frame = df.groupby("frame_idx")[attr].mean()
+        ax.plot(mean_by_frame.index, mean_by_frame.values, color="#2d3436", linewidth=2.2,
+               label="Média entre vídeos" if i == 0 else None)
+        ax.set_ylim(0, 10); ax.set_yticks(np.arange(0, 11, 2))
+        ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.25)
+        if i == 0:
+            ax.legend(fontsize=8)
+    fig.supxlabel("Frame (segundo do vídeo)", fontsize=10)
+    fig.supylabel("Score", fontsize=10)
+    fig.suptitle(f"Consistência Temporal em Nível Macro — {n_videos} Vídeos, por Atributo",
+                 fontsize=12, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "q1_macro_trajectories_grid.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    # Q2 — sugestão: a dispersão ENTRE vídeos cresce ou diminui conforme o
+    # vídeo avança? (faixa média ± desvio-padrão por segundo, agregando os
+    # N vídeos em cada frame_idx -- diferente do Q1, que mostra vídeo por
+    # vídeo; aqui é "o quão de acordo os vídeos estão entre si, a cada
+    # segundo", pra ver se a resposta do ArtCLIP fica menos previsível à
+    # medida que a pintura avança).
+    avg_attr = "The overall"
+    by_frame = df.groupby("frame_idx")[avg_attr]
+    mean_line, std_line = by_frame.mean(), by_frame.std()
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    ax.plot(mean_line.index, mean_line.values, color="#2d3436", linewidth=2, label="Média entre vídeos")
+    ax.fill_between(mean_line.index, mean_line - std_line, mean_line + std_line,
+                    color="#74b9ff", alpha=0.35, label="± 1 desvio-padrão")
+    ax.set_ylim(0, 10); ax.set_yticks(np.arange(0, 11, 1))
+    ax.set_xlabel("Frame (segundo do vídeo)"); ax.set_ylabel(f"Score ({ATTR_LABEL[avg_attr]})")
+    ax.set_title("Dispersão entre Vídeos ao Longo do Tempo — atributo 'The overall'",
+                 fontsize=12, fontweight="bold")
+    ax.legend(); ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "q2_dispersion_over_time.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    # Q3 — sugestão: desvio-padrão INTRA-vídeo por atributo, na janela macro
+    # (mesma lógica do Q1b do Exp5a, só que numa sequência bem mais longa —
+    # se a consistência cai numa janela maior, aparece aqui como std maior).
+    std_by_video = df.groupby("video_id")[ATTRS].std()
+    fig, axes = plt.subplots(3, 3, figsize=(4.2 * 3, 3.2 * 3))
+    axes = np.array(axes).reshape(-1)
+    for i, attr in enumerate(ATTRS):
+        ax = axes[i]
+        vals = std_by_video[attr].dropna()
+        ax.hist(vals, bins=15, color="#0984e3", alpha=0.8, edgecolor="white")
+        ax.axvline(vals.mean(), color="#d63031", linestyle="--", linewidth=1.4, label=f"média={vals.mean():.2f}")
+        ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+        ax.set_xlabel("Desvio-padrão intra-vídeo", fontsize=8); ax.tick_params(labelsize=7)
+        ax.legend(fontsize=7); ax.grid(True, alpha=0.25, axis="y")
+    fig.suptitle("Consistência Temporal Macro por Atributo — Desvio-padrão dentro de cada Vídeo",
+                 fontsize=12, fontweight="bold", y=1.01)
+    plt.tight_layout()
+    p = os.path.join(out_dir, "q3_std_grid.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    rows = [[ATTR_LABEL[a], f"{std_by_video[a].mean():.3f}"] for a in ATTRS]
+    ap.save_table(rows, ["Atributo", "Desvio-padrão intra-vídeo médio (macro)"], out_dir, "q3_table", cfg,
+                  title="Consistência Temporal Macro — Desvio-padrão Médio por Atributo")
+    print("  -> q3_table.png / .tex.txt")
+
+    for vid in video_ids[:3]:
+        _copy(os.path.join(OUT_ROOT, "exp5c_temporal_macro", "samples", f"sequence_{vid}.gif"),
+              os.path.join(out_dir, "samples"))
+    _copy(os.path.join(OUT_ROOT, "exp5c_temporal_macro", "samples", "frame_grid_uniform5.png"),
+          os.path.join(out_dir, "samples"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # AI Measurement Science
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1079,7 +1186,8 @@ Atributo & APDDv2 (Human) & Portinari (Human) & MNIST \\
 
 GENERATORS = {
     "paper_exp1": gen_paper_and_exp1,
-    "exp2": gen_exp2, "exp3": gen_exp3, "exp4": gen_exp4, "exp5": gen_exp5, "aims": gen_aims,
+    "exp2": gen_exp2, "exp3": gen_exp3, "exp4": gen_exp4, "exp5": gen_exp5, "exp5c": gen_exp5c,
+    "aims": gen_aims,
     "kw_tables": gen_apddv2_portinari_mnist_tables,
 }
 

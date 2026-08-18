@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────
+# EXP 5c — Análise temporal em nível macro: consistência ao longo de todo o vídeo
+# 1 frame/segundo, truncado ao mesmo tamanho em todos os vídeos (ver
+# scripts/extract_exp5c_frames.py — mede a duração real de cada vídeo e
+# extrai automaticamente até o mínimo real detectado) → Score
+# Objetivo: verificar se a consistência observada no Exp5a (janela curta, só
+# o início do vídeo) se mantém numa janela macro (o vídeo inteiro), sem ruído
+# ─────────────────────────────────────────────────────────
+experiment:
+  name: "exp5c_temporal_macro"
+
+dataset:
+  name: video
+  path: "/snfs1/speed/larissa.gomide/data/temporal_1fps/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: false
+    generation: false
+    samples:    true
+    scoring:    true
+
+sampling:
+  strategy: "sequential"
+  # Generoso de propósito: "sequential" trunca no que existir por vídeo, e o
+  # número real de frames/vídeo só é conhecido depois que
+  # extract_exp5c_frames.py roda (depende da duração mínima real detectada).
+  n_samples: 100000
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"
