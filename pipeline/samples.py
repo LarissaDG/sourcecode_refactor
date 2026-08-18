@@ -276,19 +276,23 @@ def _video_samples_no_noise(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_fra
 
 # ── Exp 5c — janela macro (vídeo inteiro, 1 fps, sem ruído) ─────────────────────
 
-def _video_samples_macro(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=5):
+def _video_samples_macro(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames=5,
+                          title="Exp 5c — frames uniformemente amostrados ao longo do vídeo (1 fps, sem ruído)",
+                          grid_filename="frame_grid_uniform5.png"):
     """
     Mesma ideia de _video_samples_no_noise (sem ruído), mas a sequência aqui é
-    bem mais longa (o vídeo inteiro truncado, 1 frame/seg, em vez de ~24
-    frames do início) — por isso o grid usa frames uniformemente espaçados ao
-    longo de toda a sequência (como _video_samples_progressive já faz para o
-    Exp5b), em vez de só os últimos N, pra dar uma amostra representativa do
-    vídeo inteiro. O rótulo de cada frame no grid mostra o índice real dele
-    na sequência (segundo do vídeo), não uma renumeração 1..5.
+    mais longa e/ou esparsa (Exp5c: vídeo inteiro truncado, 1 fps contínuo;
+    Exp5d: 10 janelas de 3s espalhadas pelo vídeo, com lacunas de frame_idx
+    entre elas) — por isso o grid usa frames uniformemente espaçados por
+    POSIÇÃO na lista (não por frame_idx), em vez de só os últimos N, pra dar
+    uma amostra representativa da sequência inteira. O rótulo de cada frame
+    no grid mostra o índice real dele (segundo no vídeo original), não uma
+    renumeração 1..5 — funciona tanto pra sequência contígua (Exp5c) quanto
+    pra sequência com lacunas (Exp5d), já que _frame_label só lê frame_idx.
     """
     video_ids = _pick_video_ids(data, n_videos)
     if not video_ids:
-        print("[samples] sem vídeos (exp5c), pulando.")
+        print("[samples] sem vídeos, pulando.")
         return
 
     rows = []
@@ -301,9 +305,7 @@ def _video_samples_macro(data, out_dir, n_videos=SAMPLE_N_INSTANCES, grid_frames
         idxs = sorted(set(np.linspace(0, len(frames) - 1, grid_frames).round().astype(int)))
         rows.append((vid, [frames[i] for i in idxs]))
 
-    _save_frame_grid(rows, os.path.join(out_dir, "frame_grid_uniform5.png"),
-                      title="Exp 5c — frames uniformemente amostrados ao longo do vídeo (1 fps, sem ruído)",
-                      apply_noise=False)
+    _save_frame_grid(rows, os.path.join(out_dir, grid_filename), title=title, apply_noise=False)
 
 
 # ── Exp 5b — degradação progressiva ─────────────────────────────────────────────
@@ -363,5 +365,11 @@ def run_samples(cfg, data):
         _video_samples_progressive(data, out_dir)
     elif name.startswith("exp5c_temporal_macro"):
         _video_samples_macro(data, out_dir)
+    elif name.startswith("exp5d_temporal_micro"):
+        _video_samples_macro(
+            data, out_dir, grid_frames=10,
+            title="Exp 5d — 10 sub-amostras aleatórias de 3s espalhadas pelo vídeo (sem ruído)",
+            grid_filename="frame_grid_micro10.png",
+        )
     else:
         print(f"[samples] nenhum layout de amostra definido para '{name}', pulando.")

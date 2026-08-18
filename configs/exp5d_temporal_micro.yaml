@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────
+# EXP 5d — Análise temporal em nível micro: 10 sub-amostras aleatórias de 3s
+# por vídeo (30 frames/vídeo, 1 frame/segundo), espalhadas ao longo de TODO o
+# vídeo, sem embaralhar a ordem (ver scripts/extract_exp5d_frames.py — o
+# índice do frame é o segundo real no vídeo original, com lacunas entre as
+# janelas de 3s) → Score
+# Objetivo: verificar a consistência do ArtCLIP quando a amostra é esparsa e
+# distribuída pelo vídeo inteiro, em vez de uma janela contígua (Exp5a) ou
+# uma janela contígua truncada no início do vídeo (Exp5c)
+# ─────────────────────────────────────────────────────────
+experiment:
+  name: "exp5d_temporal_micro"
+
+dataset:
+  name: video
+  path: "/snfs1/speed/larissa.gomide/data/temporal_micro/"
+
+pipeline:
+  steps:
+    sampling:   true
+    captioning: false
+    generation: false
+    samples:    true
+    scoring:    true
+
+sampling:
+  strategy: "sequential"
+  # Generoso de propósito: "sequential" trunca no que existir por vídeo, e o
+  # número real de frames/vídeo varia (nem todo vídeo cabe as 10 janelas de
+  # 3s completas -- ver metadata.csv de extract_exp5d_frames.py).
+  n_samples: 100000
+
+scoring:
+  weights_dir: "/sonic_home/larissa.gomide/APDDv2/modle_weights/"

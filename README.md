@@ -237,6 +237,8 @@ python3 run.py --config configs/exp3_mnist.yaml
 python3 run.py --config configs/exp4_noise.yaml
 python3 run.py --config configs/exp5a_temporal.yaml
 python3 run.py --config configs/exp5b_temporal_error.yaml
+python3 run.py --config configs/exp5c_temporal_macro.yaml   # requer scripts/extract_exp5c_frames.py já rodado
+python3 run.py --config configs/exp5d_temporal_micro.yaml   # requer scripts/extract_exp5d_frames.py já rodado
 ```
 
 | Config | Estágios executados |
@@ -249,6 +251,8 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 | `exp4_noise.yaml` | scoring apenas (ruído aplicado na leitura) |
 | `exp5a_temporal.yaml` | scoring apenas |
 | `exp5b_temporal_error.yaml` | scoring apenas |
+| `exp5c_temporal_macro.yaml` | scoring apenas (frames 1fps já extraídos por `scripts/extract_exp5c_frames.py`) |
+| `exp5d_temporal_micro.yaml` | scoring apenas (frames já extraídos por `scripts/extract_exp5d_frames.py`) |
 
 > **`exp1_apdd.yaml` e `exp0_iccc.yaml` rodam duas amostragens em uma única chamada**
 > (`sampling.strategies` no YAML): o pipeline completo é executado uma vez por estratégia,
@@ -268,6 +272,34 @@ python3 run.py --config configs/exp5b_temporal_error.yaml
 > são ignorados com aviso. `sampling_bin_distribution.txt` ainda é gerado, mas só como relatório
 > da distribuição por bin dessa amostra fixa — não influencia a seleção. Já o `uniform_bins`
 > do `exp0_iccc.yaml` ignora `legacy_csv` e amostra normalmente, igual ao `exp1_apdd.yaml`.
+
+> **Exp5a/5b/5c/5d usam a mesma população de vídeos (TimeCraft), mas janelas de amostragem
+> diferentes** — todos usam `datasets/video_frames.py` (`strategy: "sequential"`), então o
+> índice do frame exibido em qualquer visualização (`frame_idx`) é sempre a posição/segundo
+> REAL no vídeo original, nunca uma renumeração 1..N:
+> - **Exp5a** — sem ruído, os primeiros ~24 frames de cada vídeo (início da pintura).
+> - **Exp5b** — os primeiros ~24 frames, com uma rampa de ruído crescente (0% → 100%) por
+>   tipo (`gaussian`/`blur`/`shapes`), simulando um erro do artista que não é corrigido.
+> - **Exp5c** — janela macro: o vídeo inteiro, 1 frame/segundo, truncado ao mínimo de duração
+>   REAL detectado entre os 26 vídeos (medido via `scripts/extract_exp5c_frames.py`, não
+>   estimado — ver nota de metodologia abaixo), sem ruído. Objetivo: consistência temporal
+>   olhando o vídeo inteiro, não só o começo.
+> - **Exp5d** — janela micro: até 10 sub-amostras de 3s (30 frames no total), escolhidas
+>   aleatoriamente ao longo de TODO o vídeo mas **sem embaralhar a ordem** — cada bloco de 3s
+>   guarda seu segundo real no vídeo original, com lacunas entre blocos não-adjacentes (ex.:
+>   um vídeo pode ter frames 0-2 e depois, sem nada entre eles, 30-32). Vídeos com menos de 3s
+>   de duração real são pulados; vídeos que não cabem as 10 janelas completas usam quantas
+>   couberem (`scripts/extract_exp5d_frames.py`). Objetivo: consistência temporal quando a
+>   amostra é esparsa e espalhada, em vez de uma janela contígua.
+>
+> **Duração real dos vídeos**: a duração/fps usada pelo Exp5c e pelo Exp5d vem de uma medição
+> direta do arquivo (`imageio.get_reader(...).get_meta_data()`), não de uma estimativa a
+> partir dos metadados `.pkl` públicos do TimeCraft (que assumem 24fps e podem não refletir o
+> vídeo completo) — cada script mede seus próprios 26 vídeos de forma independente, então
+> Exp5c e Exp5d podem rodar em paralelo, sem depender um do outro. Ambos os scripts são
+> resumíveis (pulam vídeos/blocos já extraídos) e não interrompem a execução inteira se um
+> vídeo específico for curto demais ou falhar — ele só é registrado como tal no CSV de saída
+> (`duration_report.csv` / `metadata.csv`) e o restante continua.
 
 ### No cluster (SLURM)
 
@@ -290,6 +322,13 @@ sbatch slurm/completo/slurm_exp3_mnist.sh
 sbatch slurm/completo/slurm_exp4_noise.sh
 sbatch slurm/completo/slurm_exp5a_temporal.sh
 sbatch slurm/completo/slurm_exp5b_temporal_error.sh
+# Exp5c e Exp5d precisam dos frames extraídos ANTES (job leve, CPU-only, mede
+# duração real e extrai frames) -- só depois submeta o job de scoring (GPU):
+sbatch slurm/completo/slurm_extract_exp5c_frames.sh
+sbatch slurm/completo/slurm_extract_exp5d_frames.sh
+# esperar os dois acima terminarem (e-mail de confirmação), depois:
+sbatch slurm/completo/slurm_exp5c_temporal_macro.sh
+sbatch slurm/completo/slurm_exp5d_temporal_micro.sh
 ```
 
 #### Re-baixar só o dataset temporal (TimeCraft) e encadear o Exp5
@@ -368,6 +407,8 @@ mesmas 3 imagens do Exp2a, só trocando a coluna de descrição (IA → humana).
 | Exp 4 (Ruído) | `noise_grid_01.png` .. `_03.png` | 1 grid por instância: linhas = Blur/Gaussian/Shapes, colunas = 10%-100% |
 | Exp 5a (Temporal) | `sequence_<video_id>.gif` (×3) + `frame_grid_last6.png` | GIF da sequência amostrada sem ruído por vídeo + grid dos últimos 6 frames (3 vídeos), com número do frame |
 | Exp 5b (Temporal) | `degradation_<video_id>.gif` (×3) + `frame_grid_uniform6.png` | GIF da degradação progressiva por vídeo + grid de 6 frames uniformemente distribuídos (3 vídeos), com número do frame e % de degradação |
+| Exp 5c (Temporal, macro) | `sequence_<video_id>.gif` (×3) + `frame_grid_uniform5.png` | GIF do vídeo inteiro (1fps, sem ruído) + grid de 5 frames uniformemente distribuídos (3 vídeos), com o segundo real do vídeo |
+| Exp 5d (Temporal, micro) | `sequence_<video_id>.gif` (×3) + `frame_grid_micro10.png` | GIF das até 10 sub-amostras de 3s concatenadas (sem ruído) + grid de 10 frames (3 vídeos), com o segundo real do vídeo (mostra as lacunas entre blocos) |
 
 > **Exp5b usa `gaussian` como tipo de ruído representativo** no GIF e no grid: cada frame do
 > Exp5b tem 3 variantes (gaussian/blur/shapes) no mesmo nível de degradação, mas para manter

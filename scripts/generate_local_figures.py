@@ -946,6 +946,85 @@ def gen_exp5c(cfg, base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Exp5d — Temporal (janelas micro, 10x3s espalhadas pelo vídeo, sem ruído)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _contiguous_segments(frame_idx):
+    """Quebra uma sequência ORDENADA de frame_idx em blocos contíguos (gap=1),
+    devolvendo uma lista de arrays de índices POSICIONAIS (não os frame_idx em
+    si) -- um array por bloco de 3s. É isso que faz a linha do gráfico "parar"
+    entre 0-3s e 30-33s em vez de ligar os dois com um segmento reto."""
+    idx = np.asarray(frame_idx)
+    if len(idx) == 0:
+        return []
+    breaks = np.where(np.diff(idx) > 1)[0] + 1
+    return np.split(np.arange(len(idx)), breaks)
+
+
+def gen_exp5d(cfg, base_dir):
+    print("\n=== Exp5d — Temporal (janelas micro) ===")
+    out_dir = os.path.join(base_dir, "exp5d")
+    videos_dir = os.path.join(out_dir, "videos")
+    os.makedirs(videos_dir, exist_ok=True)
+    OUT_ROOT = cfg["paths"]["outputs"]
+
+    df = az.load_scores(os.path.join(OUT_ROOT, "exp5d_temporal_micro"), "original")
+    if df is None:
+        print("  [aviso] outputs/exp5d_temporal_micro/scores/scores_original.csv não encontrado, pulando "
+              "(rode slurm_extract_exp5d_frames.sh + slurm_exp5d_temporal_micro.sh no cluster primeiro).")
+        return
+
+    video_ids = sorted(df["video_id"].unique())
+
+    # Um gráfico POR VÍDEO: 9 subplots (um por atributo), dentro de cada um as
+    # ~10 sub-amostras de 3s aparecem como segmentos SEPARADOS (sem ligar os
+    # buracos entre janelas não-adjacentes), mais uma linha de referência
+    # tracejada na média do vídeo inteiro pro atributo (destaque pedido —
+    # como as janelas não compartilham posição temporal contígua entre si,
+    # uma média ponto-a-ponto não faz sentido; a média global do vídeo é o
+    # "quão consistente" comparável, análoga às linhas de referência "Human"
+    # já usadas no resto do site).
+    for vid in video_ids:
+        sub = df[df["video_id"] == vid].sort_values("frame_idx")
+        frame_idx = sub["frame_idx"].to_numpy()
+        segments = _contiguous_segments(frame_idx)
+        n_blocks = len(segments)
+
+        fig, axes = plt.subplots(3, 3, figsize=(4.6 * 3, 3.4 * 3))
+        axes = np.array(axes).reshape(-1)
+        for i, attr in enumerate(ATTRS):
+            ax = axes[i]
+            vals = sub[attr].to_numpy()
+            for seg in segments:
+                ax.plot(frame_idx[seg], vals[seg], color="#74b9ff", alpha=0.55, linewidth=1.3,
+                       marker="o", markersize=2.5)
+            mean_val = np.nanmean(vals)
+            ax.axhline(mean_val, color="#2d3436", linestyle="--", linewidth=1.8,
+                       label=f"Média do vídeo ({mean_val:.2f})" if i == 0 else None)
+            ax.set_ylim(0, 10); ax.set_yticks(np.arange(0, 11, 2))
+            ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+            ax.tick_params(labelsize=7)
+            ax.grid(True, alpha=0.25)
+            if i == 0:
+                ax.legend(fontsize=8)
+        fig.supxlabel("Frame (segundo real no vídeo original)", fontsize=10)
+        fig.supylabel("Score", fontsize=10)
+        fig.suptitle(f"Consistência Temporal em Nível Micro — {vid} ({n_blocks} janelas de 3s)",
+                     fontsize=12, fontweight="bold", y=1.02)
+        plt.tight_layout()
+        p = os.path.join(videos_dir, f"q1_micro_trajectories_{vid}.png")
+        fig.savefig(p, dpi=110, bbox_inches="tight")
+        plt.close(fig)
+    print(f"  -> {len(video_ids)} gráficos individuais em {videos_dir}/q1_micro_trajectories_<video_id>.png")
+
+    for vid in video_ids[:3]:
+        _copy(os.path.join(OUT_ROOT, "exp5d_temporal_micro", "samples", f"sequence_{vid}.gif"),
+              os.path.join(out_dir, "samples"))
+    _copy(os.path.join(OUT_ROOT, "exp5d_temporal_micro", "samples", "frame_grid_micro10.png"),
+          os.path.join(out_dir, "samples"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # AI Measurement Science
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1187,6 +1266,7 @@ Atributo & APDDv2 (Human) & Portinari (Human) & MNIST \\
 GENERATORS = {
     "paper_exp1": gen_paper_and_exp1,
     "exp2": gen_exp2, "exp3": gen_exp3, "exp4": gen_exp4, "exp5": gen_exp5, "exp5c": gen_exp5c,
+    "exp5d": gen_exp5d,
     "aims": gen_aims,
     "kw_tables": gen_apddv2_portinari_mnist_tables,
 }

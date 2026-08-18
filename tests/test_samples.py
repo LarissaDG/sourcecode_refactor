@@ -176,6 +176,42 @@ def test_video_macro_grid_labels_show_real_frame_position():
     assert labels == ["Frame 0", "Frame 7", "Frame 14", "Frame 22", "Frame 29"]
 
 
+# ── Vídeo — Exp 5d (janelas micro, 10x3s espalhadas, sem ruído) ──────────────────
+
+def test_video_micro_creates_gif_and_grid_with_custom_title(mini_apdd_dir, tmp_path):
+    """Exp5d reusa _video_samples_macro, só com título e nome de grid próprios
+    (não pode sair rotulado "Exp 5c" por engano)."""
+    data = _video_data(mini_apdd_dir, n_videos=2, n_frames=5)
+    samples_mod._video_samples_macro(
+        data, str(tmp_path), n_videos=2, grid_frames=3,
+        title="Exp 5d — 10 sub-amostras aleatórias de 3s espalhadas pelo vídeo (sem ruído)",
+        grid_filename="frame_grid_micro10.png",
+    )
+    assert (tmp_path / "sequence_v00.gif").exists()
+    assert (tmp_path / "sequence_v01.gif").exists()
+    assert (tmp_path / "frame_grid_micro10.png").exists()
+    assert not (tmp_path / "frame_grid_uniform5.png").exists()
+
+
+def test_video_micro_grid_labels_show_true_second_with_gaps():
+    """As 10 janelas de 3s do Exp5d têm lacunas de frame_idx entre si (ex.:
+    bloco 0 = segundos 0-2, bloco 10 = segundos 30-32) -- _frame_label precisa
+    continuar mostrando o segundo real, não a posição na lista."""
+    frame_idxs = [0, 1, 2, 30, 31, 32, 60, 61, 62]
+    frames = [{"frame_idx": i} for i in frame_idxs]
+    labels = [samples_mod._frame_label(f) for f in frames]
+    assert labels == [f"Frame {i}" for i in frame_idxs]
+
+
+def test_run_samples_dispatches_exp5d_to_macro_panel(mini_apdd_dir, tmp_path, monkeypatch):
+    data = _video_data(mini_apdd_dir, n_videos=1, n_frames=5)
+    cfg = {"experiment": {"name": "exp5d_temporal_micro", "output_dir": str(tmp_path)}}
+    samples_mod.run_samples(cfg, data)
+    out_dir = tmp_path / "exp5d_temporal_micro" / "samples"
+    assert (out_dir / "frame_grid_micro10.png").exists()
+    assert not (out_dir / "frame_grid_uniform5.png").exists()
+
+
 def test_video_progressive_skips_missing_noise_type(mini_apdd_dir, tmp_path):
     """Se um vídeo só tem 1 dos 3 tipos de ruído nos dados, gera só o GIF
     daquele tipo, sem quebrar nos outros dois."""
