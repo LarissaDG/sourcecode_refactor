@@ -29,7 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import kurtosis, mannwhitneyu, skew
+from scipy.stats import kurtosis, mannwhitneyu, skew, spearmanr
 
 import analyze as az
 import analyze_paper as ap
@@ -842,6 +842,101 @@ def gen_exp5(cfg, base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Exp5c/5d — variograma temporal (consistência vs. distância entre frames)
+# ═══════════════════════════════════════════════════════════════════════════
+# Métrica compartilhada pelos dois: para cada vídeo, olha TODOS os pares de
+# frames e mede Δt = |distância em segundos| e Δscore = |diferença de nota|.
+# Se o ArtCLIP for temporalmente consistente (frames próximos = notas
+# parecidas, frames distantes = notas mais discrepantes), Δscore deve CRESCER
+# com Δt -- isso é testado com a correlação de Spearman entre os dois (mesma
+# ferramenta estatística já usada na checagem de monotonicidade do Exp4, só
+# que aqui a variável "nível de degradação" é substituída por "distância
+# temporal"). O gráfico (variograma, termo de geoestatística) mostra a média
+# de Δscore por faixa de Δt -- deve subir da esquerda pra direita se a
+# hipótese se confirmar.
+
+def _pairwise_dt_dscore(df, video_ids, attr):
+    """Pooled (Δt, Δscore) de todos os pares de frames, de todos os vídeos.
+    Δt vem só do frame_idx (mesmo pra todos os atributos); calculado por
+    vídeo pra não misturar pares de vídeos diferentes."""
+    dts, dscores = [], []
+    for vid in video_ids:
+        sub = df[df["video_id"] == vid].sort_values("frame_idx")
+        t = sub["frame_idx"].to_numpy(dtype=float)
+        s = sub[attr].to_numpy(dtype=float)
+        n = len(t)
+        if n < 2:
+            continue
+        iu = np.triu_indices(n, k=1)
+        dts.append(np.abs(t[iu[0]] - t[iu[1]]))
+        dscores.append(np.abs(s[iu[0]] - s[iu[1]]))
+    if not dts:
+        return np.array([]), np.array([])
+    return np.concatenate(dts), np.concatenate(dscores)
+
+
+def _variogram_bins(dt, ds, n_bins=12):
+    """Agrupa os pares em faixas de Δt com contagem balanceada (quantis, não
+    largura fixa -- Δt costuma ser bem mais denso em valores baixos), devolve
+    o centro/média/desvio-padrão de Δscore por faixa, pra plotar."""
+    edges = np.unique(np.quantile(dt, np.linspace(0, 1, n_bins + 1)))
+    if len(edges) < 3:
+        edges = np.linspace(dt.min(), dt.max(), 3)
+    bin_idx = np.clip(np.digitize(dt, edges[1:-1]), 0, len(edges) - 2)
+    centers, means, stds = [], [], []
+    for b in range(len(edges) - 1):
+        mask = bin_idx == b
+        if not mask.any():
+            continue
+        centers.append(dt[mask].mean())
+        means.append(ds[mask].mean())
+        stds.append(ds[mask].std())
+    return np.array(centers), np.array(means), np.array(stds)
+
+
+def _variogram_section(df, video_ids, out_dir, cfg, prefix, suptitle, xlabel):
+    """Grade 3x3 (variograma por atributo) + tabela de Spearman ρ(Δt, Δscore).
+    Usada tanto pelo Exp5c (janela macro) quanto pelo Exp5d (janelas micro,
+    onde os gaps entre blocos dão de graça uma faixa de Δt bem mais ampla pra
+    testar a hipótese)."""
+    fig, axes = plt.subplots(3, 3, figsize=(4.6 * 3, 3.4 * 3))
+    axes = np.array(axes).reshape(-1)
+    rows = []
+    for i, attr in enumerate(ATTRS):
+        dt, ds = _pairwise_dt_dscore(df, video_ids, attr)
+        ax = axes[i]
+        if len(dt) < 3:
+            ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+            ax.text(0.5, 0.5, "dados insuficientes", ha="center", va="center", transform=ax.transAxes)
+            rows.append([ATTR_LABEL[attr], "—", "—", str(len(dt))])
+            continue
+        centers, means, stds = _variogram_bins(dt, ds)
+        rho, pval = spearmanr(dt, ds)
+        ax.errorbar(centers, means, yerr=stds, fmt="o-", color="#0984e3", ecolor="#74b9ff",
+                    elinewidth=1, capsize=3, markersize=4, linewidth=1.6)
+        ax.set_title(ATTR_LABEL[attr], fontsize=10, fontweight="bold")
+        ax.set_xlabel(xlabel, fontsize=8); ax.set_ylabel("Média |Δscore|", fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.grid(True, alpha=0.25)
+        sig = "*" if pval < 0.05 else ""
+        ax.text(0.03, 0.94, f"ρ={rho:.3f}{sig}", transform=ax.transAxes, fontsize=8,
+               fontweight="bold", va="top")
+        rows.append([ATTR_LABEL[attr], f"{rho:.3f}", f"{pval:.4f}", str(len(dt))])
+    fig.suptitle(suptitle, fontsize=12, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    p = os.path.join(out_dir, f"{prefix}_variogram_grid.png")
+    fig.savefig(p, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {p}")
+
+    ap.save_table(rows, ["Atributo", "Spearman ρ (Δt, Δscore)", "p-valor", "n pares"], out_dir,
+                  f"{prefix}_monotonicity_table", cfg,
+                  title="Consistência Temporal — Discrepância de Score cresce com a Distância? "
+                        "(ρ>0 e p<0,05 confirma a hipótese)")
+    print(f"  -> {prefix}_monotonicity_table.png / .tex.txt")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Exp5c — Temporal (janela macro, 1 fps, sem ruído)
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -938,6 +1033,15 @@ def gen_exp5c(cfg, base_dir):
                   title="Consistência Temporal Macro — Desvio-padrão Médio por Atributo")
     print("  -> q3_table.png / .tex.txt")
 
+    # Q4 — variograma: frames próximos (Δt baixo) devem ter notas parecidas
+    # (Δscore baixo), frames distantes devem ser mais discrepantes. ρ>0 e
+    # significativo confirma a hipótese; ρ≈0 significa que a distância
+    # temporal não prediz discrepância nenhuma (ArtCLIP "não sabe" que os
+    # frames estão próximos ou longe).
+    _variogram_section(df, video_ids, out_dir, cfg, prefix="q4",
+                       suptitle="Consistência vs. Distância Temporal — Janela Macro (variograma)",
+                       xlabel="Δt entre frames (segundos)")
+
     for vid in video_ids[:3]:
         _copy(os.path.join(OUT_ROOT, "exp5c_temporal_macro", "samples", f"sequence_{vid}.gif"),
               os.path.join(out_dir, "samples"))
@@ -1016,6 +1120,17 @@ def gen_exp5d(cfg, base_dir):
         fig.savefig(p, dpi=110, bbox_inches="tight")
         plt.close(fig)
     print(f"  -> {len(video_ids)} gráficos individuais em {videos_dir}/q1_micro_trajectories_<video_id>.png")
+
+    # Q2 — mesmo variograma do Exp5c, agora com uma faixa de Δt bem mais rica:
+    # dentro de um bloco de 3s (Δt=1,2) os frames deveriam ter notas bem
+    # parecidas; entre blocos distantes (Δt de dezenas a centenas de
+    # segundos, já que os blocos são espalhados pelo vídeo inteiro) a
+    # discrepância deveria ser maior -- é o mesmo teste do Exp5c, só que a
+    # amostragem esparsa do 5d testa a hipótese numa faixa de distância mais
+    # ampla de graça (não precisa do vídeo inteiro em 1fps pra isso).
+    _variogram_section(df, video_ids, out_dir, cfg, prefix="q2",
+                       suptitle="Consistência vs. Distância Temporal — Janelas Micro (variograma)",
+                       xlabel="Δt entre frames (segundos)")
 
     for vid in video_ids[:3]:
         _copy(os.path.join(OUT_ROOT, "exp5d_temporal_micro", "samples", f"sequence_{vid}.gif"),
